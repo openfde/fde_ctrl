@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/sirupsen/logrus"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 // StandardLogger struct for sentry
@@ -64,27 +63,6 @@ func Error(ctx context.Context, id, from string, customize interface{}, error er
 
 func Warn(ctx context.Context, id, from string, customize interface{}, errors ...error) {
 	buildLogEntry(ctx, from, customize, errors...).Warn()
-	return
-}
-
-// If we use goroutine to run async task. convert cancel context to no-cancel context
-// if we can confirm that task dose not have to canceled when main coroutine has been canceled
-func BackgroundSpanContext(cancelContext context.Context) context.Context {
-	if cancelContext != nil {
-		span, ok := tracer.SpanFromContext(cancelContext)
-		if ok {
-			return tracer.ContextWithSpan(context.Background(), span)
-		}
-	}
-	return context.Background()
-}
-
-func getSpanTraceID(ctx context.Context) (spanID, traceID uint64) {
-	span, _ := tracer.SpanFromContext(ctx)
-	if span.Context() != nil {
-		spanID = span.Context().SpanID()
-		traceID = span.Context().TraceID()
-	}
 	return
 }
 
