@@ -59,10 +59,10 @@ func (impls *Apps) Scan(iconPixmapPath, iconsPath, desktopEntryPath string) erro
 		return err
 	}
 	absPath := ""
-	var filterApps Apps
-	copy(filterApps, *impls)
+	var filterApps *Apps
+	copy(*filterApps, *impls)
 	*impls = (*impls)[0:]
-	for index, app := range filterApps {
+	for index, app := range *filterApps {
 		absPath = ""
 		//首先确定其是不是绝对路径,且有后缀
 		if filepath.IsAbs(app.IconPath) && app.IconPath[0] == filepath.Separator && filepath.Ext(app.IconPath) != "" {
@@ -71,18 +71,18 @@ func (impls *Apps) Scan(iconPixmapPath, iconsPath, desktopEntryPath string) erro
 				//文件不存在，则跳过
 			} else {
 				absPath = app.IconPath
-				filterApps[index].readIconForApp(absPath, nil, nil)
+				(*filterApps)[index].readIconForApp(absPath, nil, nil)
 			}
 		} else {
 			//寻找这个相对路径的文件
 			//1 pixmap目录
-			filepath.Walk(iconPixmapPath, filterApps[index].readIconForApp)
+			filepath.Walk(iconPixmapPath, (*filterApps)[index].readIconForApp)
 			// if len((*impls)[index].Icon) == 0 {
 			// 	filepath.Walk(iconsPath,filterApps[index].readIconForApp)
 			// }
 		}
-		if len(filterApps[index].Icon) != 0 {
-			*impls = append(*impls, filterApps[index])
+		if len((*filterApps)[index].Icon) != 0 {
+			*impls = append(*impls, (*filterApps)[index])
 		}
 	}
 
