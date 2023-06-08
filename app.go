@@ -83,7 +83,10 @@ func (impls *Apps) Scan(iconPixmapPath, iconsPath, desktopEntryPath string) erro
 		if len((*impls)[index].Icon) != 0 {
 			filteredApps = append(filteredApps, (*impls)[index])
 		}
-		*impls = (*impls)[0:]
+	}
+	*impls = (*impls)[0:]
+	for _, app := range filteredApps {
+		*impls = append(*impls, app)
 	}
 
 	return nil
