@@ -57,11 +57,11 @@ func Info(ctx context.Context, from string, customize interface{}) {
 	buildLogEntry(ctx, from, customize).Info()
 }
 
-func Error(ctx context.Context, id, from string, customize interface{}, error error) {
+func Error(ctx context.Context, from string, customize interface{}, error error) {
 	buildLogEntry(ctx, from, customize, error).Error()
 }
 
-func Warn(ctx context.Context, id, from string, customize interface{}, errors ...error) {
+func Warn(ctx context.Context, from string, customize interface{}, errors ...error) {
 	buildLogEntry(ctx, from, customize, errors...).Warn()
 	return
 }

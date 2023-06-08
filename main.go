@@ -58,6 +58,16 @@ func setup(r *gin.Engine) {
 }
 
 func main() {
+	// configPath := os.Getenv("FDE_CONFIG")
+	// if len(configPath) == 0 {
+	// 	configPath = "/etc/fde_config"
+	// }
+	// cfg, err := ini.Load(configPath)
+	// if err != nil {
+	// 	logger.Error(context.Background(),"load_config",nil,err)
+	// 	return
+	// }
+	// cfg.
 
 	go setupWebSocket()
 	//scan app from linux
