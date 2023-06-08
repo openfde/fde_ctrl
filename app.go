@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"net/http"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,7 +20,7 @@ import (
 
 const desktopEntryPath = "/usr/share/applications"
 const iconPixmapPath = "/usr/share/pixmaps"
-const iconsPath = "/usr/share/icons"
+const iconsPath = "/usr/share/icons/hicolor/16x16"
 
 type LinuxAppInterface interface {
 	// Scan() error
@@ -76,15 +77,17 @@ func (impls *Apps) Scan(iconPixmapPath, iconsPath, desktopEntryPath string) erro
 			//寻找这个相对路径的文件
 			//1 pixmap目录
 			filepath.Walk(iconPixmapPath, (*impls)[index].readIconForApp)
-			// if len((*impls)[index].Icon) == 0 {
-			// 	filepath.Walk(iconsPath,filterApps[index].readIconForApp)
-			// }
+			 if len((*impls)[index].Icon) == 0 {
+			 	filepath.Walk(iconsPath,(*impls)[index].readIconForApp)
+			 }
 		}
 		if len((*impls)[index].Icon) != 0 {
+			fmt.Println("debug", (*impls)[index].Name)
 			filteredApps = append(filteredApps, (*impls)[index])
 		}
 	}
-	*impls = (*impls)[0:]
+	*impls = append((*impls)[:0])
+	fmt.Println("debug", len(filteredApps))
 	for _, app := range filteredApps {
 		*impls = append(*impls, app)
 	}
