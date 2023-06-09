@@ -5,7 +5,6 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"net/http"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -77,17 +76,15 @@ func (impls *Apps) Scan(iconPixmapPath, iconsPath, desktopEntryPath string) erro
 			//寻找这个相对路径的文件
 			//1 pixmap目录
 			filepath.Walk(iconPixmapPath, (*impls)[index].readIconForApp)
-			 if len((*impls)[index].Icon) == 0 {
-			 	filepath.Walk(iconsPath,(*impls)[index].readIconForApp)
-			 }
+			if len((*impls)[index].Icon) == 0 {
+				filepath.Walk(iconsPath, (*impls)[index].readIconForApp)
+			}
 		}
 		if len((*impls)[index].Icon) != 0 {
-			fmt.Println("debug", (*impls)[index].Name)
 			filteredApps = append(filteredApps, (*impls)[index])
 		}
 	}
 	*impls = append((*impls)[:0])
-	fmt.Println("debug", len(filteredApps))
 	for _, app := range filteredApps {
 		*impls = append(*impls, app)
 	}

@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"fde_ctrl/middleware"
 	"fmt"
 	"net/http"
+	"os/exec"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -69,6 +72,27 @@ func main() {
 	// }
 	// cfg.
 
+	mainCtx, _ := context.WithCancel(context.Background())
+
+	_, exist := processExists("vncserver")
+	if !exist {
+		cmdVnc := exec.CommandContext(mainCtx, "vncserver", "--SecurityTypes None", "--I-KNOW-THIS-IS-INSECURE")
+		cmdVnc.Env = append(cmdVnc.Env, "LD_PRELOAD=/lib/aarch64-linux-gnu/libgcc_s.so.1")
+		// go func() {
+		err := cmdVnc.Start()
+		if err != nil {
+			return
+		}
+		// syscall.Wait4(cmdVnc.Process.Pid)
+	}
+	cmd := exec.CommandContext(mainCtx, "vncserver", "--list")
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Println("Error running command:", err)
+		return
+	}
+	fmt.Println(string(output))
+	//step 1 start kwin to enable windows manager
 	go setupWebSocket()
 	//scan app from linux
 	engine := gin.New()
@@ -77,4 +101,20 @@ func main() {
 	setup(engine)
 	// 启动HTTP服务器
 	engine.Run(":18080")
+
+}
+
+func processExists(name string) (pid int, exist bool) {
+	cmd := exec.Command("pgrep", name)
+	output, err := cmd.Output()
+	if err != nil {
+		return pid, false
+	}
+
+	pid, err = strconv.Atoi(string(output[:len(output)-1]))
+	if err != nil {
+		return pid, false
+	}
+
+	return pid, true
 }
