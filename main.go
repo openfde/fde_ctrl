@@ -4,9 +4,12 @@ import (
 	"context"
 	"fde_ctrl/middleware"
 	"fmt"
+	"os"
 	"net/http"
 	"os/exec"
 	"strconv"
+	"io"
+	"io/ioutil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -76,14 +79,29 @@ func main() {
 
 	_, exist := processExists("vncserver")
 	if !exist {
-		cmdVnc := exec.CommandContext(mainCtx, "vncserver", "--SecurityTypes None", "--I-KNOW-THIS-IS-INSECURE")
+		cmdVnc := exec.CommandContext(mainCtx, "vncserver", "--SecurityTypes=None", "--I-KNOW-THIS-IS-INSECURE")
+		cmdVnc.Env = append(os.Environ())
 		cmdVnc.Env = append(cmdVnc.Env, "LD_PRELOAD=/lib/aarch64-linux-gnu/libgcc_s.so.1")
 		// go func() {
-		err := cmdVnc.Start()
+	stdout, err := cmdVnc.StdoutPipe()
+	if err != nil {
+	    // 处理错误
+	    fmt.Println(err)
+	}
+	stderr, err := cmdVnc.StderrPipe()
+	if err != nil {
+		fmt.Println(stderr)
+	    // 处理错误
+	}
+		err = cmdVnc.Start()
 		if err != nil {
 			return
 		}
-		// syscall.Wait4(cmdVnc.Process.Pid)
+	output, err := ioutil.ReadAll(io.MultiReader(stdout, stderr))
+if err != nil {
+    // 处理错误
+}
+fmt.Println(string(output))
 	}
 	cmd := exec.CommandContext(mainCtx, "vncserver", "--list")
 	output, err := cmd.Output()
