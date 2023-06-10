@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"syscall"
 
 	"github.com/gin-gonic/gin"
 )
@@ -98,6 +99,11 @@ func main() {
 			logger.Error("start vnc server failed", nil, err)
 			return
 		}
+		var wstatus syscall.WaitStatus
+		_, err = syscall.Wait4(cmdVnc.Process.Pid, &wstatus, 0, nil)
+		if err != nil {
+			logger.Error("wai t vnc server failed", nil, err)
+		}
 		output, err := ioutil.ReadAll(io.MultiReader(stdout, stderr))
 		if err != nil {
 			logger.Error("read start vnc server failed", nil, err)
@@ -134,6 +140,6 @@ func processExists(name string) (pid int, exist bool) {
 	if err != nil {
 		return pid, false
 	}
-
+	cmd.Wait()
 	return pid, true
 }
