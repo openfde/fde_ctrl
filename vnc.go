@@ -47,8 +47,9 @@ func constructXstartup(name, path string) error {
 }
 
 type startAppRequest struct {
-	App  string
-	Path string
+	App     string
+	Path    string
+	SysOnly bool
 }
 
 func (impl VncAppImpl) startVncAppHandle(c *gin.Context) {
@@ -58,7 +59,7 @@ func (impl VncAppImpl) startVncAppHandle(c *gin.Context) {
 		ResponseParamterError(c, err)
 		return
 	}
-	port, err := impl.startVncApp(request.App, request.Path)
+	port, err := impl.startVncApp(request.App, request.Path, request.SysOnly)
 	if err != nil {
 		ResponseError(c, http.StatusInternalServerError, err)
 		return
@@ -69,7 +70,10 @@ func (impl VncAppImpl) startVncAppHandle(c *gin.Context) {
 }
 
 // start a app ,return the port or error
-func (impl VncAppImpl) startVncApp(app, path string) (port string, err error) {
+func (impl VncAppImpl) startVncApp(app, path string, sysOnly bool) (port string, err error) {
+	if sysOnly {
+		app = "sysonly"
+	}
 	logger.Info("start_app", app)
 	app = strings.ToLower(app)
 	app = strings.ReplaceAll(app, " ", "_")
@@ -78,17 +82,21 @@ func (impl VncAppImpl) startVncApp(app, path string) (port string, err error) {
 		return
 	}
 	if exist {
-
 		return
 	}
 	var arg []string
+	arg = append(arg, "--SecurityTypes=None", "-name="+app, "--I-KNOW-THIS-IS-INSECURE")
 	logger.Info("app_not_start", app)
-	err = constructXstartup(app, path)
-	if err != nil {
-		return
+	if !sysOnly {
+		err = constructXstartup(app, path)
+		if err != nil {
+			return
+		}
+		arg = append(arg, "-xstartup=/tmp/"+app)
 	}
+
 	// arg = append(arg, "-localhost=yes")
-	arg = append(arg, "--SecurityTypes=None", "-name="+app, "--I-KNOW-THIS-IS-INSECURE", "-xstartup=/tmp/"+app)
+
 	logger.Info("debug_arg", arg)
 	cmdVnc := exec.Command("vncserver", arg...)
 	cmdVnc.Env = append(os.Environ())
@@ -175,7 +183,6 @@ func grepApp(name string) (err error, exist bool, port string) {
 		if strings.Contains(string(line), name) {
 			var appName string
 			appName, port = parseApp(string(line))
-			logger.Info("not_equal",name+","+appName)
 			if name == appName {
 				exist = true
 				return
@@ -191,8 +198,14 @@ func grepApp(name string) (err error, exist bool, port string) {
 func parseApp(args string) (appName, port string) {
 	// 将args按空格分割成多个参数
 	argList := strings.Split(args, "tigervnc")
-        argList = strings.Split(argList[1]," ")
-        argList = argList[2:]
+	if len(argList) < 2 {
+		return
+	}
+	argList = strings.Split(argList[1], " ")
+	if len(argList) < 3 {
+		return
+	}
+	argList = argList[2:]
 	// 创建一个FlagSet对象
 	fs := flag.NewFlagSet("temporaryFlagSet", flag.ContinueOnError)
 	fs.Usage = func() {}
