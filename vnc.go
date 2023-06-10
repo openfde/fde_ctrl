@@ -88,7 +88,7 @@ func (impl VncAppImpl) startVncApp(app, path string) (port string, err error) {
 		return
 	}
 	// arg = append(arg, "-localhost=yes")
-	arg = append(arg, "--SecurityTypes=None", "-desktop="+app, "--I-KNOW-THIS-IS-INSECURE", "-xstartup=/tmp/"+app)
+	arg = append(arg, "--SecurityTypes=None", "-name="+app, "--I-KNOW-THIS-IS-INSECURE", "-xstartup=/tmp/"+app)
 	logger.Info("debug_arg", arg)
 	cmdVnc := exec.Command("vncserver", arg...)
 	cmdVnc.Env = append(os.Environ())
@@ -175,6 +175,7 @@ func grepApp(name string) (err error, exist bool, port string) {
 		if strings.Contains(string(line), name) {
 			var appName string
 			appName, port = parseApp(string(line))
+			logger.Info("not_equal",name+","+appName)
 			if name == appName {
 				exist = true
 				return
@@ -189,15 +190,16 @@ func grepApp(name string) (err error, exist bool, port string) {
 
 func parseApp(args string) (appName, port string) {
 	// 将args按空格分割成多个参数
-	argList := strings.Split(args, " ")
+	argList := strings.Split(args, "tigervnc")
+        argList = strings.Split(argList[1]," ")
+        argList = argList[2:]
 	// 创建一个FlagSet对象
 	fs := flag.NewFlagSet("temporaryFlagSet", flag.ContinueOnError)
 	fs.Usage = func() {}
 
 	// 定义一个名为desktop的string类型flag
-	var desktop, rfbport string
-	fs.StringVar(&desktop, "desktop", "", "desktop default")
-	fs.StringVar(&rfbport, "rfbport", "5901", "5901")
+	fs.StringVar(&appName, "desktop", "", "desktop default")
+	fs.StringVar(&port, "rfbport", "5901", "5901")
 
 	var ignore bytes.Buffer
 	fs.SetOutput(&ignore)
