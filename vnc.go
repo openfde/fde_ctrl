@@ -88,7 +88,7 @@ func (impl VncAppImpl) startVncApp(app, path string) (port string, err error) {
 		return
 	}
 	// arg = append(arg, "-localhost=yes")
-	arg = append(arg, "--SecurityTypes=None", "--I-KNOW-THIS-IS-INSECURE", "-xstartup=/tmp/"+app)
+	arg = append(arg, "--SecurityTypes=None", "-desktop="+app, "--I-KNOW-THIS-IS-INSECURE", "-xstartup=/tmp/"+app)
 	logger.Info("debug_arg", arg)
 	cmdVnc := exec.Command("vncserver", arg...)
 	cmdVnc.Env = append(os.Environ())
