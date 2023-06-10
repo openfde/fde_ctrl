@@ -166,14 +166,8 @@ func grepApp(name string) (err error, exist bool, port string) {
 	if err != nil {
 		return
 	}
-	err = grepCmd.Wait()
-	if err != nil {
-		return
-	}
-	err = xgrepCmd.Wait()
-	if err != nil {
-		return
-	}
+	grepCmd.Wait()
+	xgrepCmd.Wait()
 	// 解析 grep 命令的输出
 
 	lines := bytes.Split(output.Bytes(), []byte("\n"))
@@ -185,6 +179,7 @@ func grepApp(name string) (err error, exist bool, port string) {
 				exist = true
 				return
 			} else {
+
 				port = ""
 			}
 		}
@@ -193,7 +188,6 @@ func grepApp(name string) (err error, exist bool, port string) {
 }
 
 func parseApp(args string) (appName, port string) {
-
 	// 将args按空格分割成多个参数
 	argList := strings.Split(args, " ")
 	// 创建一个FlagSet对象
@@ -210,6 +204,6 @@ func parseApp(args string) (appName, port string) {
 
 	// 解析参数
 	fs.Parse(argList)
-	return rfbport, appName
+	return
 
 }
