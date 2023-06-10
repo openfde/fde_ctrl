@@ -1,17 +1,11 @@
 package main
 
 import (
-	"context"
-	"fde_ctrl/logger"
 	"fde_ctrl/middleware"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
-	"os"
 	"os/exec"
 	"strconv"
-	"syscall"
 
 	"github.com/gin-gonic/gin"
 )
@@ -54,9 +48,11 @@ func setup(r *gin.Engine) {
 	// http.HandleFunc("/ws", handleWebSocket)
 
 	var apps Apps
+	var vnc VncAppImpl
 
 	group := r.Group("/api")
 	apps.Setup(group)
+	vnc.Setup(group)
 
 	// // 启动 HTTP 服务器
 	// err = server.Serve(listener)
@@ -77,46 +73,8 @@ func main() {
 	// }
 	// cfg.
 
-	mainCtx, _ := context.WithCancel(context.Background())
+	// mainCtx, _ := context.WithCancel(context.Background())
 
-	_, exist := processExists("vncserver")
-	if !exist {
-		logger.Info("vncserver_notexist", nil)
-		cmdVnc := exec.CommandContext(mainCtx, "vncserver", "--SecurityTypes=None", "--I-KNOW-THIS-IS-INSECURE")
-		cmdVnc.Env = append(os.Environ())
-		cmdVnc.Env = append(cmdVnc.Env, "LD_PRELOAD=/lib/aarch64-linux-gnu/libgcc_s.so.1")
-		stdout, err := cmdVnc.StdoutPipe()
-		if err != nil {
-			logger.Error("stdout pipe for vnc server", nil, err)
-		}
-		stderr, err := cmdVnc.StderrPipe()
-		if err != nil {
-			logger.Error("stdout pipe for vnc server", nil, err)
-		}
-		logger.Info("vncserver_start", nil)
-		err = cmdVnc.Start()
-		if err != nil {
-			logger.Error("start vnc server failed", nil, err)
-			return
-		}
-		var wstatus syscall.WaitStatus
-		_, err = syscall.Wait4(cmdVnc.Process.Pid, &wstatus, 0, nil)
-		if err != nil {
-			logger.Error("wai t vnc server failed", nil, err)
-		}
-		output, err := ioutil.ReadAll(io.MultiReader(stdout, stderr))
-		if err != nil {
-			logger.Error("read start vnc server failed", nil, err)
-		}
-		logger.Info("debug_vnc", output)
-	}
-	cmd := exec.CommandContext(mainCtx, "vncserver", "--list")
-	output, err := cmd.Output()
-	if err != nil {
-		fmt.Println("Error running command:", err)
-		return
-	}
-	fmt.Println(string(output))
 	//step 1 start kwin to enable windows manager
 	go setupWebSocket()
 	//scan app from linux
