@@ -2,14 +2,15 @@ package main
 
 import (
 	"context"
+	"fde_ctrl/logger"
 	"fde_ctrl/middleware"
 	"fmt"
-	"os"
-	"net/http"
-	"os/exec"
-	"strconv"
 	"io"
 	"io/ioutil"
+	"net/http"
+	"os"
+	"os/exec"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -79,29 +80,29 @@ func main() {
 
 	_, exist := processExists("vncserver")
 	if !exist {
+		logger.Info("vncserver_notexist", nil)
 		cmdVnc := exec.CommandContext(mainCtx, "vncserver", "--SecurityTypes=None", "--I-KNOW-THIS-IS-INSECURE")
 		cmdVnc.Env = append(os.Environ())
 		cmdVnc.Env = append(cmdVnc.Env, "LD_PRELOAD=/lib/aarch64-linux-gnu/libgcc_s.so.1")
-		// go func() {
-	stdout, err := cmdVnc.StdoutPipe()
-	if err != nil {
-	    // 处理错误
-	    fmt.Println(err)
-	}
-	stderr, err := cmdVnc.StderrPipe()
-	if err != nil {
-		fmt.Println(stderr)
-	    // 处理错误
-	}
+		stdout, err := cmdVnc.StdoutPipe()
+		if err != nil {
+			logger.Error("stdout pipe for vnc server", nil, err)
+		}
+		stderr, err := cmdVnc.StderrPipe()
+		if err != nil {
+			logger.Error("stdout pipe for vnc server", nil, err)
+		}
+		logger.Info("vncserver_start", nil)
 		err = cmdVnc.Start()
 		if err != nil {
+			logger.Error("start vnc server failed", nil, err)
 			return
 		}
-	output, err := ioutil.ReadAll(io.MultiReader(stdout, stderr))
-if err != nil {
-    // 处理错误
-}
-fmt.Println(string(output))
+		output, err := ioutil.ReadAll(io.MultiReader(stdout, stderr))
+		if err != nil {
+			logger.Error("read start vnc server failed", nil, err)
+		}
+		logger.Info("debug_vnc", output)
 	}
 	cmd := exec.CommandContext(mainCtx, "vncserver", "--list")
 	output, err := cmd.Output()

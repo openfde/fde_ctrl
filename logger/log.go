@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"context"
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -13,7 +12,7 @@ type StandardLogger struct {
 }
 
 var (
-	Logger = NewLogger(true) //Logger New logger by loggerSentry and loggerLine
+	Logger = NewLogger() //Logger New logger by loggerSentry and loggerLine
 )
 
 func Init() *StandardLogger {
@@ -25,7 +24,7 @@ func Init() *StandardLogger {
 }
 
 // NewLogger New logger by  loggerLine
-func NewLogger(sendToSentry bool) *StandardLogger {
+func NewLogger() *StandardLogger {
 	standard := Init()
 	logName := os.Getenv("LOG_FILE")
 	if len(logName) != 0 {
@@ -53,20 +52,20 @@ func (logger *StandardLogger) loggerLine() {
 	logger.Hooks.Add(hookWithLine)
 }
 
-func Info(ctx context.Context, from string, customize interface{}) {
-	buildLogEntry(ctx, from, customize).Info()
+func Info(from string, customize interface{}) {
+	buildLogEntry(from, customize).Info()
 }
 
-func Error(ctx context.Context, from string, customize interface{}, error error) {
-	buildLogEntry(ctx, from, customize, error).Error()
+func Error(from string, customize interface{}, error error) {
+	buildLogEntry(from, customize, error).Error()
 }
 
-func Warn(ctx context.Context, from string, customize interface{}, errors ...error) {
-	buildLogEntry(ctx, from, customize, errors...).Warn()
+func Warn(from string, customize interface{}, errors ...error) {
+	buildLogEntry(from, customize, errors...).Warn()
 	return
 }
 
-func buildLogEntry(ctx context.Context, from string, customize interface{}, errors ...error) *logrus.Entry {
+func buildLogEntry(from string, customize interface{}, errors ...error) *logrus.Entry {
 	fields := logrus.Fields{
 		"from":   from,
 		"source": customize,

@@ -39,7 +39,7 @@ func trace(c *gin.Context) {
 	}
 	logSource := sourceWithCtx(c)
 	logSource["stack_info"] = stackInfoBuffer.String()
-	logger.Error(c.Request.Context(), "un_handled_error", logSource, nil)
+	logger.Error("un_handled_error", logSource, nil)
 }
 
 // NewEntryWithCtx be used at pos web middle ware with context.
