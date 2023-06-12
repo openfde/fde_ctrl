@@ -140,6 +140,7 @@ func (impl VncAppImpl) stopVncApp(app string, sysOnly bool) (err error) {
 		if err != nil {
 			logger.Error("read start vnc server failed", nil, err)
 		}
+		cmdVnc.Wait()
 		logger.Info("debug_vnc", string(output))
 	}
 	return nil
