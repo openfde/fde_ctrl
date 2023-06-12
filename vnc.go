@@ -243,6 +243,7 @@ func grepApp(name string) (err error, exist bool, port string) {
 
 func parseApp(args string) (appName, port string) {
 	// 将args按空格分割成多个参数
+	logger.Info("parse",args)
 	argList := strings.Split(args, "tigervnc")
 	if len(argList) < 2 {
 		return
@@ -251,20 +252,28 @@ func parseApp(args string) (appName, port string) {
 	if len(argList) < 3 {
 		return
 	}
-	argList = argList[2:]
+	argLists := argList[2:]
 	// 创建一个FlagSet对象
+	logger.Info("last",argLists)
 	fs := flag.NewFlagSet("temporaryFlagSet", flag.ContinueOnError)
 	fs.Usage = func() {}
 
 	// 定义一个名为desktop的string类型flag
 	fs.StringVar(&appName, "desktop", "", "desktop default")
-	fs.StringVar(&port, "rfbport", "5901", "5901")
+	fs.StringVar(&port, "rfbport", "", "5901")
+	var auth,geometry,depth string
+	fs.StringVar(&auth, "auth", "", "desktop value")
+	fs.StringVar(&geometry, "geometry", "", "desktop value")
+	fs.StringVar(&depth, "depth", "", "desktop value")
+	var rfbwait string
+	fs.StringVar(&rfbwait, "rfbwait", "", "desktop value")
 
 	var ignore bytes.Buffer
 	fs.SetOutput(&ignore)
 
 	// 解析参数
-	fs.Parse(argList)
+	fs.Parse(argLists)
+	logger.Info("return",port)
 	return
 
 }
