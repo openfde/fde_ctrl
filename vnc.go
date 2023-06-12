@@ -119,6 +119,9 @@ func (impl VncAppImpl) stopVncApp(app string, sysOnly bool) (err error) {
 		}
 		cmdVnc := exec.Command("vncserver", "--kill", ":"+port)
 		cmdVnc.Env = append(os.Environ())
+		cmdVnc.SysProcAttr = &syscall.SysProcAttr{
+			Setsid: true,
+		}
 		var stdout, stderr io.ReadCloser
 		stdout, err = cmdVnc.StdoutPipe()
 		if err != nil {
