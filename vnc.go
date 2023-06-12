@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -86,6 +87,18 @@ func (impl VncAppImpl) startVncAppHandle(c *gin.Context) {
 	})
 }
 
+func simplifyPort(port string) (string, error) {
+	portInt, err := strconv.Atoi(port)
+	if err != nil {
+		return "", err
+	}
+	if portInt >= 6000 {
+		return strconv.Itoa(portInt%1000 + 100), nil
+	} else {
+		return strconv.Itoa(portInt % 100), nil
+	}
+}
+
 // start a app ,return the port or error
 func (impl VncAppImpl) stopVncApp(app string, sysOnly bool) (err error) {
 	if sysOnly {
@@ -100,13 +113,9 @@ func (impl VncAppImpl) stopVncApp(app string, sysOnly bool) (err error) {
 	}
 	if exist {
 		logger.Info("debug_arg", app+"@"+port)
-		if len(port) > 2 {
-			port = port[2:]
-		}
-		logger.Info("print_port",port)
-		if string(port[0]) == "0" {
-			port = port[1:]
-			logger.Info("print_port_2",port)
+		port, err = simplifyPort(port)
+		if err != nil {
+			return
 		}
 		cmdVnc := exec.Command("vncserver", "--kill", ":"+port)
 		cmdVnc.Env = append(os.Environ())
@@ -264,7 +273,7 @@ func grepApp(name string) (err error, exist bool, port string) {
 
 func parseApp(args string) (appName, port string) {
 	// 将args按空格分割成多个参数
-	logger.Info("parse",args)
+	logger.Info("parse", args)
 	argList := strings.Split(args, "tigervnc")
 	if len(argList) < 2 {
 		return
@@ -275,14 +284,14 @@ func parseApp(args string) (appName, port string) {
 	}
 	argLists := argList[2:]
 	// 创建一个FlagSet对象
-	logger.Info("last",argLists)
+	logger.Info("last", argLists)
 	fs := flag.NewFlagSet("temporaryFlagSet", flag.ContinueOnError)
 	fs.Usage = func() {}
 
 	// 定义一个名为desktop的string类型flag
 	fs.StringVar(&appName, "desktop", "", "desktop default")
 	fs.StringVar(&port, "rfbport", "", "5901")
-	var auth,geometry,depth string
+	var auth, geometry, depth string
 	fs.StringVar(&auth, "auth", "", "desktop value")
 	fs.StringVar(&geometry, "geometry", "", "desktop value")
 	fs.StringVar(&depth, "depth", "", "desktop value")
@@ -294,7 +303,7 @@ func parseApp(args string) (appName, port string) {
 
 	// 解析参数
 	fs.Parse(argLists)
-	logger.Info("return",port)
+	logger.Info("return", port)
 	return
 
 }
