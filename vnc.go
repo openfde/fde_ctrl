@@ -26,6 +26,7 @@ type VncAppImpl struct {
 func (impl VncAppImpl) Setup(r *gin.RouterGroup) {
 	v1 := r.Group("/v1")
 	v1.POST("/vnc", impl.startVncAppHandle)
+	v1.DELETE("/vnc", impl.stopVncAppHandle)
 }
 
 func constructXstartup(name, path string) error {
@@ -52,6 +53,22 @@ type startAppRequest struct {
 	SysOnly bool
 }
 
+func (impl VncAppImpl) stopVncAppHandle(c *gin.Context) {
+	sysOnly := c.Query("SysOnly") == "true"
+	App := c.Query("App")
+	if len(App) == 0 && !sysOnly {
+		ResponseParamterError(c, errors.New("invalid parameters"))
+		return
+	}
+
+	err := impl.stopVncApp(App, sysOnly)
+	if err != nil {
+		ResponseError(c, http.StatusInternalServerError, err)
+		return
+	}
+	Response(c, nil)
+}
+
 func (impl VncAppImpl) startVncAppHandle(c *gin.Context) {
 	var request startAppRequest
 	err := c.ShouldBind(&request)
@@ -67,6 +84,35 @@ func (impl VncAppImpl) startVncAppHandle(c *gin.Context) {
 	Response(c, startAppResponse{
 		Port: port,
 	})
+}
+
+// start a app ,return the port or error
+func (impl VncAppImpl) stopVncApp(app string, sysOnly bool) (err error) {
+	if sysOnly {
+		app = "sysonly"
+	}
+	logger.Info("stop_app", app)
+	app = strings.ToLower(app)
+	app = strings.ReplaceAll(app, " ", "_")
+	err, exist, port := grepApp(app)
+	if err != nil {
+		return
+	}
+	if exist {
+		logger.Info("debug_arg", app+"@"+port)
+		if len(port) > 2 {
+			port = port[2:]
+		}
+		cmdVnc := exec.Command("vncserver", "--kill=:"+port)
+		cmdVnc.Env = append(os.Environ())
+		err = cmdVnc.Start()
+		if err != nil {
+			logger.Error("stop vnc  app failed", app+"@"+port, err)
+			err = errors.New("stop vnc server failed")
+			return
+		}
+	}
+	return nil
 }
 
 // start a app ,return the port or error
@@ -122,8 +168,8 @@ func (impl VncAppImpl) startVncApp(app, path string, sysOnly bool) (port string,
 
 	err = cmdVnc.Start()
 	if err != nil {
-		logger.Error("start vnc server failed", nil, err)
-		err = errors.New("start vnc server failed")
+		logger.Error("start vnc server failed", app, err)
+		err = errors.New("start vnc " + app + " failed")
 		return
 	}
 	// var wstatus syscall.WaitStatus
