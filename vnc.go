@@ -103,14 +103,35 @@ func (impl VncAppImpl) stopVncApp(app string, sysOnly bool) (err error) {
 		if len(port) > 2 {
 			port = port[2:]
 		}
-		cmdVnc := exec.Command("vncserver", "--kill=:"+port)
+		logger.Info("print_port",port)
+		if string(port[0]) == "0" {
+			port = port[1:]
+			logger.Info("print_port_2",port)
+		}
+		cmdVnc := exec.Command("vncserver", "--kill", ":"+port)
 		cmdVnc.Env = append(os.Environ())
+		var stdout, stderr io.ReadCloser
+		stdout, err = cmdVnc.StdoutPipe()
+		if err != nil {
+			logger.Error("stdout pipe for vnc server", nil, err)
+			return
+		}
+		stderr, err = cmdVnc.StderrPipe()
+		if err != nil {
+			logger.Error("stdout pipe for vnc server", nil, err)
+			return
+		}
 		err = cmdVnc.Start()
 		if err != nil {
 			logger.Error("stop vnc  app failed", app+"@"+port, err)
 			err = errors.New("stop vnc server failed")
 			return
 		}
+		output, err := ioutil.ReadAll(io.MultiReader(stdout, stderr))
+		if err != nil {
+			logger.Error("read start vnc server failed", nil, err)
+		}
+		logger.Info("debug_vnc", string(output))
 	}
 	return nil
 }
