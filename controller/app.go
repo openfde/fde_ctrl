@@ -56,8 +56,8 @@ func (impls *Apps) ScanHandler(c *gin.Context) {
 	// impls.Scan(iconPixmapPath, iconsPath, desktopEntryPath)
 	pageQuery := getPageQuery(c)
 	var data Apps
+	pageQuery.Total = len(*impls)
 	if pageQuery.PageEnable {
-		pageQuery.Total = len(*impls)
 		start := (pageQuery.Page - 1) * pageQuery.PageSize
 		end := start + pageQuery.PageSize
 		data = (*impls)[start:end]
