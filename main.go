@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fde_ctrl/controller"
 	"fde_ctrl/middleware"
 	"fmt"
 	"net/http"
@@ -47,11 +48,10 @@ func setup(r *gin.Engine) {
 
 	// http.HandleFunc("/ws", handleWebSocket)
 
-	var apps Apps
-	var vnc VncAppImpl
+	var vnc controller.VncAppImpl
 
 	group := r.Group("/api")
-	apps.Setup(group)
+	controller.AppImpls.Setup(group)
 	vnc.Setup(group)
 
 	// // 启动 HTTP 服务器

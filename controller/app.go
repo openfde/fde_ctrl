@@ -1,14 +1,14 @@
-package main
+package controller
 
 import (
 	"encoding/base64"
 	"io/fs"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"fde_ctrl/logger"
 	"fde_ctrl/response"
 
 	"github.com/gin-gonic/gin"
@@ -22,8 +22,17 @@ const iconPixmapPath = "/usr/share/pixmaps"
 const iconsPath = "/usr/share/icons/hicolor/16x16"
 
 type LinuxAppInterface interface {
-	// Scan() error
 	Setup(r *gin.RouterGroup)
+}
+
+var AppImpls Apps
+
+func init() {
+	err := AppImpls.Scan(iconPixmapPath, iconsPath, desktopEntryPath)
+	if err != nil {
+		logger.Error("scan_apps_init", nil, err)
+		panic(err)
+	}
 }
 
 type AppImpl struct {
@@ -44,12 +53,15 @@ func (impls *Apps) Setup(r *gin.RouterGroup) {
 }
 
 func (impls *Apps) ScanHandler(c *gin.Context) {
-	impls.Scan(iconPixmapPath, iconsPath, desktopEntryPath)
-	c.JSON(http.StatusOK, response.Infra{
-		Code:    200,
-		Message: "success",
-		Data:    impls,
-	})
+	// impls.Scan(iconPixmapPath, iconsPath, desktopEntryPath)
+	pageQuery := getPageQuery(c)
+	var data Apps
+	if pageQuery.PageEnable {
+		start := (pageQuery.Page - 1) * pageQuery.PageSize
+		end := start + pageQuery.PageSize
+		data = (*impls)[start:end]
+	}
+	response.ResponseWithPagination(c, pageQuery, data)
 }
 
 func (impls *Apps) Scan(iconPixmapPath, iconsPath, desktopEntryPath string) error {

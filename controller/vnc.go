@@ -1,9 +1,10 @@
-package main
+package controller
 
 import (
 	"bytes"
 	"errors"
 	"fde_ctrl/logger"
+	"fde_ctrl/response"
 	"flag"
 	"io"
 	"io/ioutil"
@@ -58,31 +59,31 @@ func (impl VncAppImpl) stopVncAppHandle(c *gin.Context) {
 	sysOnly := c.Query("SysOnly") == "true"
 	App := c.Query("App")
 	if len(App) == 0 && !sysOnly {
-		ResponseParamterError(c, errors.New("invalid parameters"))
+		response.ResponseParamterError(c, errors.New("invalid parameters"))
 		return
 	}
 
 	err := impl.stopVncApp(App, sysOnly)
 	if err != nil {
-		ResponseError(c, http.StatusInternalServerError, err)
+		response.ResponseError(c, http.StatusInternalServerError, err)
 		return
 	}
-	Response(c, nil)
+	response.Response(c, nil)
 }
 
 func (impl VncAppImpl) startVncAppHandle(c *gin.Context) {
 	var request startAppRequest
 	err := c.ShouldBind(&request)
 	if err != nil {
-		ResponseParamterError(c, err)
+		response.ResponseParamterError(c, err)
 		return
 	}
 	port, err := impl.startVncApp(request.App, request.Path, request.SysOnly)
 	if err != nil {
-		ResponseError(c, http.StatusInternalServerError, err)
+		response.ResponseError(c, http.StatusInternalServerError, err)
 		return
 	}
-	Response(c, startAppResponse{
+	response.Response(c, startAppResponse{
 		Port: port,
 	})
 }
