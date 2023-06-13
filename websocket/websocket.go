@@ -1,8 +1,8 @@
 package websocket
 
 import (
-	"fmt"
-	"log"
+	"encoding/json"
+	"fde_ctrl/logger"
 	"net/http"
 	"sync"
 
@@ -22,7 +22,7 @@ type hub struct {
 func (h *hub) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("Error upgrading connection: %v", err)
+		logger.Error("upgrade_http_to_websocket", nil, err)
 		return
 	}
 	c := &connection{ws: ws, send: make(chan []byte, 256)}
@@ -61,20 +61,20 @@ func SetupWebSocket() {
 		}()
 		Hub.handleWebSocket(w, r)
 	})
-	http.HandleFunc("/broadcast", func(w http.ResponseWriter, r *http.Request) {
-		Hub.broadcastHandle(w, r)
-	})
+	// http.HandleFunc("/broadcast", func(w http.ResponseWriter, r *http.Request) {
+	// 	Hub.broadcastHandle(w, r)
+	// })
 
 	err := http.ListenAndServe(":18081", nil)
 	if err != nil {
-		fmt.Println("Failed to start server:", err)
+		logger.Error("Failed to start server:", nil, err)
 	}
 }
 
 func (h *hub) Run() {
 	defer func() {
 		if err := recover(); err != nil {
-			fmt.Println("recover in hub run")
+			logger.Error("recover_in_hub_run", err, nil)
 			return
 		}
 	}()
@@ -106,16 +106,22 @@ func (h *hub) Run() {
 	}
 }
 
-func (h *hub) Broadcast(message []byte) {
+func (h *hub) Broadcast(r WsResponse) {
+	message, _ := json.Marshal(r)
 	h.broadcast <- message
 	return
 }
 
-func (h *hub) broadcastHandle(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("hello")
-	w.Write([]byte("Hello, World!"))
-	h.broadcast <- []byte("new broadcast")
-	return
+// func (h *hub) broadcastHandle(w http.ResponseWriter, r *http.Request) {
+// 	fmt.Println("hello")
+// 	w.Write([]byte("Hello, World!"))
+// 	h.broadcast <- []byte("new broadcast")
+// 	return
+// }
+
+type WsResponse struct {
+	Type string
+	Data interface{}
 }
 
 func (c *connection) readPump(h *hub) {
@@ -124,15 +130,14 @@ func (c *connection) readPump(h *hub) {
 		c.ws.Close()
 	}()
 	for {
-		_, message, err := c.ws.ReadMessage()
+		_, _, err := c.ws.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
-				log.Printf("error: %v", err)
+				logger.Error("read_pump", err, nil)
 			}
 			break
 		}
 		// h.broadcast <- message
-		fmt.Printf("Received message: %s\n", message)
 	}
 }
 
@@ -147,7 +152,7 @@ func (c *connection) writePump() {
 			}
 			err := c.ws.WriteMessage(websocket.TextMessage, message)
 			if err != nil {
-				log.Printf("error: %v", err)
+				logger.Error("write_pump", nil, err)
 				return
 			}
 		}

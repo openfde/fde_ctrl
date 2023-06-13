@@ -84,6 +84,8 @@ func (impl ClipboardImpl) WriteHandler(c *gin.Context) {
 	response.Response(c, nil)
 }
 
+const clipboardWsType = "clipboard"
+
 func (impl ClipboardImpl) InitAndWatch() {
 	err := clipboard.Init()
 	if err != nil {
@@ -105,8 +107,7 @@ func (impl ClipboardImpl) InitAndWatch() {
 						Data:   string(data),
 						Format: string(txtFormat),
 					}
-					info, _ := json.Marshal(message)
-					websocket.Hub.Broadcast(info)
+					websocket.Hub.Broadcast(websocket.WsResponse{Type: "clipboard", Data: message})
 				}
 			case data := <-imageCh:
 				{
@@ -115,7 +116,7 @@ func (impl ClipboardImpl) InitAndWatch() {
 						Format: string(imageFormat),
 					}
 					info, _ := json.Marshal(message)
-					websocket.Hub.Broadcast(info)
+					websocket.Hub.Broadcast(websocket.WsResponse{Type: "clipboard", Data: info})
 				}
 			}
 		}
