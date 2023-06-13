@@ -9,6 +9,7 @@ import (
 
 type ClipboardInterface interface {
 	Setup(r *gin.RouterGroup)
+	Init()
 }
 
 type ClipboardImpl struct {
@@ -46,6 +47,7 @@ func (impl ClipboardImpl) WriteHandler(c *gin.Context) {
 		}
 	}
 	clipboard.Write(formatClip, []byte(request.Data))
+	response.Response(c, nil)
 }
 
 func (impl ClipboardImpl) Init() {
