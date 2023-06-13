@@ -17,22 +17,28 @@ import (
 
 //scans applications in the linux.
 
-const desktopEntryPath = "/usr/share/applications"
-const iconPixmapPath = "/usr/share/pixmaps"
-const iconsPath = "/usr/share/icons/hicolor/16x16"
+const baseDir = "/usr/share"
+const desktopEntryPath = baseDir + "/applications"
+const iconPixmapPath = baseDir + "/pixmaps"
+const iconsHiColorPath = baseDir + "/icons/hicolor/16x16"
+const iconsGnomePath = baseDir + "/gnome/16x16"
+
+var iconPathList = []string{iconPixmapPath, iconsHiColorPath, iconsGnomePath}
 
 type LinuxAppInterface interface {
 	Setup(r *gin.RouterGroup)
+	Scan() error
 }
 
 var AppImpls Apps
 
-func init() {
-	err := AppImpls.Scan(iconPixmapPath, iconsPath, desktopEntryPath)
+func (impls *Apps) Scan() error {
+	err := AppImpls.scan(iconPathList, desktopEntryPath)
 	if err != nil {
 		logger.Error("scan_apps_init", nil, err)
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 type AppImpl struct {
@@ -52,6 +58,21 @@ func (impls *Apps) Setup(r *gin.RouterGroup) {
 	v1.GET("/apps", impls.ScanHandler)
 }
 
+func validatePage(start, end, length int) (int, int) {
+	switch {
+	case start > length:
+		{
+			start = length
+			end = start
+		}
+	case end > length || start > end:
+		{
+			end = length
+		}
+	}
+	return start, end
+}
+
 func (impls *Apps) ScanHandler(c *gin.Context) {
 	// impls.Scan(iconPixmapPath, iconsPath, desktopEntryPath)
 	pageQuery := getPageQuery(c)
@@ -60,12 +81,13 @@ func (impls *Apps) ScanHandler(c *gin.Context) {
 	if pageQuery.PageEnable {
 		start := (pageQuery.Page - 1) * pageQuery.PageSize
 		end := start + pageQuery.PageSize
+		start, end = validatePage(start, end, len(*impls))
 		data = (*impls)[start:end]
 	}
 	response.ResponseWithPagination(c, pageQuery, data)
 }
 
-func (impls *Apps) Scan(iconPixmapPath, iconsPath, desktopEntryPath string) error {
+func (impls *Apps) scan(iconPathList []string, desktopEntryPath string) error {
 	// 调用递归函数遍历目录下的所有文件
 	err := filepath.Walk(desktopEntryPath, impls.visitEntries)
 	if err != nil {
@@ -87,11 +109,20 @@ func (impls *Apps) Scan(iconPixmapPath, iconsPath, desktopEntryPath string) erro
 			}
 		} else {
 			//寻找这个相对路径的文件
-			//1 pixmap目录
-			filepath.Walk(iconPixmapPath, (*impls)[index].readIconForApp)
-			if len((*impls)[index].Icon) == 0 {
-				filepath.Walk(iconsPath, (*impls)[index].readIconForApp)
+			for _, pathValue := range iconPathList {
+				_, err = os.Stat(pathValue)
+				if os.IsNotExist(err) {
+					continue
+				}
+				filepath.Walk(pathValue, (*impls)[index].readIconForApp)
+				if len((*impls)[index].Icon) > 0 {
+					break
+				}
 			}
+			// filepath.Walk(iconPixmapPath, (*impls)[index].readIconForApp)
+			// if len((*impls)[index].Icon) == 0 {
+			// 	filepath.Walk(iconsPath, (*impls)[index].readIconForApp)
+			// }
 		}
 		if len((*impls)[index].Icon) != 0 {
 			filteredApps = append(filteredApps, (*impls)[index])

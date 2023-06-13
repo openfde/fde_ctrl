@@ -2,6 +2,7 @@ package main
 
 import (
 	"fde_ctrl/controller"
+	"fde_ctrl/logger"
 	"fde_ctrl/middleware"
 	"fmt"
 	"net/http"
@@ -34,7 +35,7 @@ func setupWebSocket() {
 	}
 }
 
-func setup(r *gin.Engine) {
+func setup(r *gin.Engine) error {
 
 	// 创建 Unix Socket
 	// os.Remove(socket)
@@ -49,9 +50,17 @@ func setup(r *gin.Engine) {
 	// http.HandleFunc("/ws", handleWebSocket)
 
 	var vnc controller.VncAppImpl
-
+	var apps controller.Apps
+	var clipboard controller.ClipboardImpl
 	group := r.Group("/api")
-	controller.AppImpls.Setup(group)
+	err := apps.Scan()
+	if err != nil {
+		return err
+	}
+	clipboard.Init()
+
+	clipboard.Setup(group)
+	apps.Setup(group)
 	vnc.Setup(group)
 
 	// // 启动 HTTP 服务器
@@ -59,6 +68,7 @@ func setup(r *gin.Engine) {
 	// if err != nil {
 	// 	log.Fatal("Error starting server: ", err)
 	// }
+	return nil
 }
 
 func main() {
@@ -81,7 +91,10 @@ func main() {
 	engine := gin.New()
 	engine.Use(middleware.LogHandler(), gin.Recovery())
 	engine.Use(middleware.ErrHandler())
-	setup(engine)
+	if err := setup(engine); err != nil {
+		logger.Error("setup", nil, err)
+		return
+	}
 	// 启动HTTP服务器
 	engine.Run(":18080")
 
