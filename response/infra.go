@@ -8,7 +8,7 @@ type Infra struct {
 
 type PageQuery struct {
 	PageEnable    bool   `json:"page_enable"`
-	Total         int64  `json:"total"`
+	Total         int    `json:"total"`
 	Page          int    `json:"page"`
 	PageSize      int    `json:"page_size"`
 	SortDirection string `json:"-"`

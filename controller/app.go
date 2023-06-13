@@ -57,6 +57,7 @@ func (impls *Apps) ScanHandler(c *gin.Context) {
 	pageQuery := getPageQuery(c)
 	var data Apps
 	if pageQuery.PageEnable {
+		pageQuery.Total = len(*impls)
 		start := (pageQuery.Page - 1) * pageQuery.PageSize
 		end := start + pageQuery.PageSize
 		data = (*impls)[start:end]
