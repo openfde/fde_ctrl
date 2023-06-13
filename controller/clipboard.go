@@ -47,7 +47,20 @@ func (impl ClipboardImpl) ReadHandler(c *gin.Context) {
 		}
 	}
 	data := clipboard.Read(formatClip)
-	response.Response(c, data)
+	var responseData clipReponse
+	if formatClip == clipboard.FmtImage {
+		responseData.Data = data
+		responseData.Format = string(imageFormat)
+	} else {
+		responseData.Data = string(data)
+		responseData.Format = string(txtFormat)
+	}
+	response.Response(c, responseData)
+}
+
+type clipReponse struct {
+	Data   interface{}
+	Format string
 }
 
 func (impl ClipboardImpl) WriteHandler(c *gin.Context) {
