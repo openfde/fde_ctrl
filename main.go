@@ -4,8 +4,7 @@ import (
 	"fde_ctrl/controller"
 	"fde_ctrl/logger"
 	"fde_ctrl/middleware"
-	"fmt"
-	"net/http"
+	"fde_ctrl/websocket"
 	"os/exec"
 	"strconv"
 
@@ -13,27 +12,6 @@ import (
 )
 
 const socket = "./fde_ctrl.sock"
-
-func setupWebSocket() {
-	h := newHub()
-	go h.run()
-	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if err := recover(); err != nil {
-				return
-			}
-		}()
-		h.handleWebSocket(w, r)
-	})
-	http.HandleFunc("/broadcast", func(w http.ResponseWriter, r *http.Request) {
-		h.broadcastHandle(w, r)
-	})
-
-	err := http.ListenAndServe(":18081", nil)
-	if err != nil {
-		fmt.Println("Failed to start server:", err)
-	}
-}
 
 func setup(r *gin.Engine) error {
 
@@ -57,7 +35,7 @@ func setup(r *gin.Engine) error {
 	if err != nil {
 		return err
 	}
-	clipboard.Init()
+	clipboard.InitAndWatch()
 
 	clipboard.Setup(group)
 	apps.Setup(group)
@@ -86,7 +64,7 @@ func main() {
 	// mainCtx, _ := context.WithCancel(context.Background())
 
 	//step 1 start kwin to enable windows manager
-	go setupWebSocket()
+	go websocket.SetupWebSocket()
 	//scan app from linux
 	engine := gin.New()
 	engine.Use(middleware.LogHandler(), gin.Recovery())

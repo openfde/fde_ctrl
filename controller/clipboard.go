@@ -1,7 +1,10 @@
 package controller
 
 import (
+	"context"
+	"encoding/json"
 	"fde_ctrl/response"
+	"fde_ctrl/websocket"
 
 	"github.com/gin-gonic/gin"
 	"golang.design/x/clipboard"
@@ -81,9 +84,40 @@ func (impl ClipboardImpl) WriteHandler(c *gin.Context) {
 	response.Response(c, nil)
 }
 
-func (impl ClipboardImpl) Init() {
+func (impl ClipboardImpl) InitAndWatch() {
 	err := clipboard.Init()
 	if err != nil {
 		panic(err)
 	}
+	txtCh := clipboard.Watch(context.TODO(), clipboard.FmtText)
+	imageCh := clipboard.Watch(context.TODO(), clipboard.FmtImage)
+	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				return
+			}
+		}()
+		for {
+			select {
+			case data := <-txtCh:
+				{
+					message := clipReponse{
+						Data:   string(data),
+						Format: string(txtFormat),
+					}
+					info, _ := json.Marshal(message)
+					websocket.Hub.Broadcast(info)
+				}
+			case data := <-imageCh:
+				{
+					message := clipReponse{
+						Data:   data,
+						Format: string(imageFormat),
+					}
+					info, _ := json.Marshal(message)
+					websocket.Hub.Broadcast(info)
+				}
+			}
+		}
+	}()
 }

@@ -1,4 +1,4 @@
-package main
+package websocket
 
 import (
 	"fmt"
@@ -8,6 +8,8 @@ import (
 
 	"github.com/gorilla/websocket"
 )
+
+var Hub = newHub()
 
 type hub struct {
 	connections map[*connection]bool
@@ -49,7 +51,27 @@ func newHub() *hub {
 	}
 }
 
-func (h *hub) run() {
+func SetupWebSocket() {
+	go Hub.Run()
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				return
+			}
+		}()
+		Hub.handleWebSocket(w, r)
+	})
+	http.HandleFunc("/broadcast", func(w http.ResponseWriter, r *http.Request) {
+		Hub.broadcastHandle(w, r)
+	})
+
+	err := http.ListenAndServe(":18081", nil)
+	if err != nil {
+		fmt.Println("Failed to start server:", err)
+	}
+}
+
+func (h *hub) Run() {
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Println("recover in hub run")
@@ -82,6 +104,11 @@ func (h *hub) run() {
 			h.mutex.Unlock()
 		}
 	}
+}
+
+func (h *hub) Broadcast(message []byte) {
+	h.broadcast <- message
+	return
 }
 
 func (h *hub) broadcastHandle(w http.ResponseWriter, r *http.Request) {
