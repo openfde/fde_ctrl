@@ -33,7 +33,7 @@ type LinuxAppInterface interface {
 var AppImpls Apps
 
 func (impls *Apps) Scan() error {
-	err := AppImpls.scan(iconPathList, desktopEntryPath)
+	err := impls.scan(iconPathList, desktopEntryPath)
 	if err != nil {
 		logger.Error("scan_apps_init", nil, err)
 		return err
