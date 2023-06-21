@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fde_ctrl/logger"
+	"fmt"
 	"time"
 
 	"github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/container"
-	"github.com/docker/engine-api/types/filters"
 	"github.com/docker/go-connections/nat"
 )
 
@@ -86,11 +86,11 @@ func constructAndroidContainerConfig(image, hostIP string) (*container.Config, *
 }
 
 func findAndoridContainers(ctx context.Context, cli *client.Client) ([]types.Container, error) {
-	args := filters.NewArgs()
-	args.Add("name", FDEContainerName)
+	// args := filters.NewArgs()
+	// args.Add("name", FDEContainerName)
 	containerListOption := types.ContainerListOptions{
-		All:    true,
-		Filter: args,
+		All: true,
+		// Filter: args,
 	}
 
 	return cli.ContainerList(ctx, containerListOption)
@@ -141,6 +141,7 @@ func stopAndroidContainer(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("length of containers", len(containers))
 	duration := time.Duration(time.Second * 30)
 	for _, value := range containers {
 		logger.Info("traversal_containers", value)
