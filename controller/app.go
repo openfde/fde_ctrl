@@ -30,7 +30,6 @@ type LinuxAppInterface interface {
 	Scan() error
 }
 
-var AppImpls Apps
 
 func (impls *Apps) Scan() error {
 	err := impls.scan(iconPathList, desktopEntryPath)
