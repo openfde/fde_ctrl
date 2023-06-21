@@ -107,7 +107,7 @@ func (impl ClipboardImpl) InitAndWatch() {
 						Data:   string(data),
 						Format: string(txtFormat),
 					}
-					websocket.Hub.Broadcast(websocket.WsResponse{Type: "clipboard", Data: message})
+					websocket.Hub.Broadcast(websocket.WsResponse{Type: clipboardWsType, Data: message})
 				}
 			case data := <-imageCh:
 				{
@@ -116,7 +116,7 @@ func (impl ClipboardImpl) InitAndWatch() {
 						Format: string(imageFormat),
 					}
 					info, _ := json.Marshal(message)
-					websocket.Hub.Broadcast(websocket.WsResponse{Type: "clipboard", Data: info})
+					websocket.Hub.Broadcast(websocket.WsResponse{Type: clipboardWsType, Data: info})
 				}
 			}
 		}
