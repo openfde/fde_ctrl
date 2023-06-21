@@ -32,7 +32,7 @@ func setup(r *gin.Engine) error {
 	// http.HandleFunc("/ws", handleWebSocket)
 
 	var vnc controller.VncAppImpl
-	var apps *controller.Apps
+	var apps controller.Apps
 	var clipboard controller.ClipboardImpl
 	var pm controller.PowerManager
 	group := r.Group("/api")
