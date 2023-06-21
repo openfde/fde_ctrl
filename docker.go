@@ -10,7 +10,6 @@ import (
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/container"
 	"github.com/docker/engine-api/types/filters"
-	"github.com/docker/engine-api/types/strslice"
 	"github.com/docker/go-connections/nat"
 )
 
@@ -67,7 +66,6 @@ const (
 func constructAndroidContainerConfig(image, hostIP string) (*container.Config, *container.HostConfig) {
 	hostConfig := &container.HostConfig{
 		Privileged: true,
-		Binds:      []string{"/home/warlice/data:/data/data/com.termux/files/usr/data"},
 		PortBindings: nat.PortMap{"5555": []nat.PortBinding{
 			{
 				HostIP:   "localhost",
@@ -78,16 +76,11 @@ func constructAndroidContainerConfig(image, hostIP string) (*container.Config, *
 	}
 	exposedPort := make(map[nat.Port]struct{})
 	exposedPort["5555"] = struct{}{}
-	volumes := make(map[string]struct{})
-	volumes["/data/data/com.termux/files/usr/data"] = struct{}{}
 	containerConfig := &container.Config{
 		Labels:       map[string]string{"os_version": "android"},
 		ExposedPorts: exposedPort,
-		Volumes:      volumes,
 		ArgsEscaped:  false,
-		Cmd: strslice.StrSlice{"androidboot.redroid_width=1920", "androidboot.redroid_height=1080",
-			"android.redroid_dpi=480", "ro.host_ip=" + hostIP, "androidboot.redroid_net_ndns=114.114.114.114"},
-		Image: image,
+		Image:        image,
 	}
 	return containerConfig, hostConfig
 }
