@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fde_ctrl/logger"
-	"fmt"
 	"time"
 
 	"github.com/docker/engine-api/client"
@@ -144,11 +142,8 @@ func stopAndroidContainer(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("length of containers", len(containers))
 	duration := time.Duration(time.Second * 30)
 	for _, value := range containers {
-		logger.Info("traversal_containers", value)
-		logger.Info("traversal_containers_name", value.Names)
 		if value.Command == "/init.kmre" && value.State == "running" {
 			cli.ContainerStop(ctx, value.ID, &duration)
 		}

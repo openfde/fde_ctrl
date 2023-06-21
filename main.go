@@ -7,6 +7,8 @@ import (
 	"fde_ctrl/middleware"
 	"fde_ctrl/process_chan"
 	"fde_ctrl/websocket"
+	"io"
+	"io/ioutil"
 	"os/exec"
 	"strconv"
 
@@ -87,7 +89,7 @@ func main() {
 	}
 
 	//step 2 stop kylin docker
-	stopAndroidContainer(mainCtx, "")
+	stopAndroidContainer(mainCtx, "kmre-1000-phytium")
 
 	//step 3 start anbox hostside
 	var cmdFdeDaemon *exec.Cmd
@@ -101,11 +103,30 @@ func main() {
 		}
 		cmdFdeDaemon = exec.CommandContext(mainCtx, FDEDaemon, "session-manager", "--single-window", "--window-size=1920,1080",
 			"-standalone", "--experimental")
+
+		var stdout, stderr io.ReadCloser
+		stdout, err = cmdFdeDaemon.StdoutPipe()
+		if err != nil {
+			logger.Error("stdout pipe for fde session", nil, err)
+			return
+		}
+		stderr, err = cmdFdeDaemon.StderrPipe()
+		if err != nil {
+			logger.Error("stdout pipe for fde session", nil, err)
+			return
+		}
+
 		err = cmdFdeDaemon.Start()
 		if err != nil {
 			logger.Error("start_fdedaemon", nil, err)
 			return
 		}
+
+		output, err := ioutil.ReadAll(io.MultiReader(stdout, stderr))
+		if err != nil {
+			logger.Error("read start fde session failed", nil, err)
+		}
+		logger.Info("debug_fde_session", output)
 	}
 
 	//step 4  start fde android container
