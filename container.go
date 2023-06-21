@@ -10,6 +10,7 @@ import (
 	"github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/container"
+	"github.com/docker/engine-api/types/filters"
 	"github.com/docker/go-connections/nat"
 )
 
@@ -27,7 +28,7 @@ func startAndroidContainer(ctx context.Context, image, hostIP string) error {
 	// }
 	shoudStartContainer := false
 	containerID := ""
-	containers, err := findAndoridContainers(ctx, cli)
+	containers, err := findAndoridContainers(ctx, cli, FDEContainerName)
 	if err != nil {
 		return err
 	}
@@ -85,12 +86,14 @@ func constructAndroidContainerConfig(image, hostIP string) (*container.Config, *
 	return containerConfig, hostConfig
 }
 
-func findAndoridContainers(ctx context.Context, cli *client.Client) ([]types.Container, error) {
-	// args := filters.NewArgs()
-	// args.Add("name", FDEContainerName)
+func findAndoridContainers(ctx context.Context, cli *client.Client, name string) ([]types.Container, error) {
 	containerListOption := types.ContainerListOptions{
 		All: true,
-		// Filter: args,
+	}
+	if len(name) != 0 {
+		args := filters.NewArgs()
+		args.Add("name", name)
+		containerListOption.Filter = args
 	}
 
 	return cli.ContainerList(ctx, containerListOption)
@@ -102,7 +105,7 @@ func waitContainerRunning(ctx context.Context, cli *client.Client) error {
 	go func(rc chan bool) {
 		for {
 			time.Sleep(time.Second * 1)
-			containers, err := findAndoridContainers(ctx, cli)
+			containers, err := findAndoridContainers(ctx, cli, FDEContainerName)
 			if err != nil {
 				runningChan <- false
 			}
@@ -137,7 +140,7 @@ func stopAndroidContainer(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
-	containers, err := findAndoridContainers(ctx, cli)
+	containers, err := findAndoridContainers(ctx, cli, name)
 	if err != nil {
 		return err
 	}
