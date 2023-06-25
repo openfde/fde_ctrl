@@ -1,12 +1,15 @@
 package controller
 
 import (
+	"bufio"
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,10 +23,35 @@ func (impl DisplayManager) Setup(r *gin.RouterGroup) {
 }
 
 func (impl DisplayManager) mirrorHandler(c *gin.Context) {
+
+	// 将 ps 命令的输出传递给 grep 命令进行过滤
+	grepCmd := exec.Command("xrandr")
+	grepCmd.Env = os.Environ()
+	infoOutput, _ := grepCmd.StdoutPipe()
+	err := grepCmd.Start()
+	if err != nil {
+		return
+	}
+	err = grepCmd.Start()
+	if err != nil {
+		return
+	}
+
+	// 读取子进程的输出
+	scanner := bufio.NewScanner(infoOutput)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "DP-1 disconnected") {
+			response.Response(c, nil)
+			return
+		}
+		// 在这里对子进程的输出进行分析处理
+		fmt.Println(line)
+	}
 	cmd := exec.Command("xrandr", "--output", "DP-1", "--auto")
 	cmd.Env = os.Environ()
 	var stdout, stderr io.ReadCloser
-	stdout, err := cmd.StdoutPipe()
+	stdout, err = cmd.StdoutPipe()
 	if err != nil {
 		logger.Error("stdout pipe for vnc server", nil, err)
 		return
@@ -39,9 +67,8 @@ func (impl DisplayManager) mirrorHandler(c *gin.Context) {
 		logger.Error("read start vnc server failed", nil, err)
 	}
 	cmd.Wait()
-
 	logger.Info("debug_xrandr_auto", string(output))
-	cmd = exec.Command("xrandr", "--output","DP-1", "--same-as","eDP-1")
+	cmd = exec.Command("xrandr", "--output", "DP-1", "--same-as", "eDP-1")
 	cmd.Env = os.Environ()
 	cmd.Start()
 
