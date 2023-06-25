@@ -33,19 +33,23 @@ func (impl DisplayManager) mirrorHandler(c *gin.Context) {
 		logger.Error("stdout pipe for vnc server", nil, err)
 		return
 	}
-	cmd.Run()
+	cmd.Start()
 	output, err := ioutil.ReadAll(io.MultiReader(stdout, stderr))
 	if err != nil {
 		logger.Error("read start vnc server failed", nil, err)
 	}
+	cmd.Wait()
+
 	logger.Info("debug_xrandr_auto", string(output))
 	cmd = exec.Command("xrandr", "--output DP-1", "--same-as eDP-1")
 	cmd.Env = os.Environ()
-	cmd.Run()
+	cmd.Start()
+
 	output, err = ioutil.ReadAll(io.MultiReader(stdout, stderr))
 	if err != nil {
 		logger.Error("read start vnc server failed", nil, err)
 	}
 	logger.Info("debug_xrandr_mirror", string(output))
+	cmd.Wait()
 	response.Response(c, nil)
 }
