@@ -7,8 +7,7 @@ import (
 	"fde_ctrl/middleware"
 	"fde_ctrl/process_chan"
 	"fde_ctrl/websocket"
-	"io"
-	"io/ioutil"
+	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -104,29 +103,30 @@ func main() {
 		}
 		cmdFdeDaemon = exec.CommandContext(mainCtx, FDEDaemon, "session-manager", "--single-window", "--window-size=1920,1080", "--standalone", "--experimental")
 		cmdFdeDaemon.Env = append(os.Environ())
-		var stdout, stderr io.ReadCloser
-		stdout, err = cmdFdeDaemon.StdoutPipe()
-		if err != nil {
-			logger.Error("stdout pipe for fde session", nil, err)
-			return
-		}
-		stderr, err = cmdFdeDaemon.StderrPipe()
-		if err != nil {
-			logger.Error("stdout pipe for fde session", nil, err)
-			return
-		}
+		// var stdout, stderr io.ReadCloser
+		// stdout, err = cmdFdeDaemon.StdoutPipe()
+		// if err != nil {
+		// 	logger.Error("stdout pipe for fde session", nil, err)
+		// 	return
+		// }
+		// stderr, err = cmdFdeDaemon.StderrPipe()
+		// if err != nil {
+		// 	logger.Error("stdout pipe for fde session", nil, err)
+		// 	return
+		// }
 
 		err = cmdFdeDaemon.Start()
 		if err != nil {
 			logger.Error("start_fdedaemon", nil, err)
 			return
 		}
-		output, err := ioutil.ReadAll(io.MultiReader(stdout, stderr))
-		if err != nil {
-			logger.Error("read start fde session failed", nil, err)
-		}
-		logger.Info("debug_fde_session", output)
+		// output, err := ioutil.ReadAll(io.MultiReader(stdout, stderr))
+		// if err != nil {
+		// 	logger.Error("read start fde session failed", nil, err)
+		// }
+		// logger.Info("debug_fde_session", output)
 	}
+	fmt.Println("start container ")
 
 	//step 4  start fde android container
 	err = startAndroidContainer(mainCtx, image, hostIP)
