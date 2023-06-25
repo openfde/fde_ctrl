@@ -65,6 +65,12 @@ const (
 func constructAndroidContainerConfig(image, hostIP string) (*container.Config, *container.HostConfig) {
 	hostConfig := &container.HostConfig{
 		Privileged: true,
+		Binds: []string{"/run/user/1000/anbox/sockets/qemu_pipe:/dev/qemu_pipe",
+			"/run/user/1000/anbox/sockets/anbox_audio:/dev/anbox_audio:rw",
+			"/run/user/1000/anbox/sockets/anbox_bridge:/dev/anbox_bridge:rw",
+			"/run/user/1000/anbox/input/event0:/dev/input/event0:rw",
+			"/run/user/1000/anbox/input/event1:/dev/input/event1:rw",
+			"/run/user/1000/anbox/input/event2:/dev/input/event2:rw"},
 		PortBindings: nat.PortMap{"5555": []nat.PortBinding{
 			{
 				HostIP:   "localhost",
@@ -144,7 +150,7 @@ func stopAndroidContainer(ctx context.Context, name string) error {
 	}
 	duration := time.Duration(time.Second * 30)
 	for _, value := range containers {
-		if value.Command == "/init.kmre" && value.State == "running" {
+		if value.State == "running" {
 			cli.ContainerStop(ctx, value.ID, &duration)
 		}
 	}

@@ -122,7 +122,6 @@ func main() {
 			logger.Error("start_fdedaemon", nil, err)
 			return
 		}
-
 		output, err := ioutil.ReadAll(io.MultiReader(stdout, stderr))
 		if err != nil {
 			logger.Error("read start fde session failed", nil, err)
