@@ -25,12 +25,6 @@ const iconsGnomePath = baseDir + "/gnome/16x16"
 
 var iconPathList = []string{iconPixmapPath, iconsHiColorPath, iconsGnomePath}
 
-type LinuxAppInterface interface {
-	Setup(r *gin.RouterGroup)
-	Scan() error
-}
-
-
 func (impls *Apps) Scan() error {
 	err := impls.scan(iconPathList, desktopEntryPath)
 	if err != nil {

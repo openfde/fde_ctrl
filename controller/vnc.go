@@ -18,10 +18,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type VncAppInterface interface {
-	Setup(r *gin.RouterGroup)
-}
-
 type VncAppImpl struct {
 }
 

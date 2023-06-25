@@ -10,11 +10,6 @@ import (
 	"golang.design/x/clipboard"
 )
 
-type ClipboardInterface interface {
-	Setup(r *gin.RouterGroup)
-	Init()
-}
-
 type ClipboardImpl struct {
 }
 

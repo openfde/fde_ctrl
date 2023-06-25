@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-ini/ini"
@@ -41,11 +42,13 @@ func setup(r *gin.Engine) error {
 	if err != nil {
 		return err
 	}
+	var controllers []controller.Controller
 	clipboard.InitAndWatch()
-	pm.Setup(group)
-	clipboard.Setup(group)
-	apps.Setup(group)
-	vnc.Setup(group)
+
+	controllers = append(controllers, clipboard, pm, &apps, vnc)
+	for _, value := range controllers {
+		value.Setup(group)
+	}
 
 	return nil
 }
@@ -106,6 +109,18 @@ func main() {
 		if err != nil {
 			logger.Error("start_fdedaemon", nil, err)
 			return
+		}
+		fileName := "/tmp/anbox_started"
+		for i := 0; i < 3; i++ {
+			if _, err := os.Stat(fileName); os.IsNotExist(err) {
+				// 文件不存在，休眠 2 秒
+				time.Sleep(2 * time.Second)
+			} else {
+				// 文件存在
+				logger.Info("detected_file_exist", fileName)
+				os.Remove(fileName)
+				break
+			}
 		}
 	}
 
