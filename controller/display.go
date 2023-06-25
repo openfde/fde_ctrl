@@ -20,7 +20,7 @@ func (impl DisplayManager) Setup(r *gin.RouterGroup) {
 }
 
 func (impl DisplayManager) mirrorHandler(c *gin.Context) {
-	cmd := exec.Command("xrandr", "--output DP-1", "--auto")
+	cmd := exec.Command("xrandr", "--output", "DP-1", "--auto")
 	cmd.Env = os.Environ()
 	var stdout, stderr io.ReadCloser
 	stdout, err := cmd.StdoutPipe()
@@ -41,7 +41,7 @@ func (impl DisplayManager) mirrorHandler(c *gin.Context) {
 	cmd.Wait()
 
 	logger.Info("debug_xrandr_auto", string(output))
-	cmd = exec.Command("xrandr", "--output DP-1", "--same-as eDP-1")
+	cmd = exec.Command("xrandr", "--output","DP-1", "--same-as","eDP-1")
 	cmd.Env = os.Environ()
 	cmd.Start()
 
