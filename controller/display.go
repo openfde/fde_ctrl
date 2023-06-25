@@ -25,15 +25,19 @@ func (impl DisplayManager) mirrorHandler(c *gin.Context) {
 
 	// 将 ps 命令的输出传递给 grep 命令进行过滤
 
-	var infoOutput bytes.Buffer
+	var infoOutput, infoErr bytes.Buffer
 	grepCmd := exec.Command("xrandr")
 	grepCmd.Env = os.Environ()
 	grepCmd.Stdout = &infoOutput
+	grepCmd.Stderr = &infoErr
 	err := grepCmd.Start()
 	if err != nil {
+		logger.Error("xranr_get_info", nil, err)
 		return
 	}
 	defer grepCmd.Wait()
+	logger.Info("hello_disp", infoOutput)
+	logger.Info("hello_disp_ERR", infoErr)
 	key := "DP-1 disconnected"
 	lines := bytes.Split(infoOutput.Bytes(), []byte("\n"))
 	for _, line := range lines {
