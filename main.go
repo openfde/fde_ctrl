@@ -9,6 +9,7 @@ import (
 	"fde_ctrl/websocket"
 	"io"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"strconv"
 
@@ -103,7 +104,7 @@ func main() {
 		}
 		cmdFdeDaemon = exec.CommandContext(mainCtx, FDEDaemon, "session-manager", "--single-window", "--window-size=1920,1080",
 			"-standalone", "--experimental")
-
+		cmdFdeDaemon.Env = append(os.Environ())
 		var stdout, stderr io.ReadCloser
 		stdout, err = cmdFdeDaemon.StdoutPipe()
 		if err != nil {
