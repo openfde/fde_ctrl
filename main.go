@@ -102,8 +102,7 @@ func main() {
 			logger.Error("start_fdedaemon_stop_fdedroid", nil, err)
 			return
 		}
-		cmdFdeDaemon = exec.CommandContext(mainCtx, FDEDaemon, "session-manager", "--single-window", "--window-size=1920,1080",
-			"-standalone", "--experimental")
+		cmdFdeDaemon = exec.CommandContext(mainCtx, FDEDaemon, "session-manager", "--single-window", "--window-size=1920,1080", "--standalone", "--experimental")
 		cmdFdeDaemon.Env = append(os.Environ())
 		var stdout, stderr io.ReadCloser
 		stdout, err = cmdFdeDaemon.StdoutPipe()
