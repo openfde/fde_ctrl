@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"bufio"
+	"bytes"
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
 	"io"
@@ -24,28 +24,24 @@ func (impl DisplayManager) Setup(r *gin.RouterGroup) {
 func (impl DisplayManager) mirrorHandler(c *gin.Context) {
 
 	// 将 ps 命令的输出传递给 grep 命令进行过滤
+
+	var infoOutput bytes.Buffer
 	grepCmd := exec.Command("xrandr")
 	grepCmd.Env = os.Environ()
-	infoOutput, _ := grepCmd.StdoutPipe()
+	grepCmd.Stdout = &infoOutput
 	err := grepCmd.Start()
 	if err != nil {
 		return
 	}
-	err = grepCmd.Start()
-	if err != nil {
-		return
-	}
-
-	// 读取子进程的输出
-	scanner := bufio.NewScanner(infoOutput)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.Contains(line, "DP-1 disconnected") {
+	defer grepCmd.Wait()
+	key := "DP-1 disconnected"
+	lines := bytes.Split(infoOutput.Bytes(), []byte("\n"))
+	for _, line := range lines {
+		logger.Info("debug_line", line)
+		if strings.Contains(string(line), key) {
 			response.Response(c, nil)
 			return
 		}
-		// 在这里对子进程的输出进行分析处理
-		logger.Info("debug_line", line)
 	}
 	cmd := exec.Command("xrandr", "--output", "DP-1", "--auto")
 	cmd.Env = os.Environ()
