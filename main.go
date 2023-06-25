@@ -37,6 +37,7 @@ func setup(r *gin.Engine) error {
 	var apps controller.Apps
 	var clipboard controller.ClipboardImpl
 	var pm controller.PowerManager
+	var dm controller.DisplayManager
 	group := r.Group("/api")
 	err := apps.Scan()
 	if err != nil {
@@ -45,7 +46,7 @@ func setup(r *gin.Engine) error {
 	var controllers []controller.Controller
 	clipboard.InitAndWatch()
 
-	controllers = append(controllers, clipboard, pm, &apps, vnc)
+	controllers = append(controllers, clipboard, pm, &apps, vnc, dm)
 	for _, value := range controllers {
 		value.Setup(group)
 	}
