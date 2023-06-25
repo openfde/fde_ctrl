@@ -79,12 +79,21 @@ func constructAndroidContainerConfig(image, hostIP string) (*container.Config, *
 		},
 		},
 	}
+
+	volumes := make(map[string]struct{})
+	volumes["/dev/qemu_pipe"] = struct{}{}
+	volumes["/dev/anbox_audio"] = struct{}{}
+	volumes["/dev/anbox_bridge"] = struct{}{}
+	volumes["/dev/input/event0"] = struct{}{}
+	volumes["/dev/input/event1"] = struct{}{}
+	volumes["/dev/input/event2"] = struct{}{}
 	exposedPort := make(map[nat.Port]struct{})
 	exposedPort["5555"] = struct{}{}
 	containerConfig := &container.Config{
 		Labels:       map[string]string{"os_version": "android"},
 		ExposedPorts: exposedPort,
 		ArgsEscaped:  false,
+		Volumes:      volumes,
 		Image:        image,
 	}
 	return containerConfig, hostConfig
