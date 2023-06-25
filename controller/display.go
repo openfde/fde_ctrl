@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -46,7 +45,7 @@ func (impl DisplayManager) mirrorHandler(c *gin.Context) {
 			return
 		}
 		// 在这里对子进程的输出进行分析处理
-		fmt.Println(line)
+		logger.Info("debug_line", line)
 	}
 	cmd := exec.Command("xrandr", "--output", "DP-1", "--auto")
 	cmd.Env = os.Environ()
