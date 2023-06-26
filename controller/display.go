@@ -56,10 +56,9 @@ func (impl DisplayManager) isConnected() bool {
 	return true
 }
 
-func (impl DisplayManager) mirrorHandler(c *gin.Context) {
+func (impl DisplayManager) SetMirror() bool {
 	if !impl.isConnected() {
-		response.Response(c, "display disconnected")
-		return
+		return false
 	}
 	cmd := exec.Command("xrandr", "--output", "DP-1", "--auto")
 	cmd.Env = os.Environ()
@@ -67,5 +66,13 @@ func (impl DisplayManager) mirrorHandler(c *gin.Context) {
 	cmd = exec.Command("xrandr", "--output", "DP-1", "--same-as", "eDP-1")
 	cmd.Env = os.Environ()
 	cmd.Run()
-	response.Response(c, "display connected")
+	return true
+}
+
+func (impl DisplayManager) mirrorHandler(c *gin.Context) {
+	if impl.SetMirror() {
+		response.Response(c, "display connected")
+	} else {
+		response.Response(c, "display disconnected")
+	}
 }

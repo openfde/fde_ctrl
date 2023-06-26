@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -45,6 +46,7 @@ func setup(r *gin.Engine) error {
 	}
 	var controllers []controller.Controller
 	clipboard.InitAndWatch()
+	dm.SetMirror()
 
 	controllers = append(controllers, clipboard, pm, &apps, vnc, dm)
 	for _, value := range controllers {
@@ -106,6 +108,12 @@ func main() {
 		}
 		cmdFdeDaemon = exec.CommandContext(mainCtx, FDEDaemon, "session-manager", "--single-window", "--window-size=1920,1080", "--standalone", "--experimental")
 		cmdFdeDaemon.Env = append(os.Environ())
+		cmdFdeDaemon.SysProcAttr = &syscall.SysProcAttr{
+			Setsid: true,
+		}
+		cmdFdeDaemon.SysProcAttr = &syscall.SysProcAttr{
+			Setsid: true,
+		}
 		err = cmdFdeDaemon.Start()
 		if err != nil {
 			logger.Error("start_fdedaemon", nil, err)
