@@ -1,11 +1,9 @@
 package controller
 
 import (
-	"bytes"
+	"bufio"
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
-	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -21,61 +19,53 @@ func (impl DisplayManager) Setup(r *gin.RouterGroup) {
 	v1.GET("/display/mirror", impl.mirrorHandler)
 }
 
-func (impl DisplayManager) mirrorHandler(c *gin.Context) {
-
-	// 将 ps 命令的输出传递给 grep 命令进行过滤
-
-	var infoOutput, infoErr bytes.Buffer
-	grepCmd := exec.Command("xrandr")
-	grepCmd.Env = os.Environ()
-	grepCmd.Stdout = &infoOutput
-	grepCmd.Stderr = &infoErr
-	err := grepCmd.Start()
+func (impl DisplayManager) isConnected() bool {
+	cmd := exec.Command("xrandr")
+	cmd.Env = os.Environ()
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		logger.Error("xranr_get_info", nil, err)
-		return
+		logger.Error("stdoutpipe_xrandr", nil, err)
+		return false
 	}
-	defer grepCmd.Wait()
-	logger.Info("hello_disp", infoOutput)
-	logger.Info("hello_disp_ERR", infoErr)
+
+	// 启动命令
+	if err := cmd.Start(); err != nil {
+		logger.Error("start_xrandr", nil, err)
+		return false
+	}
 	key := "DP-1 disconnected"
-	lines := bytes.Split(infoOutput.Bytes(), []byte("\n"))
-	for _, line := range lines {
-		logger.Info("debug_line", line)
-		if strings.Contains(string(line), key) {
-			response.Response(c, nil)
-			return
+
+	// 逐行读取标准输出
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, key) && !strings.Contains(line, "eDP-1") {
+			return false
 		}
+	}
+	if err := scanner.Err(); err != nil {
+		logger.Error("xrandr_scanner", nil, err)
+		return false
+	}
+
+	// 等待命令完成
+	if err := cmd.Wait(); err != nil {
+		logger.Error("xrandr_wait", nil, err)
+		return false
+	}
+	return true
+}
+
+func (impl DisplayManager) mirrorHandler(c *gin.Context) {
+	if !impl.isConnected() {
+		response.Response(c, "display disconnected")
+		return
 	}
 	cmd := exec.Command("xrandr", "--output", "DP-1", "--auto")
 	cmd.Env = os.Environ()
-	var stdout, stderr io.ReadCloser
-	stdout, err = cmd.StdoutPipe()
-	if err != nil {
-		logger.Error("stdout pipe for vnc server", nil, err)
-		return
-	}
-	stderr, err = cmd.StderrPipe()
-	if err != nil {
-		logger.Error("stdout pipe for vnc server", nil, err)
-		return
-	}
-	cmd.Start()
-	output, err := ioutil.ReadAll(io.MultiReader(stdout, stderr))
-	if err != nil {
-		logger.Error("read start vnc server failed", nil, err)
-	}
-	cmd.Wait()
-	logger.Info("debug_xrandr_auto", string(output))
+	cmd.Run()
 	cmd = exec.Command("xrandr", "--output", "DP-1", "--same-as", "eDP-1")
 	cmd.Env = os.Environ()
-	cmd.Start()
-
-	output, err = ioutil.ReadAll(io.MultiReader(stdout, stderr))
-	if err != nil {
-		logger.Error("read start vnc server failed", nil, err)
-	}
-	logger.Info("debug_xrandr_mirror", string(output))
-	cmd.Wait()
-	response.Response(c, nil)
+	cmd.Run()
+	response.Response(c, "display connected")
 }
