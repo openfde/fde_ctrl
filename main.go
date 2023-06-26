@@ -177,6 +177,9 @@ func main() {
 		// 	}
 		case action := <-process_chan.ProcessChan:
 			{
+				var cmds []*exec.Cmd
+				cmds = append(cmds, cmdFdeDaemon)
+				killSonProcess(cmds)
 				stopAndroidContainer(mainCtx, FDEContainerName)
 				if action == process_chan.Logout {
 					//logout
