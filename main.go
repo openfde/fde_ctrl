@@ -184,6 +184,7 @@ func main() {
 		// 	}
 		case action := <-process_chan.ProcessChan:
 			{
+				stopAndroidContainer(mainCtx, FDEContainerName)
 				if action == process_chan.Logout {
 					//logout
 					logger.Info("logout", "exit due to some one send logout signal")
@@ -191,10 +192,9 @@ func main() {
 				} else {
 					//poweroff
 					logger.Info("power_off", "exit due to some one send poweroff signal")
-					stopAndroidContainer(mainCtx, FDEContainerName)
-					var cmds []*exec.Cmd
-					cmds = append(cmds, cmdFdeDaemon, cmdKwin)
-					killSonProcess(cmds)
+					// var cmds []*exec.Cmd
+					// cmds = append(cmds, cmdFdeDaemon, cmdKwin)
+					// killSonProcess(cmds)
 					//TODO call poweroff
 					return
 				}
