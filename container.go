@@ -24,7 +24,7 @@ func startAndroidContainer(ctx context.Context, image, hostIP string) error {
 	// 	panic(err)
 
 	// }
-	shoudStartContainer := false
+	shouldStartContainer, shouldCreate := false, false
 	containerID := ""
 	containers, err := findAndoridContainers(ctx, cli, FDEContainerName)
 	if err != nil {
@@ -32,21 +32,31 @@ func startAndroidContainer(ctx context.Context, image, hostIP string) error {
 	}
 	if len(containers) > 0 {
 		androidContainer := containers[0]
-		//if container not running
-		if androidContainer.State != "running" {
-			shoudStartContainer = true
-			containerID = androidContainer.ID
+		containerID = androidContainer.ID
+		if androidContainer.Image != image {
+			err = cli.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{})
+			if err != nil {
+				return err
+			}
+			shouldCreate = true
+			containerID = ""
+		} else {
+			// if container not running
+			if androidContainer.State != "running" {
+				shouldStartContainer = true
+			}
 		}
-	} else {
+	}
+	if shouldCreate {
 		containerConfig, hostConfig := constructAndroidContainerConfig(image, hostIP)
 		resp, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, nil, FDEContainerName)
 		if err != nil {
 			return err
 		}
-		shoudStartContainer = true
+		shouldStartContainer = true
 		containerID = resp.ID
 	}
-	if shoudStartContainer && len(containerID) > 0 {
+	if shouldStartContainer && len(containerID) > 0 {
 		if err := cli.ContainerStart(ctx, containerID, types.ContainerStartOptions{}); err != nil {
 			return err
 		}
