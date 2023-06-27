@@ -12,8 +12,10 @@ import (
 	"github.com/docker/go-connections/nat"
 )
 
+const dockerSocket = "unix:///var/run/docker.sock"
+
 func startAndroidContainer(ctx context.Context, image, hostIP string) error {
-	cli, err := client.NewClient("unix:///var/run/docker.sock", "v1.41", nil, nil)
+	cli, err := client.NewClient(dockerSocket, "v1.41", nil, nil)
 	if err != nil {
 		return err
 	}
@@ -159,7 +161,7 @@ func waitContainerRunning(ctx context.Context, cli *client.Client) error {
 }
 
 func stopAndroidContainer(ctx context.Context, name string) error {
-	cli, err := client.NewClient("unix:///var/run/docker.sock", "v1.41", nil, nil)
+	cli, err := client.NewClient(dockerSocket, "v1.41", nil, nil)
 	if err != nil {
 		return err
 	}
