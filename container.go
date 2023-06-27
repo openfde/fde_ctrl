@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"fde_ctrl/logger"
+	"os/user"
 	"time"
 
 	"github.com/docker/engine-api/client"
@@ -48,7 +50,10 @@ func startAndroidContainer(ctx context.Context, image, hostIP string) error {
 				shouldStartContainer = true
 			}
 		}
+	} else {
+		shouldCreate = true
 	}
+
 	if shouldCreate {
 		containerConfig, hostConfig := constructAndroidContainerConfig(image, hostIP)
 		resp, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, nil, FDEContainerName)
@@ -72,17 +77,31 @@ func startAndroidContainer(ctx context.Context, image, hostIP string) error {
 
 const (
 	FDEContainerName = "fdedroid"
+	socketPrefxie    = "/run/user/"
+	socketPostfix    = "/anbox/sockets/"
+	inputPostfix     = "/anbox/input/"
 )
 
 func constructAndroidContainerConfig(image, hostIP string) (*container.Config, *container.HostConfig) {
+	currentUser, err := user.Current()
+	if err != nil {
+		logger.Error("get_user_uid_failed", nil, err)
+		return nil, nil
+	}
+	qemuPipeBinds := socketPrefxie + currentUser.Uid + socketPostfix + "qemu_pipe:/dev/qemu_pipe"
+	audioBinds := socketPrefxie + currentUser.Uid + socketPostfix + "anbox_audio:/dev/anbox_audio:rw"
+	bridgeBinds := socketPrefxie + currentUser.Uid + socketPostfix + "anbox_bridge:/dev/anbox_bridge:rw"
+	event0Binds := socketPrefxie + currentUser.Uid + inputPostfix + "event0:/dev/input/event0:rw"
+	event1Binds := socketPrefxie + currentUser.Uid + inputPostfix + "event1:/dev/input/event1:rw"
+	event2Binds := socketPrefxie + currentUser.Uid + inputPostfix + "event2:/dev/input/event2:rw"
 	hostConfig := &container.HostConfig{
 		Privileged: true,
-		Binds: []string{"/run/user/1000/anbox/sockets/qemu_pipe:/dev/qemu_pipe",
-			"/run/user/1000/anbox/sockets/anbox_audio:/dev/anbox_audio:rw",
-			"/run/user/1000/anbox/sockets/anbox_bridge:/dev/anbox_bridge:rw",
-			"/run/user/1000/anbox/input/event0:/dev/input/event0:rw",
-			"/run/user/1000/anbox/input/event1:/dev/input/event1:rw",
-			"/run/user/1000/anbox/input/event2:/dev/input/event2:rw"},
+		Binds: []string{qemuPipeBinds,
+			audioBinds,
+			bridgeBinds,
+			event0Binds,
+			event1Binds,
+			event2Binds},
 		PortBindings: nat.PortMap{"5555": []nat.PortBinding{
 			{
 				HostIP:   "localhost",
@@ -92,21 +111,21 @@ func constructAndroidContainerConfig(image, hostIP string) (*container.Config, *
 		},
 	}
 
-	volumes := make(map[string]struct{})
-	volumes["/dev/qemu_pipe"] = struct{}{}
-	volumes["/dev/anbox_audio"] = struct{}{}
-	volumes["/dev/anbox_bridge"] = struct{}{}
-	volumes["/dev/input/event0"] = struct{}{}
-	volumes["/dev/input/event1"] = struct{}{}
-	volumes["/dev/input/event2"] = struct{}{}
+	// volumes := make(map[string]struct{})
+	// volumes["/dev/qemu_pipe"] = struct{}{}
+	// volumes["/dev/anbox_audio"] = struct{}{}
+	// volumes["/dev/anbox_bridge"] = struct{}{}
+	// volumes["/dev/input/event0"] = struct{}{}
+	// volumes["/dev/input/event1"] = struct{}{}
+	// volumes["/dev/input/event2"] = struct{}{}
 	exposedPort := make(map[nat.Port]struct{})
 	exposedPort["5555"] = struct{}{}
 	containerConfig := &container.Config{
 		Labels:       map[string]string{"os_version": "android"},
 		ExposedPorts: exposedPort,
 		ArgsEscaped:  false,
-		Volumes:      volumes,
-		Image:        image,
+		// Volumes:      volumes,
+		Image: image,
 	}
 	return containerConfig, hostConfig
 }
