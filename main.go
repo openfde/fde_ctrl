@@ -90,7 +90,7 @@ func main() {
 	_, exist := processExists(winManager)
 	if !exist {
 		//step 1 start kwin to enable windows manager
-		cmdKwin = exec.CommandContext(mainCtx, "kwin")
+		cmdKwin = exec.CommandContext(mainCtx, winManager)
 		err = cmdKwin.Start()
 		if err != nil {
 			logger.Error("start_kwin", nil, err)
