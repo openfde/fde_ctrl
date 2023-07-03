@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fde_ctrl/conf"
 	"fde_ctrl/controller"
 	"fde_ctrl/logger"
 	"fde_ctrl/middleware"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-ini/ini"
 	"github.com/godbus/dbus/v5"
 )
 
@@ -58,39 +58,21 @@ func setup(r *gin.Engine) error {
 const FDEDaemon = "fde_session"
 
 func main() {
-	cfg, err := ini.Load("/etc/fde.conf")
+
+	configure, err := conf.Read()
 	if err != nil {
-		logger.Error("load config", nil, err)
+		logger.Error("read_conf", nil, err)
 		return
-	}
-
-	// 获取配置文件中的值
-	sectionAndroid := cfg.Section("Android")
-	image := sectionAndroid.Key("Image").String()
-	if len(image) == 0 {
-		image = "fde:latest"
-	}
-
-	sectionHttp := cfg.Section("Http Server")
-	hostIP := sectionHttp.Key("Host").String()
-	if len(hostIP) == 0 {
-		hostIP = "128.128.0.1"
-	}
-
-	sectionWinManager := cfg.Section("WindowsManager")
-	winManager := sectionWinManager.Key("Name").String()
-	if len(winManager) == 0 {
-		winManager = "kwin"
 	}
 
 	mainCtx, _ := context.WithCancel(context.Background())
 
 	//step 1 start kwin
 	var cmdKwin *exec.Cmd
-	_, exist := processExists(winManager)
+	_, exist := processExists(configure.WindowsManager.Name)
 	if !exist {
 		//step 1 start kwin to enable windows manager
-		cmdKwin = exec.CommandContext(mainCtx, winManager)
+		cmdKwin = exec.CommandContext(mainCtx, configure.WindowsManager.Name)
 		err = cmdKwin.Start()
 		if err != nil {
 			logger.Error("start_kwin", nil, err)
@@ -112,7 +94,8 @@ func main() {
 			logger.Error("start_fdedaemon_stop_fdedroid", nil, err)
 			return
 		}
-		cmdFdeDaemon = exec.CommandContext(mainCtx, FDEDaemon, "session-manager", "--no-touch-emulation", "--single-window", "--window-size=1920,1080", "--standalone", "--experimental")
+		cmdFdeDaemon = exec.CommandContext(mainCtx, FDEDaemon, "session-manager", "--no-touch-emulation", "--single-window",
+			"--window-size="+configure.Display.Resolution, "--standalone", "--experimental")
 		cmdFdeDaemon.Env = append(os.Environ(), "LD_LIBRARY_PATH=/usr/local/fde/libs")
 		err = cmdFdeDaemon.Start()
 		if err != nil {
@@ -134,7 +117,7 @@ func main() {
 	}
 	cmds = append(cmds, cmdFdeDaemon)
 	//step 4  start fde android container
-	err = startAndroidContainer(mainCtx, image, hostIP)
+	err = startAndroidContainer(mainCtx, configure.Android.Image, configure.Http.Host)
 	if err != nil {
 		logger.Error("start_android", nil, err)
 		killSonProcess(cmds)
