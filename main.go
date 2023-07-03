@@ -66,7 +66,7 @@ func main() {
 	}
 
 	mainCtx, mainCancelCtxFunc := context.WithCancel(context.Background())
-
+	var cmds []*exec.Cmd
 	//step 1 start kwin
 	var cmdKwin *exec.Cmd
 	_, exist := processExists(configure.WindowsManager.Name)
@@ -85,10 +85,9 @@ func main() {
 			}
 			mainCancelCtxFunc()
 		}()
+		cmds = append(cmds, cmdKwin)
 	}
 
-	var cmds []*exec.Cmd
-	cmds = append(cmds, cmdKwin)
 	//step 2 stop kylin docker
 	stopAndroidContainer(mainCtx, "kmre-1000-phytium")
 
@@ -130,10 +129,9 @@ func main() {
 				break
 			}
 		}
-
+		cmds = append(cmds, cmdFdeDaemon)
 	}
 
-	cmds = append(cmds, cmdFdeDaemon)
 	//step 4  start fde android container
 	err = startAndroidContainer(mainCtx, configure.Android.Image, configure.Http.Host)
 	if err != nil {
@@ -224,7 +222,12 @@ func main() {
 }
 
 func killSonProcess(cmds []*exec.Cmd) {
-	for index, _ := range cmds {
+	for index, cmd := range cmds {
+		if processState, ok := cmd.ProcessState.Sys().(interface{ Exited() bool }); ok {
+			if processState.Exited() {
+				continue
+			}
+		}
 		cmds[index].Process.Kill()
 		cmds[index].Process.Wait()
 	}
