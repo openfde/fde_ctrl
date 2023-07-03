@@ -95,6 +95,7 @@ func main() {
 	var cmdFdeDaemon *exec.Cmd
 	_, exist = processExists(FDEDaemon)
 	if !exist {
+		os.Remove("/tmp/anbox_started")
 		//stop fdedroid
 		err = stopAndroidContainer(mainCtx, FDEContainerName)
 		if err != nil {
