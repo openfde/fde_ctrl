@@ -182,9 +182,8 @@ func main() {
 		// 	}
 		case action := <-process_chan.ProcessChan:
 			{
-
 				killSonProcess(cmds)
-				stopAndroidContainer(mainCtx, FDEContainerName)
+				stopAndroidContainer(nil, FDEContainerName)
 				switch action {
 				case process_chan.Restart:
 					{
