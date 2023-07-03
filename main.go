@@ -65,7 +65,7 @@ func main() {
 		return
 	}
 
-	mainCtx, _ := context.WithCancel(context.Background())
+	mainCtx, mainCancelCtxFunc := context.WithCancel(context.Background())
 
 	//step 1 start kwin
 	var cmdKwin *exec.Cmd
@@ -79,6 +79,13 @@ func main() {
 			return
 		}
 	}
+	go func() {
+		err := cmdKwin.Wait()
+		if err != nil {
+			logger.Error("wait_kwin_failed", nil, err)
+		}
+		mainCancelCtxFunc()
+	}()
 	var cmds []*exec.Cmd
 	cmds = append(cmds, cmdKwin)
 	//step 2 stop kylin docker
@@ -115,6 +122,14 @@ func main() {
 			}
 		}
 	}
+
+	go func() {
+		err = cmdFdeDaemon.Wait()
+		if err != nil {
+			logger.Error("fde_session_wait_failed", nil, err)
+		}
+		mainCancelCtxFunc()
+	}()
 	cmds = append(cmds, cmdFdeDaemon)
 	//step 4  start fde android container
 	err = startAndroidContainer(mainCtx, configure.Android.Image, configure.Http.Host)
@@ -152,7 +167,6 @@ func main() {
 	// signal := make(chan *dbus.Signal, 10)
 	// conn.Signal(signal)
 	// defer conn.RemoveSignal(signal)
-
 	if mainCtx.Err() == nil {
 		select {
 		case <-mainCtx.Done():
@@ -171,26 +185,39 @@ func main() {
 
 				killSonProcess(cmds)
 				stopAndroidContainer(mainCtx, FDEContainerName)
-				if action == process_chan.Logout {
-					//logout
-					logger.Info("logout", "exit due to some one send logout signal")
-					return
-				} else {
-					//poweroff
-					logger.Info("power_off", "exit due to some one send poweroff signal")
-					cmd := exec.Command("shutdown", "-h", "now")
-					err = cmd.Run()
-					if err != nil {
-						logger.Error("shutdown_failed", nil, err)
+				switch action {
+				case process_chan.Restart:
+					{
+						logger.Info("restart", "exit due to some one send restart signal")
+						cmd := exec.Command("restart")
+						err = cmd.Run()
+						if err != nil {
+							logger.Error("restart_failed", nil, err)
+						}
+						return
 					}
-					// var cmds []*exec.Cmd
-					// cmds = append(cmds, cmdFdeDaemon, cmdKwin)
-					// killSonProcess(cmds)
-					//TODO call poweroff
-					return
+				case process_chan.Logout:
+					{
+						// logout
+						logger.Info("logout", "exit due to some one send logout signal")
+						return
+					}
+				case process_chan.Poweroff:
+					{
+						// poweroff
+						logger.Info("power_off", "exit due to some one send poweroff signal")
+						cmd := exec.Command("shutdown", "-h", "now")
+						err = cmd.Run()
+						if err != nil {
+							logger.Error("shutdown_failed", nil, err)
+						}
+						return
+					}
 				}
 			}
 		}
+	} else {
+		logger.Error("main_ctx_error", nil, mainCtx.Err())
 	}
 }
 
