@@ -78,7 +78,7 @@ func main() {
 	}
 
 	sectionWinManager := cfg.Section("WindowsManager")
-	winManager := sectionWinManager.Key("name").String()
+	winManager := sectionWinManager.Key("Name").String()
 	if len(winManager) == 0 {
 		winManager = "kwin"
 	}
