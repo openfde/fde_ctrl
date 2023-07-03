@@ -62,7 +62,7 @@ func Read() (configure Configure, err error) {
 	}
 
 	sectionDisplay := cfg.Section(sectionDisplay)
-	configure.Display.Resolution = sectionDisplay.Key("resolution").String()
+	configure.Display.Resolution = sectionDisplay.Key("Resolution").String()
 	if len(configure.Display.Resolution) == 0 {
 		configure.Display.Resolution = "1920,1080"
 	}
