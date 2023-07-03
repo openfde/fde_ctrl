@@ -68,24 +68,24 @@ func main() {
 	mainCtx, mainCancelCtxFunc := context.WithCancel(context.Background())
 	var cmds []*exec.Cmd
 	//step 1 start kwin
-	var cmdKwin *exec.Cmd
+	var cmdWinMan *exec.Cmd
 	_, exist := processExists(configure.WindowsManager.Name)
 	if !exist {
 		//step 1 start kwin to enable windows manager
-		cmdKwin = exec.CommandContext(mainCtx, configure.WindowsManager.Name)
-		err = cmdKwin.Start()
+		cmdWinMan = exec.CommandContext(mainCtx, configure.WindowsManager.Name)
+		err = cmdWinMan.Start()
 		if err != nil {
-			logger.Error("start_kwin", nil, err)
+			logger.Error("start_wm", nil, err)
 			return
 		}
 		go func() {
-			err := cmdKwin.Wait()
+			err := cmdWinMan.Wait()
 			if err != nil {
-				logger.Error("wait_kwin_failed", nil, err)
+				logger.Error("wait_wm_failed", nil, err)
 			}
 			mainCancelCtxFunc()
 		}()
-		cmds = append(cmds, cmdKwin)
+		cmds = append(cmds, cmdWinMan)
 	}
 
 	//step 2 stop kylin docker
@@ -168,12 +168,15 @@ func main() {
 	// signal := make(chan *dbus.Signal, 10)
 	// conn.Signal(signal)
 	// defer conn.RemoveSignal(signal)
+	var killSelf = false
 	if mainCtx.Err() == nil {
 		select {
 		case <-mainCtx.Done():
 			{
-				logger.Info("context_done", "exit due to canceled context")
-				return
+				if !killSelf {
+					logger.Info("context_done", "exit due to unexpected canceled context")
+					return
+				}
 			}
 		// case <-signal:
 		// 	{
@@ -183,6 +186,7 @@ func main() {
 		// 	}
 		case action := <-process_chan.ProcessChan:
 			{
+				killSelf = true
 				killSonProcess(cmds)
 				stopAndroidContainer(nil, FDEContainerName)
 				switch action {
@@ -229,7 +233,7 @@ func killSonProcess(cmds []*exec.Cmd) {
 			}
 		}
 		cmds[index].Process.Kill()
-		cmds[index].Process.Wait()
+		// cmds[index].Process.Wait()
 	}
 }
 
