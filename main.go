@@ -78,14 +78,15 @@ func main() {
 			logger.Error("start_kwin", nil, err)
 			return
 		}
+		go func() {
+			err := cmdKwin.Wait()
+			if err != nil {
+				logger.Error("wait_kwin_failed", nil, err)
+			}
+			mainCancelCtxFunc()
+		}()
 	}
-	go func() {
-		err := cmdKwin.Wait()
-		if err != nil {
-			logger.Error("wait_kwin_failed", nil, err)
-		}
-		mainCancelCtxFunc()
-	}()
+
 	var cmds []*exec.Cmd
 	cmds = append(cmds, cmdKwin)
 	//step 2 stop kylin docker
@@ -110,6 +111,13 @@ func main() {
 			logger.Error("start_fdedaemon", nil, err)
 			return
 		}
+		go func() {
+			err = cmdFdeDaemon.Wait()
+			if err != nil {
+				logger.Error("fde_session_wait_failed", nil, err)
+			}
+			mainCancelCtxFunc()
+		}()
 		fileName := "/tmp/anbox_started"
 		for i := 0; i < 3; i++ {
 			if _, err := os.Stat(fileName); os.IsNotExist(err) {
@@ -122,15 +130,9 @@ func main() {
 				break
 			}
 		}
+
 	}
 
-	go func() {
-		err = cmdFdeDaemon.Wait()
-		if err != nil {
-			logger.Error("fde_session_wait_failed", nil, err)
-		}
-		mainCancelCtxFunc()
-	}()
 	cmds = append(cmds, cmdFdeDaemon)
 	//step 4  start fde android container
 	err = startAndroidContainer(mainCtx, configure.Android.Image, configure.Http.Host)
