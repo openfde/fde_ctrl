@@ -74,14 +74,20 @@ func main() {
 	sectionHttp := cfg.Section("Http Server")
 	hostIP := sectionHttp.Key("Host").String()
 	if len(hostIP) == 0 {
-		hostIP = "172.17.0.1"
+		hostIP = "128.128.0.1"
+	}
+
+	sectionWinManager := cfg.Section("WindowsManager")
+	winManager := sectionWinManager.Key("name").String()
+	if len(winManager) == 0 {
+		winManager = "kwin"
 	}
 
 	mainCtx, _ := context.WithCancel(context.Background())
 
 	//step 1 start kwin
 	var cmdKwin *exec.Cmd
-	_, exist := processExists("kwin")
+	_, exist := processExists(winManager)
 	if !exist {
 		//step 1 start kwin to enable windows manager
 		cmdKwin = exec.CommandContext(mainCtx, "kwin")
