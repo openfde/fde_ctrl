@@ -5,12 +5,16 @@ type PowerAction string
 const (
 	Logout   = PowerAction("logout")
 	Poweroff = PowerAction("poweroff")
+	Restart  = PowerAction("restart")
 )
 
 var ProcessChan = make(chan PowerAction, 2)
 
 func sendMessage(action PowerAction) {
 	ProcessChan <- action
+}
+func SendRestart() {
+	sendMessage(Restart)
 }
 
 func SendPoweroff() {
