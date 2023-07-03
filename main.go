@@ -91,7 +91,8 @@ func main() {
 			return
 		}
 	}
-
+	var cmds []*exec.Cmd
+	cmds = append(cmds, cmdKwin)
 	//step 2 stop kylin docker
 	stopAndroidContainer(mainCtx, "kmre-1000-phytium")
 
@@ -105,8 +106,8 @@ func main() {
 			logger.Error("start_fdedaemon_stop_fdedroid", nil, err)
 			return
 		}
-		cmdFdeDaemon = exec.CommandContext(mainCtx, FDEDaemon, "session-manager", "--single-window", "--window-size=1920,1080", "--standalone", "--experimental")
-		cmdFdeDaemon.Env = append(os.Environ())
+		cmdFdeDaemon = exec.CommandContext(mainCtx, FDEDaemon, "session-manager", "--no-touch-emulation", "--single-window", "--window-size=1920,1080", "--standalone", "--experimental")
+		cmdFdeDaemon.Env = append(os.Environ(), "LD_LIBRARY_PATH=/usr/local/fde/libs")
 		err = cmdFdeDaemon.Start()
 		if err != nil {
 			logger.Error("start_fdedaemon", nil, err)
@@ -125,11 +126,12 @@ func main() {
 			}
 		}
 	}
-
+	cmds = append(cmds, cmdFdeDaemon)
 	//step 4  start fde android container
 	err = startAndroidContainer(mainCtx, image, hostIP)
 	if err != nil {
 		logger.Error("start_android", nil, err)
+		killSonProcess(cmds)
 		return
 	}
 
@@ -177,8 +179,7 @@ func main() {
 		// 	}
 		case action := <-process_chan.ProcessChan:
 			{
-				var cmds []*exec.Cmd
-				cmds = append(cmds, cmdFdeDaemon)
+
 				killSonProcess(cmds)
 				stopAndroidContainer(mainCtx, FDEContainerName)
 				if action == process_chan.Logout {
@@ -188,6 +189,11 @@ func main() {
 				} else {
 					//poweroff
 					logger.Info("power_off", "exit due to some one send poweroff signal")
+					cmd := exec.Command("shutdown", "-h", "now")
+					err = cmd.Run()
+					if err != nil {
+						logger.Error("shutdown_failed", nil, err)
+					}
 					// var cmds []*exec.Cmd
 					// cmds = append(cmds, cmdFdeDaemon, cmdKwin)
 					// killSonProcess(cmds)

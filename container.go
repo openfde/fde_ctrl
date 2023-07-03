@@ -90,15 +90,14 @@ func constructAndroidContainerConfig(image, hostIP string) (*container.Config, *
 	}
 	qemuPipeBinds := socketPrefxie + currentUser.Uid + socketPostfix + "qemu_pipe:/dev/qemu_pipe"
 	audioBinds := socketPrefxie + currentUser.Uid + socketPostfix + "anbox_audio:/dev/anbox_audio:rw"
-	bridgeBinds := socketPrefxie + currentUser.Uid + socketPostfix + "anbox_bridge:/dev/anbox_bridge:rw"
 	event0Binds := socketPrefxie + currentUser.Uid + inputPostfix + "event0:/dev/input/event0:rw"
 	event1Binds := socketPrefxie + currentUser.Uid + inputPostfix + "event1:/dev/input/event1:rw"
 	event2Binds := socketPrefxie + currentUser.Uid + inputPostfix + "event2:/dev/input/event2:rw"
 	hostConfig := &container.HostConfig{
 		Privileged: true,
-		Binds: []string{qemuPipeBinds,
+		Binds: []string{
+			qemuPipeBinds,
 			audioBinds,
-			bridgeBinds,
 			event0Binds,
 			event1Binds,
 			event2Binds},
