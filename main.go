@@ -58,14 +58,14 @@ func setup(r *gin.Engine) error {
 const FDEDaemon = "fde_session"
 
 func main() {
-
+	var killSelf chan string
 	configure, err := conf.Read()
 	if err != nil {
 		logger.Error("read_conf", nil, err)
 		return
 	}
 
-	mainCtx, mainCancelCtxFunc := context.WithCancel(context.Background())
+	mainCtx, mainCtxCancelFunc := context.WithCancel(context.Background())
 	var cmds []*exec.Cmd
 	//step 1 start kwin
 	var cmdWinMan *exec.Cmd
@@ -76,6 +76,7 @@ func main() {
 		err = cmdWinMan.Start()
 		if err != nil {
 			logger.Error("start_wm", nil, err)
+			mainCtxCancelFunc()
 			return
 		}
 		go func() {
@@ -83,7 +84,8 @@ func main() {
 			if err != nil {
 				logger.Error("wait_wm_failed", nil, err)
 			}
-			mainCancelCtxFunc()
+			killSelf <- "kill"
+			// mainCancelCtxFunc()
 		}()
 		cmds = append(cmds, cmdWinMan)
 	}
@@ -115,7 +117,8 @@ func main() {
 			if err != nil {
 				logger.Error("fde_session_wait_failed", nil, err)
 			}
-			mainCancelCtxFunc()
+			killSelf <- "kill"
+			// mainCancelCtxFunc()
 		}()
 		fileName := "/tmp/anbox_started"
 		for i := 0; i < 3; i++ {
@@ -168,15 +171,17 @@ func main() {
 	// signal := make(chan *dbus.Signal, 10)
 	// conn.Signal(signal)
 	// defer conn.RemoveSignal(signal)
-	var killSelf = false
 	if mainCtx.Err() == nil {
 		select {
 		case <-mainCtx.Done():
 			{
-				if !killSelf {
-					logger.Info("context_done", "exit due to unexpected canceled context")
-					return
-				}
+				logger.Info("context_done", "exit due to unexpected canceled context")
+				return
+			}
+		case <-killSelf:
+			{
+				logger.Info("son_thread_exited", "exit due to son thread exited")
+				return
 			}
 		// case <-signal:
 		// 	{
@@ -186,7 +191,6 @@ func main() {
 		// 	}
 		case action := <-process_chan.ProcessChan:
 			{
-				killSelf = true
 				killSonProcess(cmds)
 				stopAndroidContainer(nil, FDEContainerName)
 				switch action {
