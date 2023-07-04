@@ -192,7 +192,7 @@ func main() {
 		case action := <-process_chan.ProcessChan:
 			{
 				killSonProcess(cmds)
-				stopAndroidContainer(nil, FDEContainerName)
+				stopAndroidContainer(mainCtx, FDEContainerName)
 				switch action {
 				case process_chan.Restart:
 					{
@@ -230,12 +230,8 @@ func main() {
 }
 
 func killSonProcess(cmds []*exec.Cmd) {
-	for index, cmd := range cmds {
-		if processState, ok := cmd.ProcessState.Sys().(interface{ Exited() bool }); ok {
-			if processState.Exited() {
-				continue
-			}
-		}
+	for index,_ := range cmds {
+		logger.Info("kill_son_process", index)
 		cmds[index].Process.Kill()
 		// cmds[index].Process.Wait()
 	}
