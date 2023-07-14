@@ -24,7 +24,7 @@ type VncAppImpl struct {
 func (impl VncAppImpl) Setup(r *gin.RouterGroup) {
 	v1 := r.Group("/v1")
 	v1.POST("/vnc", impl.startVncAppHandle)
-	v1.DELETE("/vnc", impl.stopVncAppHandle)
+	v1.POST("/stop_vnc", impl.stopVncAppHandle)
 }
 
 func constructXstartup(name, path string) error {
@@ -52,14 +52,19 @@ type startAppRequest struct {
 }
 
 func (impl VncAppImpl) stopVncAppHandle(c *gin.Context) {
-	sysOnly := c.Query("SysOnly") == "true"
-	App := c.Query("App")
-	if len(App) == 0 && !sysOnly {
+
+	var request startAppRequest
+	err := c.ShouldBind(&request)
+	if err != nil {
+		response.ResponseParamterError(c, err)
+		return
+	}
+	if len(request.App) == 0 && !request.SysOnly {
 		response.ResponseParamterError(c, errors.New("invalid parameters"))
 		return
 	}
 
-	err := impl.stopVncApp(App, sysOnly)
+	err = impl.stopVncApp(request.App, request.SysOnly)
 	if err != nil {
 		response.ResponseError(c, http.StatusInternalServerError, err)
 		return
