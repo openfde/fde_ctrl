@@ -19,6 +19,45 @@ func (impl DisplayManager) Setup(r *gin.RouterGroup) {
 	v1.GET("/display/mirror", impl.mirrorHandler)
 }
 
+func isWaylandConnected() bool {
+	cmd := exec.Command("xrandr")
+	cmd.Env = os.Environ()
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		logger.Error("stdoutpipe_xrandr", nil, err)
+		return false
+	}
+
+	// 启动命令
+	if err := cmd.Start(); err != nil {
+		logger.Error("start_xrandr", nil, err)
+		return false
+	}
+	key := "XWAYLAND"
+
+	// 逐行读取标准输出
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		line := scanner.Text()
+		logger.Info("compare_xwayland", string(line))
+		if strings.Contains(line, key) && strings.Contains(line, "connected") {
+			logger.Info("compare_xwayland_true", true)
+			return true
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		logger.Error("xrandr_scanner", nil, err)
+		return false
+	}
+
+	// 等待命令完成
+	if err := cmd.Wait(); err != nil {
+		logger.Error("xrandr_wait", nil, err)
+		return false
+	}
+	return false
+}
+
 func (impl DisplayManager) isConnected() bool {
 	cmd := exec.Command("xrandr")
 	cmd.Env = os.Environ()

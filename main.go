@@ -4,14 +4,18 @@ import (
 	"context"
 	"fde_ctrl/conf"
 	"fde_ctrl/controller"
+	"fde_ctrl/fdedroid"
 	"fde_ctrl/logger"
 	"fde_ctrl/middleware"
 	"fde_ctrl/process_chan"
 	"fde_ctrl/websocket"
-	"os"
+	"fde_ctrl/windows_manager"
+
 	"os/exec"
-	"strconv"
-	"time"
+
+	// "io/ioutil"
+
+	// "errors"
 
 	"github.com/gin-gonic/gin"
 	"github.com/godbus/dbus/v5"
@@ -19,7 +23,7 @@ import (
 
 const socket = "./fde_ctrl.sock"
 
-func setup(r *gin.Engine) error {
+func setup(r *gin.Engine, configure conf.Configure) error {
 
 	// 创建 Unix Socket
 	// os.Remove(socket)
@@ -44,7 +48,7 @@ func setup(r *gin.Engine) error {
 		return err
 	}
 	var controllers []controller.Controller
-	clipboard.InitAndWatch()
+	clipboard.InitAndWatch(configure)
 	dm.SetMirror()
 
 	controllers = append(controllers, clipboard, pm, &apps, vnc, dm)
@@ -55,97 +59,44 @@ func setup(r *gin.Engine) error {
 	return nil
 }
 
-const FDEDaemon = "fde_session"
-
 func main() {
 	configure, err := conf.Read()
 	if err != nil {
 		logger.Error("read_conf", nil, err)
 		return
 	}
-
 	mainCtx, mainCtxCancelFunc := context.WithCancel(context.Background())
 	var cmds []*exec.Cmd
 	//step 1 start kwin
 	var cmdWinMan *exec.Cmd
-	_, exist := processExists(configure.WindowsManager.Name)
-	if !exist {
-		//step 1 start kwin to enable windows manager
-		cmdWinMan = exec.CommandContext(mainCtx, configure.WindowsManager.Name)
-		err = cmdWinMan.Start()
-		if err != nil {
-			logger.Error("start_wm", nil, err)
-			mainCtxCancelFunc()
-			return
-		}
-		go func() {
-			err := cmdWinMan.Wait()
-			if err != nil {
-				logger.Error("wait_wm", nil, err)
-			}
-			mainCtxCancelFunc()
-		}()
+	cmdWinMan, err = windows_manager.Start(mainCtx, configure.WindowsManager, mainCtxCancelFunc)
+	if err != nil {
+		logger.Error("start_windows_manager", configure.WindowsManager.Name, err)
+	}
+	logger.Info("start_windows_manager", configure.WindowsManager)
+	if cmdWinMan != nil {
 		cmds = append(cmds, cmdWinMan)
 	}
-
-	//step 2 stop kylin docker
-	stopAndroidContainer(mainCtx, "kmre-1000-phytium")
-
-	//step 3 start anbox hostside
-	var cmdFdeDaemon *exec.Cmd
-	_, exist = processExists(FDEDaemon)
-	if !exist {
-		os.Remove("/tmp/anbox_started")
-		//stop fdedroid
-		err = stopAndroidContainer(mainCtx, FDEContainerName)
-		if err != nil {
-			logger.Error("start_fdedaemon_stop_fdedroid", nil, err)
-			return
-		}
-		cmdFdeDaemon = exec.CommandContext(mainCtx, FDEDaemon, "session-manager", "--no-touch-emulation", "--single-window",
-			"--window-size="+configure.Display.Resolution, "--standalone", "--experimental")
-		cmdFdeDaemon.Env = append(os.Environ(), "LD_LIBRARY_PATH=/usr/local/fde/libs")
-		err = cmdFdeDaemon.Start()
-		if err != nil {
-			logger.Error("start_fdedaemon", nil, err)
-			return
-		}
-		go func() {
-			err = cmdFdeDaemon.Wait()
-			if err != nil {
-				logger.Error("fde_session_wait", nil, err)
-			}
-			mainCtxCancelFunc()
-		}()
-		fileName := "/tmp/anbox_started"
-		for i := 0; i < 3; i++ {
-			if _, err := os.Stat(fileName); os.IsNotExist(err) {
-				// 文件不存在，休眠 2 秒
-				time.Sleep(2 * time.Second)
-			} else {
-				// 文件存在
-				logger.Info("detected_file_exist", fileName)
-				os.Remove(fileName)
-				break
-			}
-		}
-		cmds = append(cmds, cmdFdeDaemon)
+	var droid fdedroid.Fdedroid
+	if configure.WindowsManager.IsWayland() {
+		droid = new(fdedroid.Waydroid)
+	} else {
+		droid = new(fdedroid.Anbox)
 	}
-
-	//step 4  start fde android container
-	err = startAndroidContainer(mainCtx, configure.Android.Image, configure.Http.Host)
+	cmdSession, err := droid.Start(mainCtx, mainCtxCancelFunc, configure)
 	if err != nil {
-		logger.Error("start_android", nil, err)
+		logger.Error("fdedroid_start", configure.WindowsManager.IsWayland(), err)
 		killSonProcess(cmds)
 		return
 	}
+	cmds = append(cmds, cmdSession)
 
 	go websocket.SetupWebSocket()
 	//scan app from linux
 	engine := gin.New()
 	engine.Use(middleware.LogHandler(), gin.Recovery())
 	engine.Use(middleware.ErrHandler())
-	if err := setup(engine); err != nil {
+	if err := setup(engine, configure); err != nil {
 		logger.Error("setup", nil, err)
 		return
 	}
@@ -174,7 +125,7 @@ func main() {
 			{
 				logger.Info("context_done", "exit due to unexpected canceled context")
 				killSonProcess(cmds)
-				stopAndroidContainer(context.Background(), FDEContainerName)
+				fdedroid.StopAndroidContainer(context.Background(), fdedroid.FDEContainerName)
 				return
 			}
 		// case <-signal:
@@ -186,7 +137,11 @@ func main() {
 		case action := <-process_chan.ProcessChan:
 			{
 				killSonProcess(cmds)
-				stopAndroidContainer(context.Background(), FDEContainerName)
+				if configure.WindowsManager.IsWayland() {
+					fdedroid.StopWaydroidContainer(context.Background())
+				} else {
+					fdedroid.StopAndroidContainer(context.Background(), fdedroid.FDEContainerName)
+				}
 				switch action {
 				case process_chan.Restart:
 					{
@@ -237,18 +192,4 @@ func initDdusForSignal(conn *dbus.Conn) error {
 		dbus.WithMatchInterface("org.remoteAndroid.Dbus"),
 		dbus.WithMatchMember("Logout"))
 
-}
-
-func processExists(name string) (pid int, exist bool) {
-	cmd := exec.Command("pgrep", name)
-	output, err := cmd.Output()
-	if err != nil {
-		return pid, false
-	}
-	pid, err = strconv.Atoi(string(output[:len(output)-1]))
-	if err != nil {
-		return pid, false
-	}
-	cmd.Wait()
-	return pid, true
 }

@@ -1,4 +1,4 @@
-package main
+package fdedroid
 
 import (
 	"context"
@@ -178,7 +178,7 @@ func waitContainerRunning(ctx context.Context, cli *client.Client) error {
 	}
 }
 
-func stopAndroidContainer(ctx context.Context, name string) error {
+func StopAndroidContainer(ctx context.Context, name string) error {
 	cli, err := client.NewClient(dockerSocket, "v1.41", nil, nil)
 	if err != nil {
 		return err
