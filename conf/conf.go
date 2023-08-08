@@ -21,8 +21,13 @@ type Http struct {
 	Host string
 }
 
+func (win WindowsManager) IsWayland() bool {
+	return win.Protocol == "wayland"
+}
+
 type WindowsManager struct {
-	Name string
+	Name     string
+	Protocol string
 }
 type Display struct {
 	Resolution string
@@ -60,6 +65,7 @@ func Read() (configure Configure, err error) {
 	if len(configure.WindowsManager.Name) == 0 {
 		configure.WindowsManager.Name = "kwin"
 	}
+	configure.WindowsManager.Protocol = sectionWinManager.Key("Protocol").String()
 
 	sectionDisplay := cfg.Section(sectionDisplay)
 	configure.Display.Resolution = sectionDisplay.Key("Resolution").String()

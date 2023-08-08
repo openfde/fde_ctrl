@@ -3,8 +3,12 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"fde_ctrl/conf"
+	"fde_ctrl/logger"
 	"fde_ctrl/response"
 	"fde_ctrl/websocket"
+	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.design/x/clipboard"
@@ -81,7 +85,18 @@ func (impl ClipboardImpl) WriteHandler(c *gin.Context) {
 
 const clipboardWsType = "clipboard"
 
-func (impl ClipboardImpl) InitAndWatch() {
+func (impl ClipboardImpl) InitAndWatch(configure conf.Configure) {
+	if configure.WindowsManager.IsWayland() {
+		os.Setenv("DISPLAY", ":1")
+		for {
+			if isWaylandConnected() {
+				break
+			} else {
+				time.Sleep(time.Second)
+				logger.Info("wait_for_xwayland", nil)
+			}
+		}
+	}
 	err := clipboard.Init()
 	if err != nil {
 		panic(err)
