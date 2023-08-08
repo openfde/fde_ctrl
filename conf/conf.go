@@ -22,7 +22,8 @@ type Http struct {
 }
 
 func (win WindowsManager) IsWayland() bool {
-	return win.Protocol == "wayland"
+	//actually fde_wm is renamed from mutter, because mutter is a protected process name on kylin operator system
+	return win.Protocol == "wayland" || win.Name == "fde_wm"
 }
 
 type WindowsManager struct {
