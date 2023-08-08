@@ -16,16 +16,7 @@ const fdeWindowsManager = "fde_wm" //actually fde_wm is renamed from mutter
 
 func Start(mainCtx context.Context, windowsConfig conf.WindowsManager, mainCtxCancelFunc context.CancelFunc) (cmdWinMan *exec.Cmd, err error) {
 	var name = windowsConfig.Name
-	switch name {
-	case fdeWindowsManager: //actually fde_wm is renamed from mutter
-		{
-			cmdWinMan = exec.CommandContext(mainCtx, name)
-		}
-	default:
-		{
-			cmdWinMan = exec.CommandContext(mainCtx, name)
-		}
-	}
+	cmdWinMan = exec.CommandContext(mainCtx, name)
 	_, exist := tools.ProcessExists(name)
 	if exist {
 		return nil, nil
