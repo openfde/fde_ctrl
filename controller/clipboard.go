@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fde_ctrl/conf"
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
@@ -87,13 +88,26 @@ const clipboardWsType = "clipboard"
 
 func (impl ClipboardImpl) InitAndWatch(configure conf.Configure) {
 	if configure.WindowsManager.IsWayland() {
-		os.Setenv("DISPLAY", ":1")
+		path := "/tmp/.X11-unix/X1"
+		waitCnt := 0
 		for {
-			if isWaylandConnected() {
-				break
-			} else {
+			if waitCnt > 60 {
+				err := errors.New("tiemout for 60s")
+				logger.Error("x11_display_timeout", nil, err)
+				return
+			}
+			if _, err := os.Stat(path); os.IsNotExist(err) {
 				time.Sleep(time.Second)
-				logger.Info("wait_for_xwayland", nil)
+				waitCnt++
+			} else {
+				if isX11DisplayConnected(":1") {
+					os.Setenv("DISPLAY", ":1")
+					break
+				} else {
+					err := errors.New(":1 is not a running x11 server")
+					logger.Error("x11_display_connected", nil, err)
+					return
+				}
 			}
 		}
 	}
