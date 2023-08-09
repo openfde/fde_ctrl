@@ -1,6 +1,7 @@
 package windows_manager
 
 import (
+	"errors"
 	"fde_ctrl/conf"
 	"fde_ctrl/logger"
 	"fde_ctrl/tools"
@@ -45,17 +46,18 @@ func Start(mainCtx context.Context, windowsConfig conf.WindowsManager, mainCtxCa
 	if windowsConfig.IsWayland() {
 		for {
 			userID := os.Getuid()
+			//todo the wayland display could be wayland-1 or n not only just wayland-0
 			path := "/run/user/" + fmt.Sprint(userID) + "/wayland-0"
 			if _, err := os.Stat(path); os.IsNotExist(err) {
-				logger.Info("wayland-0", "not exist")
+				logger.Info("wayland-disopay", "not exist")
 				time.Sleep(time.Second)
 				waitCnt++
 			} else {
 				break
 			}
 			if waitCnt > 60 {
-				logger.Error("wait_for_wayland-0", "timeout 60s", nil)
-				break
+				logger.Error("wait_for_wayland-display", "timeout 60s", nil)
+				return nil, errors.New("time out for waiting wayland display")
 			}
 		}
 	}

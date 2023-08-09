@@ -72,6 +72,7 @@ func main() {
 	cmdWinMan, err = windows_manager.Start(mainCtx, configure.WindowsManager, mainCtxCancelFunc)
 	if err != nil {
 		logger.Error("start_windows_manager", configure.WindowsManager.Name, err)
+		return
 	}
 	logger.Info("start_windows_manager", configure.WindowsManager)
 	if cmdWinMan != nil {
