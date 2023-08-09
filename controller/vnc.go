@@ -28,7 +28,7 @@ func (impl VncAppImpl) Setup(r *gin.RouterGroup) {
 }
 
 func constructXstartup(name, path string) error {
-	data := []byte("#!/bin/bash\n" + path + "\n")
+	data := []byte("#!/bin/bash\n" + "export GDK_BACKEND=x11\n" + "export QT_QPA_PLATFORM=xcb\n" + path + "\n")
 
 	file, err := os.OpenFile("/tmp/"+name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
