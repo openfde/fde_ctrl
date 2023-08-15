@@ -6,6 +6,7 @@ import (
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -29,6 +30,8 @@ func (impl VncAppImpl) Setup(r *gin.RouterGroup) {
 
 func constructXstartup(name, path string) error {
 	data := []byte("#!/bin/bash\n" +
+		"ibus-daemon -d  -n " + name + " \n" +
+		"sleep 1 \n" +
 		"ibus engine lotime \n" +
 		"export GDK_BACKEND=x11\n" +
 		"export QT_QPA_PLATFORM=xcb\n" +
@@ -154,6 +157,19 @@ func (impl VncAppImpl) stopVncApp(app string, sysOnly bool) (err error) {
 		}
 		cmdVnc.Wait()
 		logger.Info("debug_vnc", string(output))
+		_, pid, err := grepIbusApp(app)
+		if err != nil {
+			logger.Error("grep_ibus_daemon_app", nil, err)
+		} else {
+			if pid != "" {
+				iPid, err := strconv.Atoi(pid)
+				if err != nil {
+					return err
+				}
+				logger.Info("kill_ibus_daemon", fmt.Sprint(iPid, " "+app))
+				syscall.Kill(iPid, syscall.SIGTERM)
+			}
+		}
 	}
 	return nil
 }
@@ -278,6 +294,58 @@ func grepApp(name string) (err error, exist bool, port string) {
 			} else {
 
 				port = ""
+			}
+		}
+	}
+	return
+}
+
+func grepIbusApp(name string) (exist bool, pid string, err error) {
+	psCmd := exec.Command("ps", "-ef")
+	grepCmd := exec.Command("grep", "ibus-daemon")
+	xgrepCmd := exec.Command("grep", "-v", "grep")
+
+	// 将 ps 命令的输出传递给 grep 命令进行过滤
+	var output bytes.Buffer
+	grepCmd.Stdin, _ = psCmd.StdoutPipe()
+	xgrepCmd.Stdin, _ = grepCmd.StdoutPipe()
+	xgrepCmd.Stdout = &output
+	err = psCmd.Start()
+	if err != nil {
+		return
+	}
+	err = grepCmd.Start()
+	if err != nil {
+		return
+	}
+	err = xgrepCmd.Start()
+	if err != nil {
+		return
+	}
+	err = psCmd.Wait()
+	if err != nil {
+		return
+	}
+	grepCmd.Wait()
+	xgrepCmd.Wait()
+	// 解析 grep 命令的输出
+
+	lines := bytes.Split(output.Bytes(), []byte("\n"))
+	for _, line := range lines {
+		if strings.Contains(string(line), name) {
+			var appName string
+			if name == appName {
+				argList := strings.Split(string(line), " ")
+				if len(argList) < 3 {
+					err = errors.New("not match ibus-daemon")
+					return
+				}
+				pid = argList[1]
+				exist = true
+				return
+			} else {
+				pid = ""
+				exist = false
 			}
 		}
 	}
