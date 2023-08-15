@@ -28,7 +28,15 @@ func (impl VncAppImpl) Setup(r *gin.RouterGroup) {
 }
 
 func constructXstartup(name, path string) error {
-	data := []byte("#!/bin/bash\n" + "export GDK_BACKEND=x11\n" + "export QT_QPA_PLATFORM=xcb\n" + path + "\n")
+	data := []byte("#!/bin/bash\n" + 
+	"ibus-daemon -d \n" +
+	"ibus engine lotime \n" +
+	"export GDK_BACKEND=x11\n" +
+	"export QT_QPA_PLATFORM=xcb\n" +
+	"export GTK_IM_MODULE=ibus\n" +
+	"export QT_IM_MODULE=ibus\n" +
+	"export QT4_IM_MODULE=ibus\n" + 
+	"export im=ibus\n" + path + "\n")
 
 	file, err := os.OpenFile("/tmp/"+name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
