@@ -6,7 +6,6 @@ import (
 	"fde_ctrl/controller"
 	"fde_ctrl/controller/middleware"
 	"fde_ctrl/fdedroid"
-	"fde_ctrl/ibus"
 	"fde_ctrl/logger"
 	"fde_ctrl/process_chan"
 	"fde_ctrl/websocket"
@@ -67,11 +66,6 @@ func main() {
 		return
 	}
 	mainCtx, mainCtxCancelFunc := context.WithCancel(context.Background())
-	err = ibus.Start(mainCtx)
-	if err != nil {
-		logger.Error("start_ibus", nil, err)
-		return
-	}
 	var cmds []*exec.Cmd
 	//step 1 start kwin
 	var cmdWinMan *exec.Cmd
