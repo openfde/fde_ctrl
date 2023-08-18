@@ -190,7 +190,7 @@ func (impl VncAppImpl) startVncApp(app, path string, sysOnly bool) (port string,
 		return
 	}
 	var arg []string
-	arg = append(arg, "--SecurityTypes=None", "-name="+app, "--I-KNOW-THIS-IS-INSECURE")
+	arg = append(arg, "--SecurityTypes=None", "-name="+app, "--I-KNOW-THIS-IS-INSECURE", "-localhost=no")
 	logger.Info("app_not_start", app)
 	if !sysOnly {
 		err = constructXstartup(app, path)
@@ -329,24 +329,21 @@ func grepIbusApp(name string) (exist bool, pid string, err error) {
 	grepCmd.Wait()
 	xgrepCmd.Wait()
 	// 解析 grep 命令的输出
-
+	logger.Info("stop_ibus_daemon", name)
 	lines := bytes.Split(output.Bytes(), []byte("\n"))
 	for _, line := range lines {
 		if strings.Contains(string(line), name) {
-			var appName string
-			if name == appName {
-				argList := strings.Split(string(line), " ")
-				if len(argList) < 3 {
-					err = errors.New("not match ibus-daemon")
-					return
-				}
-				pid = argList[1]
-				exist = true
+			fields := strings.Fields(string(line))
+			if len(fields) < 3 {
+				err = errors.New("not match ibus-daemon")
 				return
-			} else {
-				pid = ""
-				exist = false
 			}
+			pid = fields[1]
+			exist = true
+			return
+		} else {
+			pid = ""
+			exist = false
 		}
 	}
 	return

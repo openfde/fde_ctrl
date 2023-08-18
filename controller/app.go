@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"fde_ctrl/conf"
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
 
@@ -20,13 +21,13 @@ import (
 const baseDir = "/usr/share"
 const desktopEntryPath = baseDir + "/applications"
 const iconPixmapPath = baseDir + "/pixmaps"
-const iconsHiColorPath = baseDir + "/icons/hicolor/16x16"
-const iconsGnomePath = baseDir + "/gnome/16x16"
+const iconsHiColorPath = baseDir + "/icons/hicolor"
+const iconsGnomePath = baseDir + "/gnome/"
 
-var iconPathList = []string{iconPixmapPath, iconsHiColorPath, iconsGnomePath}
+var iconPathList = []string{iconsHiColorPath, iconsGnomePath}
 
-func (impls *Apps) Scan() error {
-	err := impls.scan(iconPathList, desktopEntryPath)
+func (impls *Apps) Scan(configure conf.Configure) error {
+	err := impls.scan(iconPixmapPath, iconPathList, desktopEntryPath, configure)
 	if err != nil {
 		logger.Error("scan_apps_init", nil, err)
 		return err
@@ -80,7 +81,12 @@ func (impls *Apps) ScanHandler(c *gin.Context) {
 	response.ResponseWithPagination(c, pageQuery, data)
 }
 
-func (impls *Apps) scan(iconPathList []string, desktopEntryPath string) error {
+func (impls *Apps) scan(iconPixmapsPath string, iconSizePathList []string, desktopEntryPath string, configure conf.Configure) error {
+	var iconPathList []string
+	iconPathList = append(iconPathList, iconPixmapsPath)
+	for index, _ := range iconSizePathList {
+		iconPathList = append(iconPathList, iconSizePathList[index]+"/"+configure.App.IconSize)
+	}
 	// 调用递归函数遍历目录下的所有文件
 	err := filepath.Walk(desktopEntryPath, impls.visitEntries)
 	if err != nil {

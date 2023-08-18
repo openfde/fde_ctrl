@@ -43,7 +43,7 @@ func setup(r *gin.Engine, configure conf.Configure) error {
 	var pm controller.PowerManager
 	var dm controller.DisplayManager
 	group := r.Group("/api")
-	err := apps.Scan()
+	err := apps.Scan(configure)
 	if err != nil {
 		return err
 	}
