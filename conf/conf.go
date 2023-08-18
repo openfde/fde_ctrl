@@ -11,7 +11,12 @@ const (
 	sectionHttp       = "Http Server"
 	sectionWinManager = "WindowsManager"
 	sectionDisplay    = "Display"
+	sectionApp        = "App"
 )
+
+type App struct {
+	IconSize string //16 x 16 default
+}
 
 type Android struct {
 	Image string
@@ -39,6 +44,7 @@ type Configure struct {
 	WindowsManager WindowsManager
 	Display        Display
 	Http           Http
+	App            App
 }
 
 func Read() (configure Configure, err error) {
@@ -72,6 +78,11 @@ func Read() (configure Configure, err error) {
 	configure.Display.Resolution = sectionDisplay.Key("Resolution").String()
 	if len(configure.Display.Resolution) == 0 {
 		configure.Display.Resolution = "1920,1080"
+	}
+	sectionApp := cfg.Section(sectionApp)
+	configure.App.IconSize = sectionApp.Key("IconSize").String()
+	if len(configure.App.IconSize) == 0 {
+		configure.App.IconSize = "16x16"
 	}
 	return
 }
