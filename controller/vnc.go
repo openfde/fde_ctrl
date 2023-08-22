@@ -29,6 +29,11 @@ func (impl VncAppImpl) Setup(r *gin.RouterGroup) {
 }
 
 func constructXstartup(name, path string) error {
+	fields := strings.Fields(path)
+	if len(fields) > 1 {
+		//linux do not support a path which contains white space
+		path = fields[0]
+	}
 	data := []byte("#!/bin/bash\n" +
 		"ibus-daemon -d  -n " + name + " \n" +
 		"sleep 1 \n" +
