@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fde_ctrl/process_chan"
+	"os/exec"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,6 +15,11 @@ func (impl PowerManager) Setup(r *gin.RouterGroup) {
 	v1.POST("/power/off", impl.poweroffHandler)
 	v1.POST("/power/logout", impl.logoutHandler)
 	v1.POST("/power/restart", impl.restartHandler)
+	v1.POST("/power/lock", impl.lockHandler)
+}
+
+func (impl PowerManager) lockHandler(c *gin.Context) {
+	exec.Command("dm-tool", "lock").Start()
 }
 
 func (impl PowerManager) logoutHandler(c *gin.Context) {
