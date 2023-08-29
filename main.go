@@ -147,7 +147,7 @@ func main() {
 				case process_chan.Restart:
 					{
 						logger.Info("restart", "exit due to some one send restart signal")
-						cmd := exec.Command("restart")
+						cmd := exec.Command("reboot")
 						err = cmd.Run()
 						if err != nil {
 							logger.Error("restart_failed", nil, err)
