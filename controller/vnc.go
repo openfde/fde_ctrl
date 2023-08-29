@@ -43,6 +43,7 @@ func constructXstartup(name, path string) error {
 		"export GTK_IM_MODULE=ibus\n" +
 		"export QT_IM_MODULE=ibus\n" +
 		"export QT4_IM_MODULE=ibus\n" +
+		"i3 &\n" +
 		"export im=ibus\n" + path + "\n")
 
 	file, err := os.OpenFile("/tmp/"+name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
