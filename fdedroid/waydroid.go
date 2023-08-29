@@ -4,10 +4,10 @@ import (
 	"context"
 	"fde_ctrl/conf"
 	"fde_ctrl/logger"
-	"os/exec"
 	"fde_ctrl/tools"
-	"os"
 	"fmt"
+	"os"
+	"os/exec"
 )
 
 type Waydroid struct {
@@ -15,18 +15,18 @@ type Waydroid struct {
 
 func (fdedroid *Waydroid) Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, conf conf.Configure) (cmdWaydroid *exec.Cmd, err error) {
 	uid := os.Getuid()
-	nativeFile := "/run/user/"+fmt.Sprint(uid)+"/pulse/native"
+	nativeFile := "/run/user/" + fmt.Sprint(uid) + "/pulse/native"
 	if _, err := os.Stat(nativeFile); err != nil {
 		if os.IsNotExist(err) {
-			logger.Info("exist_pulse_native","exist")
+			logger.Info("exist_pulse_native", "exist")
 			_, exist := tools.ProcessExists("pulseaudio")
 			if !exist {
-				go exec.Command("pulseaudio", "--daemonize=no", "--log-target=journal").Start()
+				exec.Command("pulseaudio", "--start", "--log-target=journal").Start()
 			}
 		}
 	}
 
-	exec.Command("waydroid","session","stop").Run()
+	exec.Command("waydroid", "session", "stop").Run()
 	// logger.Error("before waydroid_start", nil, nil)
 	cmdWaydroid = exec.CommandContext(mainCtx, "waydroid", "show-full-ui")
 	// logger.Error("before waydroid_start", "run", nil)
