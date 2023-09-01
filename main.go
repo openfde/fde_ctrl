@@ -104,6 +104,15 @@ func main() {
 	// 启动HTTP服务器
 	go engine.Run(":18080")
 
+	unixEngine := gin.New()
+	engine.Use(middleware.LogHandler(), gin.Recovery())
+	engine.Use(middleware.ErrHandler())
+	if err := setup(engine, configure); err != nil {
+		logger.Error("setup", nil, err)
+		return
+	}
+	go unixEngine.RunUnix("~/local/share/waydroid/data/x.socket")
+
 	// conn, err := dbus.ConnectSessionBus()
 	// if err != nil {
 	// 	mainCancel()
