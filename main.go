@@ -111,7 +111,7 @@ func main() {
 		logger.Error("setup", nil, err)
 		return
 	}
-	go unixEngine.RunUnix("~/local/share/waydroid/data/x.socket")
+	go unixEngine.RunUnix("/home/warlice/.local/share/waydroid/data/x.socket")
 
 	// conn, err := dbus.ConnectSessionBus()
 	// if err != nil {
