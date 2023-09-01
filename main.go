@@ -105,9 +105,9 @@ func main() {
 	go engine.Run(":18080")
 
 	unixEngine := gin.New()
-	engine.Use(middleware.LogHandler(), gin.Recovery())
-	engine.Use(middleware.ErrHandler())
-	if err := setup(engine, configure); err != nil {
+	unixEngine.Use(middleware.LogHandler(), gin.Recovery())
+	unixEngine.Use(middleware.ErrHandler())
+	if err := setup(unixEngine, configure); err != nil {
 		logger.Error("setup", nil, err)
 		return
 	}
