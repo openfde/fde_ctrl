@@ -12,6 +12,7 @@ import (
 	"fde_ctrl/windows_manager"
 
 	"os/exec"
+//	"os"
 
 	// "io/ioutil"
 
@@ -24,18 +25,6 @@ import (
 const socket = "./fde_ctrl.sock"
 
 func setup(r *gin.Engine, configure conf.Configure) error {
-
-	// 创建 Unix Socket
-	// os.Remove(socket)
-	// listener, err := net.Listen("unix", socket)
-	// if err != nil {
-	// 	log.Fatal("Error creating socket: ", err)
-	// }
-	// defer listener.Close()
-	// // 创建 HTTP 服务器
-	// server := &http.Server{}
-
-	// http.HandleFunc("/ws", handleWebSocket)
 
 	var vnc controller.VncAppImpl
 	var apps controller.Apps
@@ -104,14 +93,16 @@ func main() {
 	// 启动HTTP服务器
 	go engine.Run(":18080")
 
-	unixEngine := gin.New()
+/*	unixEngine := gin.New()
 	unixEngine.Use(middleware.LogHandler(), gin.Recovery())
 	unixEngine.Use(middleware.ErrHandler())
 	if err := setup(unixEngine, configure); err != nil {
 		logger.Error("setup", nil, err)
 		return
 	}
+	os.Remove("/home/warlice/.local/share/waydroid/data/x.socket")
 	go unixEngine.RunUnix("/home/warlice/.local/share/waydroid/data/x.socket")
+	*/
 
 	// conn, err := dbus.ConnectSessionBus()
 	// if err != nil {
