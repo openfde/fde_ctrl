@@ -23,8 +23,9 @@ const desktopEntryPath = baseDir + "/applications"
 const iconPixmapPath = baseDir + "/pixmaps"
 const iconsHiColorPath = baseDir + "/icons/hicolor"
 const iconsGnomePath = baseDir + "/gnome/"
+const iconsUKuiPath = baseDir + "/ukui-icon-theme-default/"
 
-var iconPathList = []string{iconsHiColorPath, iconsGnomePath}
+var iconPathList = []string{iconsHiColorPath, iconsGnomePath, iconsUKuiPath}
 
 func (impls *Apps) Scan(configure conf.Configure) error {
 	err := impls.scan(iconPixmapPath, iconPathList, desktopEntryPath, configure)
@@ -184,7 +185,7 @@ func (impl *Apps) visitEntries(path string, info fs.FileInfo, err error) error {
 	execPath := section.Key("Exec").String()
 	entryType := section.Key("Type").String()
 	noDisplay := section.Key("NoDisplay").String()
-	if strings.Contains(noDisplay,"true") {
+	if strings.Contains(noDisplay, "true") {
 		return nil
 	}
 	*impl = append(*impl, AppImpl{
