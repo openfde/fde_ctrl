@@ -183,6 +183,10 @@ func (impl *Apps) visitEntries(path string, info fs.FileInfo, err error) error {
 	iconPath := section.Key("Icon").String()
 	execPath := section.Key("Exec").String()
 	entryType := section.Key("Type").String()
+	noDisplay := section.Key("NoDisplay").String()
+	if strings.Contains(noDisplay,"true") {
+		return nil
+	}
 	*impl = append(*impl, AppImpl{
 		Type:     entryType,
 		Path:     execPath,
