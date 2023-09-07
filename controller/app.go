@@ -22,8 +22,8 @@ const baseDir = "/usr/share"
 const desktopEntryPath = baseDir + "/applications"
 const iconPixmapPath = baseDir + "/pixmaps"
 const iconsHiColorPath = baseDir + "/icons/hicolor"
-const iconsGnomePath = baseDir + "/gnome/"
-const iconsUKuiPath = baseDir + "/ukui-icon-theme-default/"
+const iconsGnomePath = baseDir + "/icons/gnome"
+const iconsUKuiPath = baseDir + "/icons/ukui-icon-theme-default"
 
 var iconPathList = []string{iconsHiColorPath, iconsGnomePath, iconsUKuiPath}
 
