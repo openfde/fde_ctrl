@@ -28,8 +28,14 @@ var defaultIconSizes = []string{"64x64", "scalable"}
 
 // var iconPathList = []string{iconsHiColorPath, iconsGnomePath, iconsUKuiPath}
 
-func (impls *Apps) Scan(configure conf.Configure) error {
-	err := impls.scan(iconPixmapPath, desktopEntryPath, configure.App.IconThemes, configure.App.IconSizes)
+type AppControllerImpl struct {
+	AppList Apps
+	Conf    conf.Configure
+}
+
+func (appImpl *AppControllerImpl) Scan(configure conf.Configure) error {
+	appImpl.Conf = configure
+	err := appImpl.AppList.scan(iconPixmapPath, desktopEntryPath, configure.App.IconThemes, configure.App.IconSizes)
 	if err != nil {
 		logger.Error("scan_apps_init", nil, err)
 		return err
@@ -47,17 +53,12 @@ type AppImpl struct {
 	ZhName   string
 }
 
-// type Apps struct {
-// Conf conf.Configure
 type Apps []AppImpl
 
-// }
-
-// type Apps []AppImpl
-
-func (impls *Apps) Setup(r *gin.RouterGroup) {
+func (impl AppControllerImpl) Setup(r *gin.RouterGroup) {
 	v1 := r.Group("/v1")
-	v1.GET("/apps", impls.ScanHandler)
+	v1.GET("/apps", impl.ScanHandler)
+	v1.PUT("/apps", impl.UpdateHandler)
 }
 
 func validatePage(start, end, length int) (int, int) {
@@ -75,19 +76,20 @@ func validatePage(start, end, length int) (int, int) {
 	return start, end
 }
 
-func (impls *Apps) UpdateHandler(c *gin.Context) {
-
+func (impls *AppControllerImpl) UpdateHandler(c *gin.Context) {
+	impls.Scan(impls.Conf)
+	response.Response(c, nil)
 }
-func (impls *Apps) ScanHandler(c *gin.Context) {
-	// impls.Scan(iconPixmapPath, iconsPath, desktopEntryPath)
+
+func (impls AppControllerImpl) ScanHandler(c *gin.Context) {
 	pageQuery := getPageQuery(c)
 	var data Apps
-	pageQuery.Total = len(*impls)
+	pageQuery.Total = len(impls.AppList)
 	if pageQuery.PageEnable {
 		start := (pageQuery.Page - 1) * pageQuery.PageSize
 		end := start + pageQuery.PageSize
-		start, end = validatePage(start, end, len(*impls))
-		data = (*impls)[start:end]
+		start, end = validatePage(start, end, len(impls.AppList))
+		data = impls.AppList[start:end]
 	}
 	response.ResponseWithPagination(c, pageQuery, data)
 }
