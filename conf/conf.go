@@ -15,7 +15,8 @@ const (
 )
 
 type App struct {
-	IconSize string //16 x 16 default
+	IconSizes  []string //16 x 16 default
+	IconThemes []string //hicolor
 }
 
 type Android struct {
@@ -66,23 +67,19 @@ func Read() (configure Configure, err error) {
 	if len(configure.Http.Host) == 0 {
 		configure.Http.Host = "128.128.0.1"
 	}
-
 	sectionWinManager := cfg.Section(sectionWinManager)
 	configure.WindowsManager.Name = sectionWinManager.Key("Name").String()
 	if len(configure.WindowsManager.Name) == 0 {
 		configure.WindowsManager.Name = "kwin"
 	}
 	configure.WindowsManager.Protocol = sectionWinManager.Key("Protocol").String()
-
 	sectionDisplay := cfg.Section(sectionDisplay)
 	configure.Display.Resolution = sectionDisplay.Key("Resolution").String()
 	if len(configure.Display.Resolution) == 0 {
 		configure.Display.Resolution = "1920,1080"
 	}
 	sectionApp := cfg.Section(sectionApp)
-	configure.App.IconSize = sectionApp.Key("IconSize").String()
-	if len(configure.App.IconSize) == 0 {
-		configure.App.IconSize = "16x16"
-	}
+	configure.App.IconSizes = sectionApp.Key("IconSize").Strings(",")
+	configure.App.IconThemes = sectionApp.Key("IconTheme").Strings(",")
 	return
 }
