@@ -38,7 +38,7 @@ func setup(r *gin.Engine, configure conf.Configure) error {
 	// http.HandleFunc("/ws", handleWebSocket)
 
 	var vnc controller.VncAppImpl
-	var apps controller.AppControllerImpl
+	var apps controller.Apps
 	var clipboard controller.ClipboardImpl
 	var pm controller.PowerManager
 	var dm controller.DisplayManager
@@ -51,7 +51,7 @@ func setup(r *gin.Engine, configure conf.Configure) error {
 	clipboard.InitAndWatch(configure)
 	dm.SetMirror()
 
-	controllers = append(controllers, clipboard, pm, apps, vnc, dm)
+	controllers = append(controllers, clipboard, pm, &apps, vnc, dm)
 	for _, value := range controllers {
 		value.Setup(group)
 	}
