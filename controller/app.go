@@ -21,14 +21,15 @@ import (
 const baseDir = "/usr/share"
 const desktopEntryPath = baseDir + "/applications"
 const iconPixmapPath = baseDir + "/pixmaps"
-const iconsHiColorPath = baseDir + "/icons/hicolor"
-const iconsGnomePath = baseDir + "/icons/gnome"
-const iconsUKuiPath = baseDir + "/icons/ukui-icon-theme-default"
+const iconPath = baseDir + "/icons/"
 
-var iconPathList = []string{iconsHiColorPath, iconsGnomePath, iconsUKuiPath}
+var defaultIconThemes = []string{"hicolor", "ukui-icon-theme-deafult", "gnome"}
+var defaultIconSizes = []string{"64x64", "scalable"}
+
+// var iconPathList = []string{iconsHiColorPath, iconsGnomePath, iconsUKuiPath}
 
 func (impls *Apps) Scan(configure conf.Configure) error {
-	err := impls.scan(iconPixmapPath, iconPathList, desktopEntryPath, configure)
+	err := impls.scan(iconPixmapPath, desktopEntryPath, configure.App.IconThemes, configure.App.IconSizes)
 	if err != nil {
 		logger.Error("scan_apps_init", nil, err)
 		return err
@@ -46,7 +47,13 @@ type AppImpl struct {
 	ZhName   string
 }
 
+// type Apps struct {
+// Conf conf.Configure
 type Apps []AppImpl
+
+// }
+
+// type Apps []AppImpl
 
 func (impls *Apps) Setup(r *gin.RouterGroup) {
 	v1 := r.Group("/v1")
@@ -68,6 +75,9 @@ func validatePage(start, end, length int) (int, int) {
 	return start, end
 }
 
+func (impls *Apps) UpdateHandler(c *gin.Context) {
+
+}
 func (impls *Apps) ScanHandler(c *gin.Context) {
 	// impls.Scan(iconPixmapPath, iconsPath, desktopEntryPath)
 	pageQuery := getPageQuery(c)
@@ -82,14 +92,22 @@ func (impls *Apps) ScanHandler(c *gin.Context) {
 	response.ResponseWithPagination(c, pageQuery, data)
 }
 
-func (impls *Apps) scan(iconPixmapsPath string, iconSizePathList []string, desktopEntryPath string, configure conf.Configure) error {
+func (impls *Apps) scan(iconPixmapsPath, desktopEntryPath string, iconThemes, iconSizes []string) error {
 	var iconPathList []string
 	iconPathList = append(iconPathList, iconPixmapsPath)
-	for index, _ := range iconSizePathList {
-		iconPathList = append(iconPathList, iconSizePathList[index]+"/"+configure.App.IconSize)
+	if len(iconSizes) == 0 || (len(iconSizes) == 1 && iconSizes[0] == "") {
+		iconSizes = defaultIconSizes
+	}
+	if len(iconThemes) == 0 || (len(iconThemes) == 1 && iconThemes[0] == "") {
+		iconThemes = defaultIconThemes
+	}
+	for index, _ := range iconThemes {
+		for sizeIndex, _ := range iconSizes {
+			iconPathList = append(iconPathList, iconPath+iconThemes[index]+"/"+iconSizes[sizeIndex])
+		}
 	}
 	// 调用递归函数遍历目录下的所有文件
-	err := filepath.Walk(desktopEntryPath, impls.visitEntries)
+	err := filepath.Walk(desktopEntryPath, impls.visitDesktopEntries)
 	if err != nil {
 		return err
 	}
@@ -99,7 +117,7 @@ func (impls *Apps) scan(iconPixmapsPath string, iconSizePathList []string, deskt
 	for index, app := range *impls {
 		absPath = ""
 		//首先确定其是不是绝对路径,且有后缀
-		if filepath.IsAbs(app.IconPath) && app.IconPath[0] == filepath.Separator && filepath.Ext(app.IconPath) != "" {
+		if filepath.IsAbs(app.IconPath) && filepath.Ext(app.IconPath) != "" {
 			_, err := os.Stat(app.IconPath)
 			if os.IsNotExist(err) {
 				//文件不存在，则跳过
@@ -164,7 +182,7 @@ func (impl *AppImpl) readIconForApp(path string, info fs.FileInfo, err error) er
 }
 
 // 递归访问指定目录下的所有文件和子目录
-func (impl *Apps) visitEntries(path string, info fs.FileInfo, err error) error {
+func (impl *Apps) visitDesktopEntries(path string, info fs.FileInfo, err error) error {
 	if err != nil {
 		return err
 	}
