@@ -6,8 +6,10 @@ import (
 
 func TestApps_Scan(t *testing.T) {
 	type args struct {
-		iconsPathList    []string
+		iconsPixmapsPath string
 		desktopEntryPath string
+		themes           []string
+		sizes            []string
 	}
 	tests := []struct {
 		name    string
@@ -19,8 +21,10 @@ func TestApps_Scan(t *testing.T) {
 		{
 			name: "ok",
 			args: args{
-				iconsPathList:    []string{"./test/pixmaps", "./test/icons"},
+				iconsPixmapsPath: "./test/pixmaps",
 				desktopEntryPath: "./test/applications",
+				themes:           []string{"hicolor"},
+				sizes:            []string{"64x64"},
 			},
 			impls: Apps{},
 			output: Apps{
@@ -38,7 +42,7 @@ func TestApps_Scan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.impls.scan(tt.args.iconsPathList, tt.args.desktopEntryPath)
+			err := tt.impls.scan(tt.args.iconsPixmapsPath, tt.args.desktopEntryPath, tt.args.themes, tt.args.sizes)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Apps.AppScan() error = %v, wantErr %v", err, tt.wantErr)
 			}
