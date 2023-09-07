@@ -79,7 +79,7 @@ func Read() (configure Configure, err error) {
 		configure.Display.Resolution = "1920,1080"
 	}
 	sectionApp := cfg.Section(sectionApp)
-	configure.App.IconSizes = sectionApp.Key("IconSize").Strings(",")
-	configure.App.IconThemes = sectionApp.Key("IconTheme").Strings(",")
+	configure.App.IconSizes = sectionApp.Key("IconSizes").Strings(",")
+	configure.App.IconThemes = sectionApp.Key("IconThemes").Strings(",")
 	return
 }
