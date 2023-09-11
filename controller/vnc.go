@@ -193,6 +193,7 @@ func (impl VncAppImpl) doStop(app, port string) (err error) {
 			syscall.Kill(iPid, syscall.SIGTERM)
 		}
 	}
+	return nil
 }
 
 // start a app ,return the port or error
