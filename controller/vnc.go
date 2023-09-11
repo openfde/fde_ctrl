@@ -391,7 +391,7 @@ func grepIbusApp(name string) (exist bool, pid string, err error) {
 func parseApp(args string) (appName, port string) {
 	// 将args按空格分割成多个参数
 	logger.Info("parse", args)
-	argList := strings.Split(args, "tigervnc")
+	argList := strings.Split(args, "Xtigervnc")
 	if len(argList) < 2 {
 		return
 	}
