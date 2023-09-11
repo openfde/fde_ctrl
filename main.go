@@ -167,6 +167,8 @@ func main() {
 				case process_chan.Logout:
 					{
 						// logout
+						var vnc controller.VncAppImpl
+						vnc.StopAll()
 						logger.Info("logout", "exit due to some one send logout signal")
 						return
 					}
