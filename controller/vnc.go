@@ -26,6 +26,7 @@ func (impl VncAppImpl) Setup(r *gin.RouterGroup) {
 	v1 := r.Group("/v1")
 	v1.POST("/vnc", impl.startVncAppHandle)
 	v1.POST("/stop_vnc", impl.stopVncAppHandle)
+	v1.POST("/vnc/stops", impl.StopAllHandle)
 }
 
 func constructXstartup(name, path string) error {
@@ -88,6 +89,34 @@ func (impl VncAppImpl) stopVncAppHandle(c *gin.Context) {
 	response.Response(c, nil)
 }
 
+const VncServer = "Xtigervnc"
+
+func (impl VncAppImpl) StopAllHandle(c *gin.Context) {
+	err := impl.StopAll()
+	if err != nil {
+		response.ResponseError(c, http.StatusInternalServerError, err)
+		return
+	}
+	response.Response(c, nil)
+}
+
+func (impl VncAppImpl) StopAll() error {
+	for {
+		err, exist, port, app := grepApp(VncServer)
+		if err != nil {
+			return err
+		}
+		if exist && len(port) != 0 {
+			err := impl.doStop(app, port)
+			if err != nil {
+				return err
+			}
+		} else {
+			return nil
+		}
+	}
+}
+
 func (impl VncAppImpl) startVncAppHandle(c *gin.Context) {
 	var request startAppRequest
 	err := c.ShouldBind(&request)
@@ -117,6 +146,55 @@ func simplifyPort(port string) (string, error) {
 	}
 }
 
+func (impl VncAppImpl) doStop(app, port string) (err error) {
+	logger.Info("debug_arg", app+"@"+port)
+	port, err = simplifyPort(port)
+	if err != nil {
+		return
+	}
+	cmdVnc := exec.Command("vncserver", "--kill", ":"+port)
+	cmdVnc.Env = append(os.Environ())
+	cmdVnc.SysProcAttr = &syscall.SysProcAttr{
+		Setsid: true,
+	}
+	var stdout, stderr io.ReadCloser
+	stdout, err = cmdVnc.StdoutPipe()
+	if err != nil {
+		logger.Error("stdout pipe for vnc server", nil, err)
+		return
+	}
+	stderr, err = cmdVnc.StderrPipe()
+	if err != nil {
+		logger.Error("stdout pipe for vnc server", nil, err)
+		return
+	}
+	err = cmdVnc.Start()
+	if err != nil {
+		logger.Error("stop vnc  app failed", app+"@"+port, err)
+		err = errors.New("stop vnc server failed")
+		return
+	}
+	output, err := ioutil.ReadAll(io.MultiReader(stdout, stderr))
+	if err != nil {
+		logger.Error("read start vnc server failed", nil, err)
+	}
+	cmdVnc.Wait()
+	logger.Info("debug_vnc", string(output))
+	_, pid, err := grepIbusApp(app)
+	if err != nil {
+		logger.Error("grep_ibus_daemon_app", nil, err)
+	} else {
+		if pid != "" {
+			iPid, err := strconv.Atoi(pid)
+			if err != nil {
+				return err
+			}
+			logger.Info("kill_ibus_daemon", fmt.Sprint(iPid, " "+app))
+			syscall.Kill(iPid, syscall.SIGTERM)
+		}
+	}
+}
+
 // start a app ,return the port or error
 func (impl VncAppImpl) stopVncApp(app string, sysOnly bool) (err error) {
 	if sysOnly {
@@ -125,57 +203,12 @@ func (impl VncAppImpl) stopVncApp(app string, sysOnly bool) (err error) {
 	logger.Info("stop_app", app)
 	app = strings.ToLower(app)
 	app = strings.ReplaceAll(app, " ", "_")
-	err, exist, port := grepApp(app)
+	err, exist, port, _ := grepApp(app)
 	if err != nil {
 		return
 	}
 	if exist {
-		logger.Info("debug_arg", app+"@"+port)
-		port, err = simplifyPort(port)
-		if err != nil {
-			return
-		}
-		cmdVnc := exec.Command("vncserver", "--kill", ":"+port)
-		cmdVnc.Env = append(os.Environ())
-		cmdVnc.SysProcAttr = &syscall.SysProcAttr{
-			Setsid: true,
-		}
-		var stdout, stderr io.ReadCloser
-		stdout, err = cmdVnc.StdoutPipe()
-		if err != nil {
-			logger.Error("stdout pipe for vnc server", nil, err)
-			return
-		}
-		stderr, err = cmdVnc.StderrPipe()
-		if err != nil {
-			logger.Error("stdout pipe for vnc server", nil, err)
-			return
-		}
-		err = cmdVnc.Start()
-		if err != nil {
-			logger.Error("stop vnc  app failed", app+"@"+port, err)
-			err = errors.New("stop vnc server failed")
-			return
-		}
-		output, err := ioutil.ReadAll(io.MultiReader(stdout, stderr))
-		if err != nil {
-			logger.Error("read start vnc server failed", nil, err)
-		}
-		cmdVnc.Wait()
-		logger.Info("debug_vnc", string(output))
-		_, pid, err := grepIbusApp(app)
-		if err != nil {
-			logger.Error("grep_ibus_daemon_app", nil, err)
-		} else {
-			if pid != "" {
-				iPid, err := strconv.Atoi(pid)
-				if err != nil {
-					return err
-				}
-				logger.Info("kill_ibus_daemon", fmt.Sprint(iPid, " "+app))
-				syscall.Kill(iPid, syscall.SIGTERM)
-			}
-		}
+		return impl.doStop(app, port)
 	}
 	return nil
 }
@@ -188,7 +221,7 @@ func (impl VncAppImpl) startVncApp(app, path string, sysOnly bool) (port string,
 	logger.Info("start_app", app)
 	app = strings.ToLower(app)
 	app = strings.ReplaceAll(app, " ", "_")
-	err, exist, port := grepApp(app)
+	err, exist, port, _ := grepApp(app)
 	if err != nil {
 		return
 	}
@@ -251,7 +284,7 @@ func (impl VncAppImpl) startVncApp(app, path string, sysOnly bool) (port string,
 	}
 	cmdVnc.Wait()
 	//to grep the port
-	err, _, port = grepApp(app)
+	err, _, port, _ = grepApp(app)
 	return
 }
 
@@ -259,7 +292,7 @@ type startAppResponse struct {
 	Port string
 }
 
-func grepApp(name string) (err error, exist bool, port string) {
+func grepApp(name string) (err error, exist bool, port, appName string) {
 	psCmd := exec.Command("ps", "-ef")
 	grepCmd := exec.Command("grep", "vnc")
 	xgrepCmd := exec.Command("grep", "-v", "grep")
@@ -292,9 +325,8 @@ func grepApp(name string) (err error, exist bool, port string) {
 	lines := bytes.Split(output.Bytes(), []byte("\n"))
 	for _, line := range lines {
 		if strings.Contains(string(line), name) {
-			var appName string
 			appName, port = parseApp(string(line))
-			if name == appName {
+			if (name == appName) || (name == VncServer) {
 				exist = true
 				return
 			} else {
