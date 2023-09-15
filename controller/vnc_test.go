@@ -92,6 +92,20 @@ func Test_removeLinuxArgs(t *testing.T) {
 			},
 			wantFilteredPath: "wps",
 		},
+		{
+			name: "have linux exec args without program args other",
+			args: args{
+				path: "wps --user=%F",
+			},
+			wantFilteredPath: "wps",
+		},
+		{
+			name: "no linux exec args without program args other",
+			args: args{
+				path: "wps F",
+			},
+			wantFilteredPath: "wps F",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
