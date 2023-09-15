@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -315,7 +314,7 @@ type startAppResponse struct {
 
 func grepApp(name string) (err error, exist bool, port, appName string) {
 	psCmd := exec.Command("ps", "-ef")
-	grepCmd := exec.Command("grep", "vnc")
+	grepCmd := exec.Command("grep", "Xtigervnc")
 	xgrepCmd := exec.Command("grep", "-v", "grep")
 
 	// 将 ps 命令的输出传递给 grep 命令进行过滤
@@ -351,9 +350,21 @@ func grepApp(name string) (err error, exist bool, port, appName string) {
 				exist = true
 				return
 			} else {
-
 				port = ""
 			}
+		}
+	}
+	return
+}
+
+func parseApp(line string) (appName, port string) {
+	fields := strings.Fields(line)
+	for index, value := range fields {
+		if strings.Contains(value, "rfbport") {
+			port = fields[index+1]
+		}
+		if strings.Contains(value, "desktop") {
+			appName = fields[index+1]
 		}
 	}
 	return
@@ -406,41 +417,4 @@ func grepIbusApp(name string) (exist bool, pid string, err error) {
 		}
 	}
 	return
-}
-
-func parseApp(args string) (appName, port string) {
-	// 将args按空格分割成多个参数
-	logger.Info("parse", args)
-	argList := strings.Split(args, "Xtigervnc")
-	if len(argList) < 2 {
-		return
-	}
-	argList = strings.Split(argList[1], " ")
-	if len(argList) < 3 {
-		return
-	}
-	argLists := argList[2:]
-	// 创建一个FlagSet对象
-	logger.Info("last", argLists)
-	fs := flag.NewFlagSet("temporaryFlagSet", flag.ContinueOnError)
-	fs.Usage = func() {}
-
-	// 定义一个名为desktop的string类型flag
-	fs.StringVar(&appName, "desktop", "", "desktop default")
-	fs.StringVar(&port, "rfbport", "", "5901")
-	var auth, geometry, depth string
-	fs.StringVar(&auth, "auth", "", "desktop value")
-	fs.StringVar(&geometry, "geometry", "", "desktop value")
-	fs.StringVar(&depth, "depth", "", "desktop value")
-	var rfbwait string
-	fs.StringVar(&rfbwait, "rfbwait", "", "desktop value")
-
-	var ignore bytes.Buffer
-	fs.SetOutput(&ignore)
-
-	// 解析参数
-	fs.Parse(argLists)
-	logger.Info("return", port)
-	return
-
 }
