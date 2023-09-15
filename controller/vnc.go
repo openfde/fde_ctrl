@@ -30,11 +30,17 @@ func (impl VncAppImpl) Setup(r *gin.RouterGroup) {
 }
 
 func removeDesktopArgs(path string) (filteredPath string) {
+	if len(path) > 2 {
+		if string(path[len(path)-2]) == "%" {
+
+		}
+	}
 	fields := strings.Fields(path)
 	var validLength = len(fields)
 	if len(fields) > 1 {
 		//linux do not support a path which contains white space
-		if string(fields[len(fields)-1][0]) == "%" {
+		newfield := fields[len(fields)-1]
+		if string(newfield[0]) == "%" || (len(newfield) > 2 && string(newfield[len(newfield)-2]) == "%") {
 			validLength = len(fields) - 1
 		}
 	}
