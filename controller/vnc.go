@@ -29,12 +29,26 @@ func (impl VncAppImpl) Setup(r *gin.RouterGroup) {
 	v1.POST("/vnc/stops", impl.StopAllHandle)
 }
 
-func constructXstartup(name, path string) error {
+func removeDesktopArgs(path string) (filteredPath string) {
 	fields := strings.Fields(path)
+	var validLength = len(fields)
 	if len(fields) > 1 {
 		//linux do not support a path which contains white space
-		path = fields[0]
+		if string(fields[len(fields)-1][0]) == "%" {
+			validLength = len(fields) - 1
+		}
 	}
+	for i := 0; i < validLength; i++ {
+		filteredPath += fields[i]
+		if i < validLength-1 {
+			filteredPath += " "
+		}
+	}
+	return
+}
+
+func constructXstartup(name, path string) error {
+	path = removeDesktopArgs(path)
 	data := []byte("#!/bin/bash\n" +
 		"ibus-daemon -d  -n " + name + " \n" +
 		"sleep 1 \n" +
