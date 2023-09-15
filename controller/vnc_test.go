@@ -115,3 +115,43 @@ func Test_removeLinuxArgs(t *testing.T) {
 		})
 	}
 }
+
+func Test_parseAppPort(t *testing.T) {
+	type args struct {
+		line string
+	}
+	tests := []struct {
+		name        string
+		args        args
+		wantAppName string
+		wantPort    string
+	}{
+		{
+			name: "terminal",
+			args: args{
+				line: "/usr/bin/Xtigervnc :6 -localhost=0 -desktop terminator -rfbport 5906 -SecurityTypes None -auth /home/phytium/.Xauthority -geometry 1920x1200 -depth 24",
+			},
+			wantAppName: "terminator",
+			wantPort:    "5906",
+		},
+		{
+			name: "no app",
+			args: args{
+				line: "/usr/bin/Xtigervnc",
+			},
+			wantAppName: "",
+			wantPort:    "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotAppName, gotPort := parseApp(tt.args.line)
+			if gotAppName != tt.wantAppName {
+				t.Errorf("parseAppPort() gotAppName = %v, want %v", gotAppName, tt.wantAppName)
+			}
+			if gotPort != tt.wantPort {
+				t.Errorf("parseAppPort() gotPort = %v, want %v", gotPort, tt.wantPort)
+			}
+		})
+	}
+}
