@@ -22,6 +22,15 @@ type VncAppImpl struct {
 }
 
 func (impl VncAppImpl) Setup(r *gin.RouterGroup) {
+	home, err := os.UserHomeDir()
+	if err == nil {
+		_, err := os.Stat(home + "/.config/i3/config")
+		if err != nil {
+			if os.IsNotExist(err) {
+				impl.copyFile(home+"/.config/i3/config", "/etc/i3/config")
+			}
+		}
+	}
 	v1 := r.Group("/v1")
 	v1.POST("/vnc", impl.startVncAppHandle)
 	v1.POST("/stop_vnc", impl.stopVncAppHandle)
@@ -231,6 +240,17 @@ func (impl VncAppImpl) stopVncApp(app string, sysOnly bool) (err error) {
 		return impl.doStop(app, port)
 	}
 	return nil
+}
+
+func (impl VncAppImpl) copyFile(dst, src string) (err error) {
+	srcFile, _ := os.Open(src)
+	defer srcFile.Close()
+
+	dstFile, _ := os.Create(dst)
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	return
 }
 
 // start a app ,return the port or error
