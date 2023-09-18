@@ -62,6 +62,7 @@ func setup(r *gin.Engine, configure conf.Configure) error {
 }
 
 var _version_ = "v0.1"
+var _tag_ = "v0.1"
 
 func main() {
 	var version bool
@@ -69,7 +70,7 @@ func main() {
 	flag.Parse()
 
 	if version {
-		fmt.Printf("Version: %s", _version_)
+		fmt.Printf("Version: %s, tag: %s", _version_,_tag_)
 		return
 	}
 	configure, err := conf.Read()
