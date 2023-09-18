@@ -10,6 +10,8 @@ import (
 	"fde_ctrl/process_chan"
 	"fde_ctrl/websocket"
 	"fde_ctrl/windows_manager"
+	"flag"
+	"fmt"
 
 	"os/exec"
 
@@ -59,7 +61,17 @@ func setup(r *gin.Engine, configure conf.Configure) error {
 	return nil
 }
 
+var _version_ = "v0.1"
+
 func main() {
+	var version bool
+	flag.BoolVar(&version, "v", false, "-v")
+	flag.Parse()
+
+	if version {
+		fmt.Printf("Version: %s", _version_)
+		return
+	}
 	configure, err := conf.Read()
 	if err != nil {
 		logger.Error("read_conf", nil, err)
