@@ -65,12 +65,19 @@ var _version_ = "v0.1"
 var _tag_ = "v0.1"
 
 func main() {
-	var version bool
+	var version,help bool
 	flag.BoolVar(&version, "v", false, "-v")
+	flag.BoolVar(&help, "h", false, "-h")
 	flag.Parse()
+	if help{
+		fmt.Println("fde_ctrl:")
+		fmt.Println("\t-v: print versions and tags")
+		fmt.Println("\t-h: print vhelp")
+		return
+	}
 
 	if version {
-		fmt.Printf("Version: %s, tag: %s", _version_,_tag_)
+		fmt.Printf("Version: %s, tag: %s \n", _version_,_tag_)
 		return
 	}
 	configure, err := conf.Read()
