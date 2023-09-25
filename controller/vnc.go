@@ -28,7 +28,7 @@ func (impl VncAppImpl) Setup(r *gin.RouterGroup) {
 		if err != nil {
 			if os.IsNotExist(err) {
 				os.Mkdir(home+"/.config", os.ModeDir)
-				os.Mkdir(home+"/.config/i3", os.ModeDir)
+				os.Mkdir(home+"/.config/i3", os.ModeDir|0700)
 				impl.copyFile(home+"/.config/i3/config", "/etc/i3/config")
 				os.Chown(home+"/.config/i3/config", os.Getuid(), os.Getegid())
 			}
