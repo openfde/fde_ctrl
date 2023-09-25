@@ -176,6 +176,9 @@ func (impl *AppImpl) readIconForApp(path string, info fs.FileInfo, err error) er
 	impl.Icon = base64.StdEncoding.EncodeToString(data)
 
 	impl.IconType = filepath.Ext(path)
+	if len(impl.IconType) == 0 && strings.Contains(path, "pixmaps") {
+		impl.IconType = ".png"
+	}
 	impl.IconPath = path
 	return nil
 }
