@@ -27,7 +27,10 @@ func (impl VncAppImpl) Setup(r *gin.RouterGroup) {
 		_, err := os.Stat(home + "/.config/i3/config")
 		if err != nil {
 			if os.IsNotExist(err) {
+				os.Mkdir(home+"/.config", os.ModeDir)
+				os.Mkdir(home+"/.config/i3", os.ModeDir)
 				impl.copyFile(home+"/.config/i3/config", "/etc/i3/config")
+				os.Chown(home+"/.config/i3/config", os.Getuid(), os.Getegid())
 			}
 		}
 	}
@@ -250,6 +253,9 @@ func (impl VncAppImpl) copyFile(dst, src string) (err error) {
 	defer dstFile.Close()
 
 	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		logger.Error("copy_i3_config", nil, err)
+	}
 	return
 }
 
