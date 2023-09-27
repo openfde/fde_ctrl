@@ -89,7 +89,9 @@ func main() {
 	mainCtx, mainCtxCancelFunc := context.WithCancel(context.Background())
 
 	//mount fuse filesystem
-	fs_fusion.Mount()
+	if fs_fusion.Mount() != nil {
+		return 
+	}
 	var cmds []*exec.Cmd
 	//step 1 start kwin
 	var cmdWinMan *exec.Cmd
