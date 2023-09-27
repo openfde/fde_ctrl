@@ -425,13 +425,12 @@ func Mount() (err error) {
 			}
 		}
 		//todo only mount root by fuse?
-		if mountInfo.MountPoint == "/" {
-			args := []string{"-o allow_other,nonempty", mountInfo.MountPoint, PathPrefix + mountInfo.Volume}
-			ptfs := Ptfs{}
-			ptfs.root = PathPrefix + mountInfo.Volume
-			_host = fuse.NewFileSystemHost(&ptfs)
-			_host.Mount("", args)
-		}
+		args := []string{"-o allow_other,nonempty", mountInfo.MountPoint, PathPrefix + mountInfo.Volume}
+		ptfs := Ptfs{}
+		ptfs.root = PathPrefix + mountInfo.Volume
+		_host = fuse.NewFileSystemHost(&ptfs)
+		logger.Info("mount_fuse", args)
+		_host.Mount("", args)
 	}
 	return nil
 }
