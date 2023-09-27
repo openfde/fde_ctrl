@@ -65,11 +65,11 @@ var _version_ = "v0.1"
 var _tag_ = "v0.1"
 
 func main() {
-	var version,help bool
+	var version, help bool
 	flag.BoolVar(&version, "v", false, "-v")
 	flag.BoolVar(&help, "h", false, "-h")
 	flag.Parse()
-	if help{
+	if help {
 		fmt.Println("fde_ctrl:")
 		fmt.Println("\t-v: print versions and tags")
 		fmt.Println("\t-h: print vhelp")
@@ -77,7 +77,7 @@ func main() {
 	}
 
 	if version {
-		fmt.Printf("Version: %s, tag: %s \n", _version_,_tag_)
+		fmt.Printf("Version: %s, tag: %s \n", _version_, _tag_)
 		return
 	}
 	configure, err := conf.Read()
@@ -212,7 +212,7 @@ func main() {
 }
 
 func killSonProcess(cmds []*exec.Cmd) {
-	for index, _ := range cmds {
+	for index := range cmds {
 		logger.Info("kill_son_process", index)
 		cmds[index].Process.Kill()
 		// cmds[index].Process.Wait()

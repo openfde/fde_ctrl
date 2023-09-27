@@ -24,15 +24,21 @@ type VncAppImpl struct {
 func (impl VncAppImpl) Setup(r *gin.RouterGroup) {
 	home, err := os.UserHomeDir()
 	if err == nil {
-		_, err := os.Stat(home + "/.config/i3/config")
+		_, err := os.Stat(home + "/.config")
 		if err != nil {
 			if os.IsNotExist(err) {
-				os.Mkdir(home+"/.config", os.ModeDir)
-				os.Mkdir(home+"/.config/i3", os.ModeDir|0700)
-				impl.copyFile(home+"/.config/i3/config", "/etc/i3/config")
-				os.Chown(home+"/.config/i3/config", os.Getuid(), os.Getegid())
+				os.Mkdir(home+"/.config", os.ModeDir|0700)
 			}
 		}
+		_, err = os.Stat(home + "/.config/i3")
+		if err != nil {
+			if os.IsNotExist(err) {
+				os.Mkdir(home+"/.config/i3", os.ModeDir|0700)
+			}
+		}
+		os.Remove(home + "/.config/i3/config")
+		impl.copyFile(home+"/.config/i3/config", "/etc/i3/config")
+		os.Chown(home+"/.config/i3/config", os.Getuid(), os.Getegid())
 	}
 	v1 := r.Group("/v1")
 	v1.POST("/vnc", impl.startVncAppHandle)
