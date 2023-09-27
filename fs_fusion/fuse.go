@@ -425,7 +425,7 @@ func Mount() (err error) {
 				return err
 			}
 		}
-		args := []string{"-o" ,"allow_other,nonempty",  PathPrefix + mountInfo.Volume}
+		args := []string{"-o" ,"allow_other",  PathPrefix + mountInfo.Volume}
 		ptfs := Ptfs{}
 		ptfs.root = mountInfo.MountPoint
 		logger.Info("for_mount",args)
