@@ -55,7 +55,7 @@ type Apps []AppImpl
 func (impl Apps) Setup(r *gin.RouterGroup) {
 	v1 := r.Group("/v1")
 	v1.GET("/apps", impl.ScanHandler)
-	v1.PUT("/apps", impl.UpdateHandler)
+	v1.POST("/apps/rescan", impl.UpdateHandler)
 }
 
 func validatePage(start, end, length int) (int, int) {
