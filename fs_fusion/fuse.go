@@ -207,12 +207,24 @@ func (self *Ptfs) Utimens(path string, tmsp1 []fuse.Timespec) (errc int) {
 	return errno(syscall.UtimesNano(path, tmsp[:]))
 }
 
+func (self *Ptfs) isHome() bool {
+	list := strings.Split(self.original, "/")
+	if len(list) < 4 {
+		return false
+	}
+	if list[1] == "home" && list[3] == "fde" {
+		return true
+	}
+	return false
+}
+
 func (self *Ptfs) Create(path string, flags int, mode uint32) (errc int, fh uint64) {
 	defer trace(path, flags, mode)(&errc, &fh)
 	defer setuidgid()()
-	uid, gid, _ := fuse.Getcontext()
-	fmt.Println(uid, gid)
-	syscall.Chown(path, 0, 10038)
+	uid, _, _ := fuse.Getcontext()
+	if self.isHome() {
+		syscall.Chown(path, int(uid), 10038)
+	}
 	return self.open(path, flags, mode)
 }
 
@@ -502,8 +514,9 @@ func supplementVolume(files []fs.FileInfo, mountInfoByDevice map[string]volumeAn
 			logger.Error("read_volumes", name, err)
 			return nil, err
 		}
-		if value, exist := mountInfoByDevice[filepath.Base(name)]; exist {
-			volumesByDevice[filepath.Base(name)] = volumeAndMountPoint{
+		name = strings.Replace(name, "../../", "/dev", 1)
+		if value, exist := mountInfoByDevice[name]; exist {
+			volumesByDevice[name] = volumeAndMountPoint{
 				Volume:     v.Name(),
 				MountPoint: value.MountPoint,
 				MountID:    value.MountID,
