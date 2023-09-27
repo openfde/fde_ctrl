@@ -6,6 +6,7 @@ import (
 	"fde_ctrl/controller"
 	"fde_ctrl/controller/middleware"
 	"fde_ctrl/fdedroid"
+	"fde_ctrl/fs_fusion"
 	"fde_ctrl/logger"
 	"fde_ctrl/process_chan"
 	"fde_ctrl/websocket"
@@ -41,7 +42,7 @@ func setup(r *gin.Engine, configure conf.Configure) error {
 
 	var vnc controller.VncAppImpl
 	var apps controller.Apps
-	var clipboard controller.ClipboardImpl
+	// var clipboard controller.ClipboardImpl
 	var pm controller.PowerManager
 	var dm controller.DisplayManager
 	group := r.Group("/api")
@@ -50,10 +51,10 @@ func setup(r *gin.Engine, configure conf.Configure) error {
 		return err
 	}
 	var controllers []controller.Controller
-	clipboard.InitAndWatch(configure)
+	// clipboard.InitAndWatch(configure)
 	dm.SetMirror()
 
-	controllers = append(controllers, clipboard, pm, &apps, vnc, dm)
+	controllers = append(controllers, pm, &apps, vnc, dm)
 	for _, value := range controllers {
 		value.Setup(group)
 	}
@@ -86,6 +87,9 @@ func main() {
 		return
 	}
 	mainCtx, mainCtxCancelFunc := context.WithCancel(context.Background())
+
+	//mount fuse filesystem
+	fs_fusion.Mount()
 	var cmds []*exec.Cmd
 	//step 1 start kwin
 	var cmdWinMan *exec.Cmd
