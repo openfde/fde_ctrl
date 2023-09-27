@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"io/fs"
 	"io/ioutil"
+	"sync"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,6 +32,11 @@ var defaultIconSizes = []string{"64x64", "scalable"}
 var config conf.Configure
 
 func (appImpl *Apps) Scan(configure conf.Configure) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+	if len(*appImpl) > 0 {
+		*appImpl = make(Apps, 0)
+	}
 	config = configure
 	err := appImpl.scan(iconPixmapPath, desktopEntryPath, configure.App.IconThemes, configure.App.IconSizes)
 	if err != nil {
@@ -55,7 +61,6 @@ type Apps []AppImpl
 func (impl Apps) Setup(r *gin.RouterGroup) {
 	v1 := r.Group("/v1")
 	v1.GET("/apps", impl.ScanHandler)
-	v1.POST("/apps/scan", impl.UpdateHandler)
 }
 
 func validatePage(start, end, length int) (int, int) {
@@ -73,12 +78,15 @@ func validatePage(start, end, length int) (int, int) {
 	return start, end
 }
 
-func (impls *Apps) UpdateHandler(c *gin.Context) {
-	impls.Scan(config)
-	response.Response(c, nil)
-}
+var mutex = &sync.Mutex{}
+
 
 func (impls Apps) ScanHandler(c *gin.Context) {
+	refresh := c.DefaultQuery("refresh", "false")
+	if refresh == "true" || refresh == "True" {
+		logger.Info("scan_app_refresh",refresh)
+		impls.Scan(config)
+	}
 	pageQuery := getPageQuery(c)
 	var data Apps
 	pageQuery.Total = len(impls)

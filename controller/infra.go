@@ -19,7 +19,7 @@ func getPageQuery(c *gin.Context) response.PageQuery {
 		pageSize = 200
 	}
 	sortDirectrion := c.DefaultQuery("sort_directrion", "desc")
-	pageStatus, err := strconv.ParseBool(c.DefaultQuery("page_status", "true"))
+	pageStatus, err := strconv.ParseBool(c.DefaultQuery("page_enable", "true"))
 	return response.PageQuery{
 		PageEnable:    pageStatus,
 		Page:          page,
