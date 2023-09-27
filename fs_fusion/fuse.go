@@ -3,6 +3,7 @@ package fs_fusion
 import (
 	"fde_ctrl/logger"
 	"fmt"
+	"errors"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -23,9 +24,6 @@ func errno(err error) int {
 	}
 }
 
-var (
-	_host *fuse.FileSystemHost
-)
 
 func trace(vals ...interface{}) func(vals ...interface{}) {
 	uid, gid, _ := fuse.Getcontext()
@@ -41,6 +39,7 @@ type Ptfs struct {
 func (self *Ptfs) Init() {
 	defer trace()()
 	e := syscall.Chdir(self.root)
+	self.original = self.root
 	if nil == e {
 		self.root = "./"
 	}
@@ -405,32 +404,38 @@ func Mount() (err error) {
 		logger.Error("mount_read_disk", mounts, err)
 		return
 	}
+	logger.Info("mount_info_by_device",mountInfoByDevice)
 	volumes, err := supplementVolume(files, mountInfoByDevice)
 	if err != nil {
 		logger.Error("mount_supplement_volume", mounts, err)
 		return
 	}
+	logger.Info("in_mount",volumes)
 	for _, mountInfo := range volumes {
-		_, err := os.Stat("/voluems/" + mountInfo.Volume)
+		_, err := os.Stat(PathPrefix + mountInfo.Volume)
 		if err != nil {
 			if os.IsNotExist(err) {
-				err = os.Mkdir("/volumes/"+mountInfo.Volume, os.ModeDir+0777)
+				err = os.Mkdir(PathPrefix+mountInfo.Volume, os.ModeDir+0750)
 				if err != nil {
 					logger.Error("mount_mkdir_for_volumes", mountInfo, err)
 					return err
 				}
 			} else {
-				logger.Error("mount_stat_volume", mountInfo, err)
+				logger.Error("mount_stat_volume", mountInfo.Volume, err)
 				return err
 			}
 		}
-		//todo only mount root by fuse?
-		if mountInfo.MountPoint == "/" {
-			args := []string{"-o allow_other,nonempty", mountInfo.MountPoint, PathPrefix + mountInfo.Volume}
-			ptfs := Ptfs{}
-			ptfs.root = PathPrefix + mountInfo.Volume
-			_host = fuse.NewFileSystemHost(&ptfs)
-			_host.Mount("", args)
+		args := []string{"-o" ,"allow_other,nonempty",  PathPrefix + mountInfo.Volume}
+		ptfs := Ptfs{}
+		ptfs.root = mountInfo.MountPoint
+		logger.Info("for_mount",args)
+		logger.Info("for_mount_root",ptfs.root)
+		var  host *fuse.FileSystemHost
+		host = fuse.NewFileSystemHost(&ptfs)
+		tr := host.Mount("", args)
+		if !tr {
+			logger.Error("mount_fuse_error",tr,nil)
+			return  errors.New("mount_faile")
 		}
 	}
 	return nil
@@ -503,8 +508,9 @@ func supplementVolume(files []fs.FileInfo, mountInfoByDevice map[string]volumeAn
 			logger.Error("read_volumes", name, err)
 			return nil, err
 		}
-		if value, exist := mountInfoByDevice[filepath.Base(name)]; exist {
-			volumesByDevice[filepath.Base(name)] = volumeAndMountPoint{
+		name = strings.Replace(name, "../..", "/dev", 1)
+		if value, exist := mountInfoByDevice[name]; exist {
+			volumesByDevice[name] = volumeAndMountPoint{
 				Volume:     v.Name(),
 				MountPoint: value.MountPoint,
 				MountID:    value.MountID,
