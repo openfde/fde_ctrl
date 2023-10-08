@@ -12,7 +12,6 @@
  * It is licensed under the MIT license. The full license text can be found
  * in the License.txt file at the root of this project.
  */
-
 package fs_fusion
 
 import (
