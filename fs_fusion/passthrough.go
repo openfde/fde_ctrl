@@ -1,6 +1,7 @@
 package fs_fusion
 
 import (
+	"fde_ctrl/logger"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -200,7 +201,7 @@ func (self *Ptfs) Utimens(path string, tmsp1 []fuse.Timespec) (errc int) {
 	return errno(syscall.UtimesNano(path, tmsp[:]))
 }
 
-func (self *Ptfs) isHome() bool {
+func (self *Ptfs) isHomeFDE() bool {
 	list := strings.Split(self.original, "/")
 	if len(list) < 4 {
 		return false
@@ -215,8 +216,8 @@ func (self *Ptfs) Create(path string, flags int, mode uint32) (errc int, fh uint
 	defer trace(path, flags, mode)(&errc, &fh)
 	defer setuidgid()()
 	uid, _, _ := fuse.Getcontext()
-	fmt.Println("create", uid)
-	if self.isHome() {
+	path = filepath.Join(self.root, path)
+	if self.isHomeFDE() {
 		syscall.Chown(path, int(uid), 10038)
 	}
 	return self.open(path, flags, mode)
@@ -224,14 +225,13 @@ func (self *Ptfs) Create(path string, flags int, mode uint32) (errc int, fh uint
 
 func (self *Ptfs) Open(path string, flags int) (errc int, fh uint64) {
 	defer trace(path, flags)(&errc, &fh)
-	setuidgid()()
 	return self.open(path, flags, 0)
 }
 
 func (self *Ptfs) open(path string, flags int, mode uint32) (errc int, fh uint64) {
 	path = filepath.Join(self.root, path)
-	setuidgid()()
-	fmt.Println("open mode")
+	//todo controll the permission by ourself policy
+	//identity where the request from , android or linux
 	f, e := syscall.Open(path, flags, mode)
 	if nil != e {
 		return errno(e), ^uint64(0)
@@ -298,11 +298,10 @@ func (self *Ptfs) Opendir(path string) (errc int, fh uint64) {
 	var dstSt fuse.Stat_t
 	copyFusestatFromGostat(&dstSt, &st)
 	uid, gid, _ := fuse.Getcontext()
-	fmt.Println(uid, gid, st.Uid, st.Gid, dstSt.Mode, "helloopendir", path)
-	fmt.Printf("%o, %b\n", dstSt.Mode, dstSt.Mode)
 	if !validPermR(uint32(uid), st.Uid, gid, st.Gid, dstSt.Mode) {
 		//-1 means no permission
-		fmt.Println("no permission")
+		info := fmt.Sprint(uid, "=uid, ", st.Uid, "=fileuid, ", gid, "=gid", st.Gid, "=filegid")
+		logger.Info("open_dir", info)
 		return -int(syscall.EPERM), 0
 	}
 
@@ -313,7 +312,6 @@ func (self *Ptfs) Opendir(path string) (errc int, fh uint64) {
 				return int(syscall.ENOENT), 1
 			}
 		}
-
 	}
 	f, e := syscall.Open(path, syscall.O_RDONLY|syscall.O_DIRECTORY, 0)
 	if nil != e {
