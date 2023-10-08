@@ -1,17 +1,3 @@
-//go:build linux
-// +build linux
-
-/*
- * port_linux.go
- *
- * Copyright 2017-2022 Bill Zissimopoulos
- */
-/*
- * This file is part of Cgofuse.
- *
- * It is licensed under the MIT license. The full license text can be found
- * in the License.txt file at the root of this project.
- */
 package fs_fusion
 
 import (
@@ -59,9 +45,9 @@ func copyFusestatFromGostat(dst *fuse.Stat_t, src *syscall.Stat_t) {
 	dst.Gid = uint32(src.Gid)
 	dst.Rdev = uint64(src.Rdev)
 	dst.Size = int64(src.Size)
-	dst.Atim.Sec, dst.Atim.Nsec = src.Atim.Sec, src.Atim.Nsec
-	dst.Mtim.Sec, dst.Mtim.Nsec = src.Mtim.Sec, src.Mtim.Nsec
-	dst.Ctim.Sec, dst.Ctim.Nsec = src.Ctim.Sec, src.Ctim.Nsec
+	dst.Atim.Sec, dst.Atim.Nsec = src.Atimespec.Sec, src.Atimespec.Nsec
+	dst.Mtim.Sec, dst.Mtim.Nsec = src.Mtimespec.Sec, src.Mtimespec.Nsec
+	dst.Ctim.Sec, dst.Ctim.Nsec = src.Ctimespec.Sec, src.Ctimespec.Nsec
 	dst.Blksize = int64(src.Blksize)
 	dst.Blocks = int64(src.Blocks)
 }
