@@ -22,8 +22,31 @@ func Test_validPermR(t *testing.T) {
 				duid: 1000,
 				gid:  1000,
 				dgid: 1000,
-				perm: 16889,
+				perm: 0b100000111111111, //o40777,16895
 			},
+			want: true,
+		},
+		{
+			name: "group",
+			args: args{
+				uid:  1000,
+				duid: 1000,
+				gid:  0,
+				dgid: 0,
+				perm: 0b100000111100100, //40744， 16868
+			},
+			want: true,
+		},
+		{
+			name: "other",
+			args: args{
+				uid:  1000,
+				duid: 1000,
+				gid:  0,
+				dgid: 0,
+				perm: 0b100000111100100, //40744， 16868
+			},
+			want: true,
 		},
 	}
 	for _, tt := range tests {
