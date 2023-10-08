@@ -79,7 +79,7 @@ func main() {
 	}
 
 	if version {
-		fmt.Printf("Version: %s, tag: %s , date: %s \n", _version_, _tag_,_date_)
+		fmt.Printf("Version: %s, tag: %s , date: %s \n", _version_, _tag_, _date_)
 		return
 	}
 	configure, err := conf.Read()
@@ -90,7 +90,13 @@ func main() {
 	mainCtx, mainCtxCancelFunc := context.WithCancel(context.Background())
 
 	//mount fuse filesystem
-	go  fs_fusion.Mount() 
+	go func() {
+		err := fs_fusion.Mount()
+		if err != nil {
+			defer mainCtxCancelFunc()
+			return
+		}
+	}()
 	var cmds []*exec.Cmd
 	//step 1 start kwin
 	var cmdWinMan *exec.Cmd
@@ -161,7 +167,12 @@ func main() {
 			{
 				logger.Info("context_done", "exit due to unexpected canceled context")
 				killSonProcess(cmds)
-				fdedroid.StopAndroidContainer(context.Background(), fdedroid.FDEContainerName)
+				fs_fusion.UmountAllVolumes()
+				if configure.WindowsManager.IsWayland() {
+					fdedroid.StopWaydroidContainer(context.Background())
+				} else {
+					fdedroid.StopAndroidContainer(context.Background(), fdedroid.FDEContainerName)
+				}
 				return
 			}
 		// case <-signal:

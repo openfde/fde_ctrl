@@ -188,3 +188,17 @@ func supplementVolume(files []fs.FileInfo, mountInfoByDevice map[string]volumeAn
 	}
 	return volumesByDevice, nil
 }
+
+func UmountAllVolumes() error {
+	entries, err := os.ReadDir(PathPrefix)
+	if err != nil {
+		return err
+	}
+	for _, volume := range entries {
+		err = syscall.Unmount(volume.Name(), 0)
+		if err != nil {
+			logger.Error("umount_volumes", volume.Name(), err)
+		}
+	}
+	return nil
+}
