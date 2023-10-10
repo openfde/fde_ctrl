@@ -12,9 +12,9 @@ import (
 	"fde_ctrl/websocket"
 	"fde_ctrl/windows_manager"
 	"flag"
-	"syscall"
-	"os"
 	"fmt"
+	"os"
+	"syscall"
 
 	"os/exec"
 
@@ -90,20 +90,20 @@ func main() {
 		return
 	}
 	mainCtx, mainCtxCancelFunc := context.WithCancel(context.Background())
-	mountedChan := make(chan string)
+	mountedChan := make(chan string, 1)
 
 	//mount fuse filesystem
-	err = fs_fusion.Mount(mainCtxCancelFunc,mountedChan)
+	err = fs_fusion.Mount(mainCtxCancelFunc, mountedChan)
 	if err != nil {
-		logger.Error("mount_result",nil,err)
+		logger.Error("mount_result", nil, err)
 		return
 	}
 	select {
-	case  <-mountedChan:
-		logger.Info("mount_watting","success")
+	case <-mountedChan:
+		logger.Info("mount_watting", "success")
 		close(mountedChan)
 	}
-	syscall.Setreuid(-1,os.Getuid())
+	syscall.Setreuid(-1, os.Getuid())
 	var cmds []*exec.Cmd
 	//step 1 start kwin
 	var cmdWinMan *exec.Cmd
