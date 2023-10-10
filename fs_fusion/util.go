@@ -1,10 +1,10 @@
 package fs_fusion
 
 import (
+	"context"
 	"fde_ctrl/logger"
 	"fmt"
 	"io/fs"
-	"context"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -94,20 +94,21 @@ func Mount(cancelFunc context.CancelFunc, mountedChan chan string) (err error) {
 			}
 		}
 		args := []string{"-o", "allow_other", PathPrefix + mountInfo.Volume}
+
+		logger.Info("for_mount", args)
 		ptfs := Ptfs{}
 		ptfs.root = mountInfo.MountPoint
-		logger.Info("for_mount", args)
 		logger.Info("for_mount_root", ptfs.root)
-		var host *fuse.FileSystemHost
-		host = fuse.NewFileSystemHost(&ptfs)
-		logger.Info("mount_debug",os.Getuid())
-		go func(a []string,f context.CancelFunc){
+		logger.Info("mount_debug", os.Getuid())
+		go func(a []string, f context.CancelFunc, fs Ptfs) {
+			var host *fuse.FileSystemHost
+			host = fuse.NewFileSystemHost(&ptfs)
 			tr := host.Mount("", args)
 			if !tr {
-				cancelFunc()
 				logger.Error("mount_fuse_error", tr, nil)
+				cancelFunc()
 			}
-		}(args,cancelFunc)
+		}(args, cancelFunc, ptfs)
 	}
 	mountedChan <- "success"
 	return nil
@@ -200,7 +201,7 @@ func UmountAllVolumes() error {
 	if err != nil {
 		return err
 	}
-	syscall.Setreuid(-1,0)
+	syscall.Setreuid(-1, 0)
 	for _, volume := range entries {
 		path := PathPrefix + volume.Name()
 		err = syscall.Unmount(path, 0)
