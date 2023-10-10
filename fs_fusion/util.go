@@ -1,10 +1,10 @@
 package fs_fusion
 
 import (
-	"errors"
 	"fde_ctrl/logger"
 	"fmt"
 	"io/fs"
+	"context"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -59,9 +59,8 @@ func readProcess(pid uint32) {
 	ioutil.ReadFile("/proc/" + fmt.Sprint(pid) + "/environ")
 }
 
-func Mount() (err error) {
+func Mount(cancelFunc context.CancelFunc, mountedChan chan string) (err error) {
 	syscall.Umask(0)
-
 	mounts, err := os.ReadFile("/proc/self/mountinfo")
 	if err != nil {
 		logger.Error("mount_read_mountinfo", mounts, err)
@@ -101,12 +100,16 @@ func Mount() (err error) {
 		logger.Info("for_mount_root", ptfs.root)
 		var host *fuse.FileSystemHost
 		host = fuse.NewFileSystemHost(&ptfs)
-		tr := host.Mount("", args)
-		if !tr {
-			logger.Error("mount_fuse_error", tr, nil)
-			return errors.New("mount_faile")
-		}
+		logger.Info("mount_debug",os.Getuid())
+		go func(a []string,f context.CancelFunc){
+			tr := host.Mount("", args)
+			if !tr {
+				cancelFunc()
+				logger.Error("mount_fuse_error", tr, nil)
+			}
+		}(args,cancelFunc)
 	}
+	mountedChan <- "success"
 	return nil
 }
 
@@ -144,6 +147,9 @@ func readDevicesAndMountPoint(mounts []byte) map[string]volumeAndMountPoint {
 			continue
 		}
 		mountPoint := fields[4]
+		if mountPoint == "/boot" {
+			continue
+		}
 		mountID := fields[0]
 		if value, exist := mountInfoByDevice[fields[9]]; exist {
 			srcMountID, err := strconv.Atoi(value.MountID)
@@ -194,10 +200,12 @@ func UmountAllVolumes() error {
 	if err != nil {
 		return err
 	}
+	syscall.Setreuid(-1,0)
 	for _, volume := range entries {
-		err = syscall.Unmount(volume.Name(), 0)
+		path := PathPrefix + volume.Name()
+		err = syscall.Unmount(path, 0)
 		if err != nil {
-			logger.Error("umount_volumes", volume.Name(), err)
+			logger.Error("umount_volumes", path, err)
 		}
 	}
 	return nil
