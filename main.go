@@ -1,6 +1,7 @@
 package main
 
 import (
+	"time"
 	"context"
 	"fde_ctrl/conf"
 	"fde_ctrl/controller"
@@ -103,6 +104,7 @@ func main() {
 		logger.Info("mount_watting", "success")
 		close(mountedChan)
 	}
+	time.Sleep(time.Second *1)
 	syscall.Setreuid(-1, os.Getuid())
 	var cmds []*exec.Cmd
 	//step 1 start kwin
