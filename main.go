@@ -1,7 +1,6 @@
 package main
 
 import (
-	"time"
 	"context"
 	"fde_ctrl/conf"
 	"fde_ctrl/controller"
@@ -91,22 +90,27 @@ func main() {
 		return
 	}
 	mainCtx, mainCtxCancelFunc := context.WithCancel(context.Background())
-	mountedChan := make(chan string, 1)
 
-	//mount fuse filesystem
-	err = fs_fusion.Mount(mainCtxCancelFunc, mountedChan)
+	var cmds []*exec.Cmd
+	syscall.Setreuid(-1, os.Getuid())
+	cmdFs := exec.CommandContext(mainCtx, "fde_fs")
+	err = cmdFs.Start()
 	if err != nil {
-		logger.Error("mount_result", nil, err)
+		logger.Error("start_mount", nil, err)
 		return
 	}
-	select {
-	case <-mountedChan:
-		logger.Info("mount_watting", "success")
-		close(mountedChan)
+	go func() {
+		err := cmdFs.Wait()
+		if err != nil {
+			logger.Error("wait_fs", nil, err)
+			return
+		}
+		mainCtxCancelFunc()
+	}()
+	if cmdFs != nil {
+		cmds = append(cmds, cmdFs)
 	}
-	time.Sleep(time.Second *1)
-	syscall.Setreuid(-1, os.Getuid())
-	var cmds []*exec.Cmd
+
 	//step 1 start kwin
 	var cmdWinMan *exec.Cmd
 	cmdWinMan, err = windows_manager.Start(mainCtx, configure.WindowsManager, mainCtxCancelFunc)
@@ -175,8 +179,8 @@ func main() {
 		case <-mainCtx.Done():
 			{
 				logger.Info("context_done", "exit due to unexpected canceled context")
-				killSonProcess(cmds)
 				fs_fusion.UmountAllVolumes()
+				killSonProcess(cmds)
 				if configure.WindowsManager.IsWayland() {
 					fdedroid.StopWaydroidContainer(context.Background())
 				} else {
