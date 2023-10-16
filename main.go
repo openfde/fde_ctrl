@@ -53,7 +53,7 @@ func setup(r *gin.Engine, configure conf.Configure) error {
 	}
 	var controllers []controller.Controller
 	// clipboard.InitAndWatch(configure)
-	dm.SetMirror()
+	//dm.SetMirror()
 
 	controllers = append(controllers, pm, &apps, vnc, dm)
 	for _, value := range controllers {
@@ -106,9 +106,9 @@ func main() {
 		}
 		mainCtxCancelFunc()
 	}()
-	if cmdFs != nil {
-		cmds = append(cmds, cmdFs)
-	}
+	//if cmdFs != nil {
+	//	cmds = append(cmds, cmdFs)
+//	}
 
 	//step 1 start kwin
 	var cmdWinMan *exec.Cmd
@@ -146,16 +146,6 @@ func main() {
 	}
 	// 启动HTTP服务器
 	go engine.Run(":18080")
-
-	// unixEngine := gin.New()
-	// unixEngine.Use(middleware.LogHandler(), gin.Recovery())
-	// unixEngine.Use(middleware.ErrHandler())
-	// if err := setup(unixEngine, configure); err != nil {
-	// 	logger.Error("setup", nil, err)
-	// 	return
-	// }
-	// os.Remove("/home/warlice/.local/share/waydroid/data/x.socket")
-	// go unixEngine.RunUnix("home/warlice/.local/share/waydroid/data/x.socket")
 
 	// conn, err := dbus.ConnectSessionBus()
 	// if err != nil {
