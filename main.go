@@ -6,7 +6,6 @@ import (
 	"fde_ctrl/controller"
 	"fde_ctrl/controller/middleware"
 	"fde_ctrl/fdedroid"
-	"fde_ctrl/fs_fusion"
 	"fde_ctrl/logger"
 	"fde_ctrl/process_chan"
 	"fde_ctrl/websocket"
@@ -179,7 +178,10 @@ func main() {
 		case <-mainCtx.Done():
 			{
 				logger.Info("context_done", "exit due to unexpected canceled context")
-				fs_fusion.UmountAllVolumes()
+				err = exec.Command("fde_fs", "-u").Run()
+				if err != nil {
+					logger.Error("umount_in_main", nil, err)
+				}
 				killSonProcess(cmds)
 				if configure.WindowsManager.IsWayland() {
 					fdedroid.StopWaydroidContainer(context.Background())
@@ -196,6 +198,10 @@ func main() {
 		// 	}
 		case action := <-process_chan.ProcessChan:
 			{
+				err = exec.Command("fde_fs", "-u").Run()
+				if err != nil {
+					logger.Error("umount_in_main", nil, err)
+				}
 				killSonProcess(cmds)
 				if configure.WindowsManager.IsWayland() {
 					fdedroid.StopWaydroidContainer(context.Background())
