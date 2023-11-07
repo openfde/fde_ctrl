@@ -12,8 +12,6 @@ import (
 	"fde_ctrl/windows_manager"
 	"flag"
 	"fmt"
-	"os"
-	"syscall"
 
 	"os/exec"
 
@@ -91,8 +89,7 @@ func main() {
 	mainCtx, mainCtxCancelFunc := context.WithCancel(context.Background())
 
 	var cmds []*exec.Cmd
-	syscall.Setreuid(-1, os.Getuid())
-	cmdFs := exec.CommandContext(mainCtx, "fde_fs")
+	cmdFs := exec.CommandContext(mainCtx, "fde_fs","-m")
 	err = cmdFs.Start()
 	if err != nil {
 		logger.Error("start_mount", nil, err)
@@ -102,13 +99,10 @@ func main() {
 		err := cmdFs.Wait()
 		if err != nil {
 			logger.Error("wait_fs", nil, err)
+			mainCtxCancelFunc()
 			return
 		}
-		mainCtxCancelFunc()
 	}()
-	//if cmdFs != nil {
-	//	cmds = append(cmds, cmdFs)
-//	}
 
 	//step 1 start kwin
 	var cmdWinMan *exec.Cmd
