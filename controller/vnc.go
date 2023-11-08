@@ -103,6 +103,7 @@ type startAppRequest struct {
 	App     string
 	Path    string
 	SysOnly bool
+	Display string
 }
 
 func (impl VncAppImpl) stopVncAppHandle(c *gin.Context) {
