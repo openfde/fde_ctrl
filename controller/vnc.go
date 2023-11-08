@@ -22,24 +22,6 @@ type VncAppImpl struct {
 }
 
 func (impl VncAppImpl) Setup(r *gin.RouterGroup) {
-	home, err := os.UserHomeDir()
-	if err == nil {
-		_, err := os.Stat(home + "/.config")
-		if err != nil {
-			if os.IsNotExist(err) {
-				os.Mkdir(home+"/.config", os.ModeDir|0700)
-			}
-		}
-		_, err = os.Stat(home + "/.config/i3")
-		if err != nil {
-			if os.IsNotExist(err) {
-				os.Mkdir(home+"/.config/i3", os.ModeDir|0700)
-			}
-		}
-		os.Remove(home + "/.config/i3/config")
-		impl.copyFile(home+"/.config/i3/config", "/etc/i3/config")
-		os.Chown(home+"/.config/i3/config", os.Getuid(), os.Getegid())
-	}
 	v1 := r.Group("/v1")
 	v1.POST("/vnc", impl.startVncAppHandle)
 	v1.POST("/stop_vnc", impl.stopVncAppHandle)
@@ -250,20 +232,6 @@ func (impl VncAppImpl) stopVncApp(app string, sysOnly bool) (err error) {
 		return impl.doStop(app, port)
 	}
 	return nil
-}
-
-func (impl VncAppImpl) copyFile(dst, src string) (err error) {
-	srcFile, _ := os.Open(src)
-	defer srcFile.Close()
-
-	dstFile, _ := os.Create(dst)
-	defer dstFile.Close()
-
-	_, err = io.Copy(dstFile, srcFile)
-	if err != nil {
-		logger.Error("copy_i3_config", nil, err)
-	}
-	return
 }
 
 // start a app ,return the port or error

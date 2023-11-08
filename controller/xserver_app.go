@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,33 +18,46 @@ type XserverAppImpl struct {
 }
 
 func (impl XserverAppImpl) Setup(r *gin.RouterGroup) {
-	// home, err := os.UserHomeDir()
-	// if err == nil {
-	// 	_, err := os.Stat(home + "/.config")
-	// 	if err != nil {
-	// 		if os.IsNotExist(err) {
-	// 			os.Mkdir(home+"/.config", os.ModeDir|0700)
-	// 		}
-	// 	}
-	// 	_, err = os.Stat(home + "/.config/i3")
-	// 	if err != nil {
-	// 		if os.IsNotExist(err) {
-	// 			os.Mkdir(home+"/.config/i3", os.ModeDir|0700)
-	// 		}
-	// 	}
-	// 	os.Remove(home + "/.config/i3/config")
-	// 	impl.copyFile(home+"/.config/i3/config", "/etc/i3/config")
-	// 	os.Chown(home+"/.config/i3/config", os.Getuid(), os.Getegid())
-	// }
+	home, err := os.UserHomeDir()
+	if err == nil {
+		_, err := os.Stat(home + "/.config")
+		if err != nil {
+			if os.IsNotExist(err) {
+				os.Mkdir(home+"/.config", os.ModeDir|0700)
+			}
+		}
+		_, err = os.Stat(home + "/.config/i3")
+		if err != nil {
+			if os.IsNotExist(err) {
+				os.Mkdir(home+"/.config/i3", os.ModeDir|0700)
+			}
+		}
+		os.Remove(home + "/.config/i3/config")
+		impl.copyFile(home+"/.config/i3/config", "/etc/i3/config")
+		os.Chown(home+"/.config/i3/config", os.Getuid(), os.Getegid())
+	}
 	v1 := r.Group("/v1")
 	v1.POST("/xserver", impl.startAppHandle)
+}
+
+func (impl XserverAppImpl) copyFile(dst, src string) (err error) {
+	srcFile, _ := os.Open(src)
+	defer srcFile.Close()
+
+	dstFile, _ := os.Create(dst)
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		logger.Error("copy_i3_config", nil, err)
+	}
+	return
 }
 
 func constructXServerstartup(name, path, display string) (bashFile string, err error) {
 	path = removeDesktopArgs(path)
 	data := []byte("#!/bin/bash\n" +
 		"export DISPLAY=" + display + "\n" +
-		"i3 &\n" +
 		path + "\n")
 	bashFile = "/tmp" + name
 	file, err := os.OpenFile(bashFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
@@ -68,23 +82,51 @@ func (impl XserverAppImpl) startAppHandle(c *gin.Context) {
 		response.ResponseParamterError(c, err)
 		return
 	}
-	port, err := impl.startApp(request.App, request.Path, request.Display)
+	err = impl.startApp(request.App, request.Path, request.Display)
 	if err != nil {
 		response.ResponseError(c, http.StatusInternalServerError, err)
 		return
 	}
 	response.Response(c, startAppResponse{
-		Port: port,
+		Port: request.Display,
 	})
 }
 
 // start a app ,return the port or error
-func (impl XserverAppImpl) startApp(app, path, display string) (port string, err error) {
+func (impl XserverAppImpl) startApp(app, path, display string) (err error) {
 	logger.Info("start_app", app+" "+display)
 	filePath, err := constructXServerstartup(app, path, display)
 	if err != nil {
 		return
 	}
+	cmdi3 := exec.Command("i3")
+	cmdi3.Env = append(cmdi3.Env, "DISPLAY="+display)
+	err = cmdi3.Start()
+	if err != nil {
+		logger.Error("start_xserver_i3", app, err)
+		return
+	}
+	timer := time.NewTimer(500 * time.Millisecond)
+	var ch chan struct{}
+	go func() {
+		err := cmdi3.Wait()
+		if err != nil {
+			logger.Error("wait_i3", nil, err)
+			ch <- struct{}{}
+		}
+	}()
+	select {
+	case <-ch:
+		{
+			//i3 failed
+			return errors.New("wait i3 failed for staring " + app)
+		}
+	case <-timer.C:
+		{
+			//after 500ms waitting
+		}
+	}
+
 	cmdApp := exec.Command(filePath)
 	// cmdVnc.Env = append(os.Environ())
 	// cmdVnc.Env = append(cmdVnc.Env, "LD_PRELOAD=/lib/aarch64-linux-gnu/libgcc_s.so.1")
@@ -125,8 +167,25 @@ func (impl XserverAppImpl) startApp(app, path, display string) (port string, err
 		}
 		logger.Info("debug_xserver", output)
 	}
-	cmdApp.Wait()
-	//to grep the port
-	// err, _, port, _ = grepApp(app)
+	timer = time.NewTimer(500 * time.Millisecond)
+	var chWait chan struct{}
+	go func() {
+		err := cmdApp.Wait()
+		if err != nil {
+			logger.Error("wait_app", app, err)
+			chWait <- struct{}{}
+		}
+	}()
+	select {
+	case <-chWait:
+		{
+			//i3 failed
+			return errors.New("wait xserver " + app + " failed")
+		}
+	case <-timer.C:
+		{
+			//after 500ms waitting
+		}
+	}
 	return
 }
