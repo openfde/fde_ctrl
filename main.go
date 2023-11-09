@@ -41,19 +41,18 @@ func setup(r *gin.Engine, configure conf.Configure) error {
 
 	var vnc controller.VncAppImpl
 	var apps controller.Apps
-	var clipboard controller.ClipboardImpl
 	var pm controller.PowerManager
 	var dm controller.DisplayManager
+	var  xserver controller.XserverAppImpl
 	group := r.Group("/api")
 	err := apps.Scan(configure)
 	if err != nil {
 		return err
 	}
 	var controllers []controller.Controller
-	clipboard.InitAndWatch(configure)
 	dm.SetMirror()
 
-	controllers = append(controllers, clipboard, pm, &apps, vnc, dm)
+	controllers = append(controllers,  pm, &apps, vnc, dm,xserver)
 	for _, value := range controllers {
 		value.Setup(group)
 	}
