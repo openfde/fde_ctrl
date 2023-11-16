@@ -4,6 +4,7 @@ import (
 	"context"
 	"fde_ctrl/conf"
 	"fde_ctrl/controller"
+	"fde_ctrl/gpu"
 	"fde_ctrl/controller/middleware"
 	"fde_ctrl/fdedroid"
 	"fde_ctrl/logger"
@@ -12,37 +13,18 @@ import (
 	"fde_ctrl/windows_manager"
 	"flag"
 	"fmt"
-
 	"os/exec"
 
-	// "io/ioutil"
-
-	// "errors"
 
 	"github.com/gin-gonic/gin"
-	"github.com/godbus/dbus/v5"
 )
 
-const socket = "./fde_ctrl.sock"
 
 func setup(r *gin.Engine, configure conf.Configure) error {
-
-	// 创建 Unix Socket
-	// os.Remove(socket)
-	// listener, err := net.Listen("unix", socket)
-	// if err != nil {
-	// 	log.Fatal("Error creating socket: ", err)
-	// }
-	// defer listener.Close()
-	// // 创建 HTTP 服务器
-	// server := &http.Server{}
-
-	// http.HandleFunc("/ws", handleWebSocket)
 
 	var vnc controller.VncAppImpl
 	var apps controller.Apps
 	var pm controller.PowerManager
-	var dm controller.DisplayManager
 	var  xserver controller.XserverAppImpl
 	group := r.Group("/api")
 	err := apps.Scan(configure)
@@ -50,8 +32,7 @@ func setup(r *gin.Engine, configure conf.Configure) error {
 		return err
 	}
 	var controllers []controller.Controller
-	//dm.SetMirror()
-	controllers = append(controllers,  pm, &apps, vnc, dm,xserver)
+	controllers = append(controllers,  pm, &apps, vnc, xserver)
 	for _, value := range controllers {
 		value.Setup(group)
 	}
@@ -84,6 +65,15 @@ func main() {
 		logger.Error("read_conf", nil, err)
 		return
 	}
+	ready,err :=  gpu.IsReady()
+	if err != nil {
+		logger.Error("gpu_is_ready",nil,err)
+		return
+	}
+	if !ready {
+		logger.Warn("gpu_is_not_ready",nil)
+		return
+	}
 	mainCtx, mainCtxCancelFunc := context.WithCancel(context.Background())
 
 	var cmds []*exec.Cmd
@@ -102,7 +92,7 @@ func main() {
 		}
 	}()
 
-	//step 1 start kwin
+	//step 1 start windowsmanager
 	var cmdWinMan *exec.Cmd
 	cmdWinMan, err = windows_manager.Start(mainCtx, configure.WindowsManager, mainCtxCancelFunc)
 	if err != nil {
@@ -136,60 +126,19 @@ func main() {
 		logger.Error("setup", nil, err)
 		return
 	}
-	// 启动HTTP服务器
-	go engine.Run(":18080")
+	go engine.Run("localhost:18080")
 
-	// conn, err := dbus.ConnectSessionBus()
-	// if err != nil {
-	// 	mainCancel()
-	// 	fmt.Fprintln(os.Stderr, "Failed to connect to session bus:", err)
-	// 	os.Exit(1)
-	// }
-	// defer conn.Close()
-	// err = initDdusForSignal(conn)
-	// if err != nil {
-	// 	fmt.Fprintln(os.Stderr, "Failed to connect to session bus:", err)
-	// 	return
-	// }
-
-	// signal := make(chan *dbus.Signal, 10)
-	// conn.Signal(signal)
-	// defer conn.RemoveSignal(signal)
 	if mainCtx.Err() == nil {
 		select {
 		case <-mainCtx.Done():
 			{
 				logger.Info("context_done", "exit due to unexpected canceled context")
-				err = exec.Command("fde_fs", "-u").Run()
-				if err != nil {
-					logger.Error("umount_in_main", nil, err)
-				}
-				killSonProcess(cmds)
-				if configure.WindowsManager.IsWayland() {
-					fdedroid.StopWaydroidContainer(context.Background())
-				} else {
-					fdedroid.StopAndroidContainer(context.Background(), fdedroid.FDEContainerName)
-				}
+				exitFde(configure,cmds)
 				return
 			}
-		// case <-signal:
-		// 	{
-		// 		killSonProcess(cmds)
-		// 		fmt.Println("exit due to some one send logout signal")
-		// 		return
-		// 	}
 		case action := <-process_chan.ProcessChan:
 			{
-				err = exec.Command("fde_fs", "-u").Run()
-				if err != nil {
-					logger.Error("umount_in_main", nil, err)
-				}
-				killSonProcess(cmds)
-				if configure.WindowsManager.IsWayland() {
-					fdedroid.StopWaydroidContainer(context.Background())
-				} else {
-					fdedroid.StopAndroidContainer(context.Background(), fdedroid.FDEContainerName)
-				}
+				exitFde(configure,cmds)
 				switch action {
 				case process_chan.Restart:
 					{
@@ -227,6 +176,18 @@ func main() {
 		logger.Error("main_ctx_error", nil, mainCtx.Err())
 	}
 }
+func  exitFde(configure conf.Configure,cmds []*exec.Cmd) {
+	err := exec.Command("fde_fs", "-u").Run()
+	if err != nil {
+		logger.Error("umount_in_main", nil, err)
+	}
+	killSonProcess(cmds)
+	if configure.WindowsManager.IsWayland() {
+		fdedroid.StopWaydroidContainer(context.Background())
+	} else {
+		fdedroid.StopAndroidContainer(context.Background(), fdedroid.FDEContainerName)
+	}
+}
 
 func killSonProcess(cmds []*exec.Cmd) {
 	for index := range cmds {
@@ -236,10 +197,3 @@ func killSonProcess(cmds []*exec.Cmd) {
 	}
 }
 
-func initDdusForSignal(conn *dbus.Conn) error {
-	return conn.AddMatchSignal(
-		dbus.WithMatchObjectPath("/org/remoteAndroid/Dbus"),
-		dbus.WithMatchInterface("org.remoteAndroid.Dbus"),
-		dbus.WithMatchMember("Logout"))
-
-}
