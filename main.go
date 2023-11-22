@@ -12,6 +12,8 @@ import (
 	"fde_ctrl/windows_manager"
 	"flag"
 	"fmt"
+	"os"
+	"syscall"
 
 	"os/exec"
 
@@ -50,8 +52,6 @@ func setup(r *gin.Engine, configure conf.Configure) error {
 		return err
 	}
 	var controllers []controller.Controller
-	dm.SetMirror()
-
 	controllers = append(controllers,  pm, &apps, vnc, dm,xserver)
 	for _, value := range controllers {
 		value.Setup(group)
@@ -77,7 +77,7 @@ func main() {
 	}
 
 	if version {
-		fmt.Printf("Version: %s, tag: %s , date: %s \n", _version_, _tag_,_date_)
+		fmt.Printf("Version: %s, tag: %s , date: %s \n", _version_, _tag_, _date_)
 		return
 	}
 	configure, err := conf.Read()
@@ -86,7 +86,27 @@ func main() {
 		return
 	}
 	mainCtx, mainCtxCancelFunc := context.WithCancel(context.Background())
+
 	var cmds []*exec.Cmd
+	syscall.Setreuid(-1, os.Getuid())
+	cmdFs := exec.CommandContext(mainCtx, "fde_fs")
+	err = cmdFs.Start()
+	if err != nil {
+		logger.Error("start_mount", nil, err)
+		return
+	}
+	go func() {
+		err := cmdFs.Wait()
+		if err != nil {
+			logger.Error("wait_fs", nil, err)
+			return
+		}
+		mainCtxCancelFunc()
+	}()
+	//if cmdFs != nil {
+	//	cmds = append(cmds, cmdFs)
+//	}
+
 	//step 1 start kwin
 	var cmdWinMan *exec.Cmd
 	cmdWinMan, err = windows_manager.Start(mainCtx, configure.WindowsManager, mainCtxCancelFunc)
@@ -124,16 +144,6 @@ func main() {
 	// 启动HTTP服务器
 	go engine.Run(":18080")
 
-	// unixEngine := gin.New()
-	// unixEngine.Use(middleware.LogHandler(), gin.Recovery())
-	// unixEngine.Use(middleware.ErrHandler())
-	// if err := setup(unixEngine, configure); err != nil {
-	// 	logger.Error("setup", nil, err)
-	// 	return
-	// }
-	// os.Remove("/home/warlice/.local/share/waydroid/data/x.socket")
-	// go unixEngine.RunUnix("home/warlice/.local/share/waydroid/data/x.socket")
-
 	// conn, err := dbus.ConnectSessionBus()
 	// if err != nil {
 	// 	mainCancel()
@@ -155,8 +165,16 @@ func main() {
 		case <-mainCtx.Done():
 			{
 				logger.Info("context_done", "exit due to unexpected canceled context")
+				err = exec.Command("fde_fs", "-u").Run()
+				if err != nil {
+					logger.Error("umount_in_main", nil, err)
+				}
 				killSonProcess(cmds)
-				fdedroid.StopAndroidContainer(context.Background(), fdedroid.FDEContainerName)
+				if configure.WindowsManager.IsWayland() {
+					fdedroid.StopWaydroidContainer(context.Background())
+				} else {
+					fdedroid.StopAndroidContainer(context.Background(), fdedroid.FDEContainerName)
+				}
 				return
 			}
 		// case <-signal:
@@ -167,6 +185,10 @@ func main() {
 		// 	}
 		case action := <-process_chan.ProcessChan:
 			{
+				err = exec.Command("fde_fs", "-u").Run()
+				if err != nil {
+					logger.Error("umount_in_main", nil, err)
+				}
 				killSonProcess(cmds)
 				if configure.WindowsManager.IsWayland() {
 					fdedroid.StopWaydroidContainer(context.Background())
