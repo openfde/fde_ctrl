@@ -61,9 +61,6 @@ func SetupWebSocket() {
 		}()
 		Hub.handleWebSocket(w, r)
 	})
-	// http.HandleFunc("/broadcast", func(w http.ResponseWriter, r *http.Request) {
-	// 	Hub.broadcastHandle(w, r)
-	// })
 
 	err := http.ListenAndServe(":18081", nil)
 	if err != nil {
@@ -112,12 +109,6 @@ func (h *hub) Broadcast(r WsResponse) {
 	return
 }
 
-// func (h *hub) broadcastHandle(w http.ResponseWriter, r *http.Request) {
-// 	fmt.Println("hello")
-// 	w.Write([]byte("Hello, World!"))
-// 	h.broadcast <- []byte("new broadcast")
-// 	return
-// }
 
 type WsResponse struct {
 	Type string
