@@ -61,10 +61,8 @@ func constructXstartup(name, path string) error {
 		"export GDK_BACKEND=x11\n" +
 		"export QT_QPA_PLATFORM=xcb\n" +
 		"export QT_IM_MODULE=ibus\n" +
-		"export QT4_IM_MODULE=ibus\n"
-	if !strings.Contains(path, "mate-terminal") {
-		script += "export GTK_IM_MODULE=ibus\n"
-	}
+		"export QT4_IM_MODULE=ibus\n" +
+		"export GTK_IM_MODULE=ibus\n"
 	script += "i3 &\n" +
 		"export im=ibus\n" + path + "\n"
 	data := []byte(script)
