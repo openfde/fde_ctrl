@@ -60,6 +60,12 @@ func Start(mainCtx context.Context, windowsConfig conf.WindowsManager, mainCtxCa
 				return nil, errors.New("time out for waiting wayland display")
 			}
 		}
+		//enable tap to click
+		settingCmd := exec.CommandContext(mainCtx, "gsettings", "set", "org.gnome.desktop.peripherals.touchpad", "tap-to-click", "true")
+		err = settingCmd.Run()
+		if err != nil {
+			logger.Error("wayland_set_tap_to_click", nil, err)
+		}
 	}
 
 	return cmdWinMan, nil
