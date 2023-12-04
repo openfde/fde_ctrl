@@ -251,7 +251,7 @@ func (impl VncAppImpl) startVncApp(app, path string, sysOnly bool) (port string,
 	}
 	var arg []string
 	arg = append(arg, "--SecurityTypes=None", "-name="+app, "--I-KNOW-THIS-IS-INSECURE",
-		"-BlacklistThreshold=10000", "-BlacklistTimeout=0")
+		"-BlacklistThreshold=10000000", "-BlacklistTimeout=0")
 	logger.Info("app_not_start", app)
 	if !sysOnly {
 		err = constructXstartup(app, path)
