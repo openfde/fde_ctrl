@@ -1,3 +1,7 @@
+
+CopyRight 2023 OpenFDE 
+
+
 package main
 
 import (
