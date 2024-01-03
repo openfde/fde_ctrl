@@ -6,3 +6,4 @@ build:
 	sudo chown root:root fde_ctrl
 install:
 	sudo cp -a fde_ctrl /usr/bin/
+	sudo cp -a conf/fde.conf /etc/fde.conf
