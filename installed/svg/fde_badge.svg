@@ -1,0 +1,20 @@
+<svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" data-name="图层 1">
+ <defs>
+  <style>.cls-1{fill:#fff;}</style>
+ </defs>
+ <title>ukui_badge</title>
+ <g>
+  <title>background</title>
+  <rect fill="none" id="canvas_background" height="557" width="1182" y="-1" x="-1"/>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <g stroke-width="0" fill="white" id="UKUI">
+   <g stroke="null" data-name="ukui" id="ukui-2">
+    <path stroke="null" id="svg_1" d="m11.997448,0.82659a10.785714,11 0 1 1 -10.785714,11a10.785714,11 0 0 1 10.785714,-11m0,-1a11.766234,12 0 1 0 11.766234,12a11.766234,12 0 0 0 -11.766234,-12z" class="cls-1"/>
+   </g>
+   <path stroke="null" id="svg_2" d="m42.549773,29.080926l-3.922078,-4.15l0,0.15a3.922078,4 0 0 1 -3.922078,4l-1.049156,0a3.922078,4 0 0 1 -3.922078,-4l0,-6l2.029675,0l0,6a1.961039,2 0 0 0 1.961039,2l0.980519,0a1.961039,2 0 0 0 1.961039,-2l0,-6l1.961039,0l0,4.17l3.922078,-4.17l2.941558,0l-4.902597,5l4.902597,5l-2.941558,0z" class="cls-1"/>
+  </g>
+  <text stroke="null" transform="matrix(1.0192959308624268,0,0,1.031966805458069,-0.031007011778277027,-0.5661465020213494) " xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="15" id="svg_3" y="17.459894" x="7.41828" stroke-width="0" fill="white">F</text>
+ </g>
+</svg>
