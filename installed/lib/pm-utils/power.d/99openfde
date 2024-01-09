@@ -1,0 +1,30 @@
+#! /bin/sh
+#
+# This script wakeup openfde by resetting density 
+#to avoid some displaying bugs
+
+
+case "$1" in
+    true|false) # powersaving on/off
+        ;;
+    thaw|resume)
+	waydroid status |grep Session -w |grep RUNNING  1>/dev/null
+	if [ $? = 0 ];then
+		d=`date "+%F %T"`
+		density=`waydroid shell wm density |awk -F ":" '{print $NF}' |tr -d " "`
+		if [ -z "$density" ];then
+			echo "$d density of openfde could not found" >> /var/log/fde.log
+			exit 254
+		fi
+		newDensity=`expr $density + 1`
+		echo "$d resume from sleep to wakeup openfde by $newDensity $density" >> /var/log/fde.log
+		curl -X POST http://localhost:18080/api/v1/power/lock
+		waydroid shell input keyevent KEYCODE_HOME
+		waydroid shell wm density $newDensity
+		waydroid shell wm density $density
+	fi
+        ;;
+    *)
+        exit 254
+        ;;
+esac
