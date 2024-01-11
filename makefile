@@ -6,6 +6,7 @@ build:
 	sudo chown root:root fde_ctrl
 install:
 	sudo cp -a fde_ctrl /usr/bin/
+	sudo ln -sf /usr/local/bin/mutter /usr/bin/fde_wm
 	sudo install conf/fde.conf /etc/fde.conf -m 644
 	sudo install installed/svg/fde_badge.svg /usr/share/ukui-greeter/images/badges/fde_badge.svg -m 644
 	sudo install installed/wayland-sessions/fde.desktop /usr/share/wayland-sessions/fde.desktop -m 644 -D
