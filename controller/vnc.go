@@ -57,7 +57,7 @@ func constructXstartup(name, path string) error {
 	data := []byte("#!/bin/bash\n" +
 		"ibus-daemon -d  -n " + name + " \n" +
 		"sleep 1 \n" +
-		"ibus engine lotime \n" +
+		"ibus engine fdeime \n" +
 		"export GDK_BACKEND=x11\n" +
 		"export QT_QPA_PLATFORM=xcb\n" +
 		"export GTK_IM_MODULE=ibus\n" +
