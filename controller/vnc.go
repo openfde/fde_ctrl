@@ -55,16 +55,13 @@ func removeDesktopArgs(path string) (filteredPath string) {
 func constructXstartup(name, path string) error {
 	path = removeDesktopArgs(path)
 	data := []byte("#!/bin/bash\n" +
-		"ibus-daemon -d  -n " + name + " \n" +
-		"sleep 1 \n" +
-		"ibus engine fdeime \n" +
+		"fde-set-ime-engine "+ name +" &\n" +
 		"export GDK_BACKEND=x11\n" +
 		"export QT_QPA_PLATFORM=xcb\n" +
 		"export GTK_IM_MODULE=ibus\n" +
 		"export QT_IM_MODULE=ibus\n" +
 		"export QT4_IM_MODULE=ibus\n" +
-		"i3 &\n" +
-		"export im=ibus\n" + path + "\n")
+		"export im=ibus\n" + path + " &\n")
 
 	file, err := os.OpenFile("/tmp/"+name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
