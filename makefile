@@ -17,5 +17,6 @@ install:
 	sudo install installed/usr/share/lightdm/lightdm.conf.d/96-disable-autologin-lock.conf /usr/share/lightdm/lightdm.conf.d/96-disable-autologin-lock.conf -m 644
 	sudo install installed/i3/config /etc/i3/config -m 644
 	sudo install installed/sysctl.conf /etc/sysctl.conf -m 644
+	sudo install installed/usr/bin/fde_utils /usr/bin/fde_utils -m 755
 	sudo sysctl -p
 
