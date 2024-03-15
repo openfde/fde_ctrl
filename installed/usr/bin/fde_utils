@@ -9,6 +9,9 @@ case $1 in
     "-h")
         echo "Usage: $0 [status|screenshot|stop]"
     ;;
+    "start")
+        fde_ctrl -m shell 1>/dev/null 2>&1
+    ;;
     "status")
         waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
         if [ $? = 0 ];then
