@@ -25,7 +25,7 @@ func (wm *WestonWM) Start(mainCtx context.Context, mainCtxCancelFunc context.Can
 	width := int(screen.WidthInPixels)
 	height := int(screen.HeightInPixels)
 
-	cmdWeston := exec.CommandContext(mainCtx, "fde_weston", "--width="+fmt.Sprint(width), "--height="+fmt.Sprint(height), "--fullscreen")
+	cmdWeston := exec.CommandContext(mainCtx, "fde-weston", "--width="+fmt.Sprint(width), "--height="+fmt.Sprint(height), "--fullscreen")
 	err = cmdWeston.Start()
 	if err != nil {
 		logger.Error("start_weston", nil, err)
