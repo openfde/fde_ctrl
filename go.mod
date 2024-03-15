@@ -3,15 +3,13 @@ module fde_ctrl
 go 1.19
 
 require (
+	github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802
 	github.com/docker/engine-api v0.4.0
 	github.com/docker/go-connections v0.4.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-ini/ini v1.67.0
-	github.com/godbus/dbus/v5 v5.1.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/winfsp/cgofuse v1.5.0
-	golang.design/x/clipboard v0.7.0
 )
 
 require (
@@ -41,9 +39,6 @@ require (
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/crypto v0.9.0 // indirect
-	golang.org/x/exp v0.0.0-20190731235908-ec7cb31e5a56 // indirect
-	golang.org/x/image v0.6.0 // indirect
-	golang.org/x/mobile v0.0.0-20230301163155-e0f57694e12c // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
