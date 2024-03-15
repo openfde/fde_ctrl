@@ -1,8 +1,6 @@
 /*
-* Copyright （C)  2023 OpenFDE , All rights reserved. 
-*/
-
-
+* Copyright （C)  2023 OpenFDE , All rights reserved.
+ */
 
 package main
 
@@ -10,9 +8,9 @@ import (
 	"context"
 	"fde_ctrl/conf"
 	"fde_ctrl/controller"
-	"fde_ctrl/gpu"
 	"fde_ctrl/controller/middleware"
 	"fde_ctrl/fdedroid"
+	"fde_ctrl/gpu"
 	"fde_ctrl/logger"
 	"fde_ctrl/process_chan"
 	"fde_ctrl/websocket"
@@ -21,24 +19,22 @@ import (
 	"fmt"
 	"os/exec"
 
-
 	"github.com/gin-gonic/gin"
 )
-
 
 func setup(r *gin.Engine, configure conf.Configure) error {
 
 	var vnc controller.VncAppImpl
 	var apps controller.Apps
 	var pm controller.PowerManager
-	var  xserver controller.XserverAppImpl
+	var xserver controller.XserverAppImpl
 	group := r.Group("/api")
 	err := apps.Scan(configure)
 	if err != nil {
 		return err
 	}
 	var controllers []controller.Controller
-	controllers = append(controllers,  pm, &apps, vnc, xserver)
+	controllers = append(controllers, pm, &apps, vnc, xserver)
 	for _, value := range controllers {
 		value.Setup(group)
 	}
@@ -52,8 +48,10 @@ var _date_ = "20230101"
 
 func main() {
 	var version, help bool
+	var mode string
 	flag.BoolVar(&version, "v", false, "-v")
 	flag.BoolVar(&help, "h", false, "-h")
+	flag.StringVar(&mode, "m", string(windows_manager.DESKTOP_MODE_ENVIRONMENT), "-m")
 	flag.Parse()
 	if help {
 		fmt.Println("fde_ctrl:")
@@ -71,19 +69,19 @@ func main() {
 		logger.Error("read_conf", nil, err)
 		return
 	}
-	ready,err :=  gpu.IsReady()
+	ready, err := gpu.IsReady()
 	if err != nil {
-		logger.Error("gpu_is_ready",nil,err)
+		logger.Error("gpu_is_ready", nil, err)
 		return
 	}
 	if !ready {
-		logger.Warn("gpu_is_not_ready",nil)
+		logger.Warn("gpu_is_not_ready", nil)
 		return
 	}
 	mainCtx, mainCtxCancelFunc := context.WithCancel(context.Background())
 
 	var cmds []*exec.Cmd
-	cmdFs := exec.CommandContext(mainCtx, "fde_fs","-m")
+	cmdFs := exec.CommandContext(mainCtx, "fde_fs", "-m")
 	err = cmdFs.Start()
 	if err != nil {
 		logger.Error("start_mount", nil, err)
@@ -100,24 +98,20 @@ func main() {
 
 	//step 1 start windowsmanager
 	var cmdWinMan *exec.Cmd
-	cmdWinMan, err = windows_manager.Start(mainCtx, configure.WindowsManager, mainCtxCancelFunc)
+	cmdWinMan, err = windows_manager.Start(mainCtx, mainCtxCancelFunc, windows_manager.FDEMode(mode))
 	if err != nil {
-		logger.Error("start_windows_manager", configure.WindowsManager.Name, err)
+		logger.Error("start_windows_manager", mode, err)
 		return
 	}
-	logger.Info("start_windows_manager", configure.WindowsManager)
+	logger.Info("start_windows_manager_mode", mode)
 	if cmdWinMan != nil {
 		cmds = append(cmds, cmdWinMan)
 	}
 	var droid fdedroid.Fdedroid
-	if configure.WindowsManager.IsWayland() {
-		droid = new(fdedroid.Waydroid)
-	} else {
-		droid = new(fdedroid.Anbox)
-	}
+	droid = new(fdedroid.Waydroid)
 	cmdSession, err := droid.Start(mainCtx, mainCtxCancelFunc, configure)
 	if err != nil {
-		logger.Error("fdedroid_start", configure.WindowsManager.IsWayland(), err)
+		logger.Error("fdedroid_start", mode, err)
 		killSonProcess(cmds)
 		return
 	}
@@ -139,12 +133,12 @@ func main() {
 		case <-mainCtx.Done():
 			{
 				logger.Info("context_done", "exit due to unexpected canceled context")
-				exitFde(configure,cmds)
+				exitFde(configure, cmds)
 				return
 			}
 		case action := <-process_chan.ProcessChan:
 			{
-				exitFde(configure,cmds)
+				exitFde(configure, cmds)
 				switch action {
 				case process_chan.Restart:
 					{
@@ -182,17 +176,13 @@ func main() {
 		logger.Error("main_ctx_error", nil, mainCtx.Err())
 	}
 }
-func  exitFde(configure conf.Configure,cmds []*exec.Cmd) {
+func exitFde(configure conf.Configure, cmds []*exec.Cmd) {
 	err := exec.Command("fde_fs", "-u").Run()
 	if err != nil {
 		logger.Error("umount_in_main", nil, err)
 	}
 	killSonProcess(cmds)
-	if configure.WindowsManager.IsWayland() {
-		fdedroid.StopWaydroidContainer(context.Background())
-	} else {
-		fdedroid.StopAndroidContainer(context.Background(), fdedroid.FDEContainerName)
-	}
+	fdedroid.StopWaydroidContainer(context.Background())
 }
 
 func killSonProcess(cmds []*exec.Cmd) {
@@ -202,4 +192,3 @@ func killSonProcess(cmds []*exec.Cmd) {
 		// cmds[index].Process.Wait()
 	}
 }
-

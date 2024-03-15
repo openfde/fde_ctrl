@@ -27,25 +27,20 @@ type Http struct {
 	Host string
 }
 
-func (win WindowsManager) IsWayland() bool {
-	//actually fde_wm is renamed from mutter, because mutter is a protected process name on kylin operator system
-	return win.Protocol == "wayland" || win.Name == "fde_wm"
-}
+// func (win WindowsManager) IsWayland() bool {
+// 	//actually fde_wm is renamed from mutter, because mutter is a protected process name on kylin operator system
+// 	return win.Protocol == "wayland" || win.Name == "fde_wm"
+// }
 
-type WindowsManager struct {
-	Name     string
-	Protocol string
-}
 type Display struct {
 	Resolution string
 }
 
 type Configure struct {
-	Android        Android
-	WindowsManager WindowsManager
-	Display        Display
-	Http           Http
-	App            App
+	Android Android
+	Display Display
+	Http    Http
+	App     App
 }
 
 func Read() (configure Configure, err error) {
@@ -67,12 +62,7 @@ func Read() (configure Configure, err error) {
 	if len(configure.Http.Host) == 0 {
 		configure.Http.Host = "128.128.0.1"
 	}
-	sectionWinManager := cfg.Section(sectionWinManager)
-	configure.WindowsManager.Name = sectionWinManager.Key("Name").String()
-	if len(configure.WindowsManager.Name) == 0 {
-		configure.WindowsManager.Name = "kwin"
-	}
-	configure.WindowsManager.Protocol = sectionWinManager.Key("Protocol").String()
+
 	sectionDisplay := cfg.Section(sectionDisplay)
 	configure.Display.Resolution = sectionDisplay.Key("Resolution").String()
 	if len(configure.Display.Resolution) == 0 {
