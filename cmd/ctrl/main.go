@@ -144,7 +144,12 @@ func main() {
 				case process_chan.Restart:
 					{
 						logger.Info("restart", "exit due to some one send restart signal")
-						cmd := exec.Command("reboot")
+						var cmd *exec.Cmd
+						if mode == string(windows_manager.DESKTOP_MODE_ENVIRONMENT) {
+							cmd = exec.Command("fde_utils restart &")
+						} else {
+							cmd = exec.Command("reboot")
+						}
 						err = cmd.Run()
 						if err != nil {
 							logger.Error("restart_failed", nil, err)
@@ -163,7 +168,12 @@ func main() {
 					{
 						// poweroff
 						logger.Info("power_off", "exit due to some one send poweroff signal")
-						cmd := exec.Command("shutdown", "-h", "now")
+						var cmd *exec.Cmd
+						if mode == string(windows_manager.DESKTOP_MODE_ENVIRONMENT) {
+							cmd = exec.Command("fde_utils", "stop")
+						} else {
+							cmd = exec.Command("shutdown", "-h", "now")
+						}
 						err = cmd.Run()
 						if err != nil {
 							logger.Error("shutdown_failed", nil, err)

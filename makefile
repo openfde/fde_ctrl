@@ -2,10 +2,11 @@ ver=`git log --pretty=format:"%h" -1`
 tag=`git describe --abbrev=0 --tags`
 date1=`date +%F_%T`
 build:
+	cd cmd/ctrl
 	go build -ldflags "-X main._version_=$(ver) -X main._tag_=$(tag) -X main._date_=$(date1)"
 	sudo chown root:root fde_ctrl
 install:
-	sudo install fde_ctrl /usr/bin/fde_ctrl -m 755
+	sudo install cmd/ctrl/fde_ctrl /usr/bin/fde_ctrl -m 755
 	if [ -e /usr/local/bin/mutter ]; then sudo install /usr/local/bin/mutter /usr/bin/fde_wm -m 755; else sudo install /usr/bin/mutter /usr/bin/fde_wm -m 755; fi
 
 	sudo install conf/fde.conf /etc/fde.conf -m 644
