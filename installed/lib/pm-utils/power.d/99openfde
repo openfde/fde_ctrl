@@ -21,6 +21,7 @@ case "$1" in
 		curl -X POST http://localhost:18080/api/v1/power/lock
 		waydroid shell input keyevent KEYCODE_HOME
 		waydroid shell wm density $newDensity
+		sleep 1
 		waydroid shell wm density $density
 	fi
         ;;
