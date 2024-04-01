@@ -5,7 +5,6 @@ import (
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
 	"net/http"
-	"os"
 	"os/exec"
 	"strings"
 
@@ -18,15 +17,17 @@ type BrightNessManager struct {
 
 var __BUS string
 
-func init() {
+func init_get() {
 	cmd := exec.Command("fde_brightness", "-mode", "detect")
 	output, err := cmd.StdoutPipe()
 	if err != nil {
-		os.Exit(1)
+		logger.Error("detect_brightness_stdout_pipe", nil, err)
+		return
 	}
 
 	if err := cmd.Start(); err != nil {
-		os.Exit(1)
+		logger.Error("detect_start_brightness", nil, err)
+		return
 	}
 
 	scanner := bufio.NewScanner(output)
@@ -36,16 +37,19 @@ func init() {
 	}
 
 	if err := scanner.Err(); err != nil {
-		os.Exit(1)
+		logger.Error("detect_scanner_brightness", nil, err)
+		return
 	}
 
 	if err := cmd.Wait(); err != nil {
-		os.Exit(1)
+		logger.Error("detect_brightness_wait", nil, err)
+		return
 	}
 	return
 }
 
 func (impl BrightNessManager) Setup(r *gin.RouterGroup) {
+	go init_get()
 	v1 := r.Group("/v1")
 	v1.GET("/brightness", impl.getHandler)
 	v1.POST("/brightness", impl.setHandler)
