@@ -113,7 +113,7 @@ func (impl BrightNessManager) setHandler(c *gin.Context) {
 		logger.Error("parse_brightness_process_set", nil, err)
 		return
 	}
-	cmd := exec.Command("fde_brightness", "-mode", "set", __BUS, request.Brightness)
+	cmd := exec.Command("fde_brightness", "-mode", "set", "-bus", __BUS, "-brightness", request.Brightness)
 
 	if err := cmd.Start(); err != nil {
 		response.ResponseError(c, http.StatusInternalServerError, err)
