@@ -28,13 +28,14 @@ func setup(r *gin.Engine, configure conf.Configure) error {
 	var apps controller.Apps
 	var pm controller.PowerManager
 	var xserver controller.XserverAppImpl
+	var brightness controller.BrightNessManager
 	group := r.Group("/api")
 	err := apps.Scan(configure)
 	if err != nil {
 		return err
 	}
 	var controllers []controller.Controller
-	controllers = append(controllers, pm, &apps, vnc, xserver)
+	controllers = append(controllers, pm, &apps, vnc, xserver, brightness)
 	for _, value := range controllers {
 		value.Setup(group)
 	}
@@ -56,7 +57,7 @@ func main() {
 	if help {
 		fmt.Println("fde_ctrl:")
 		fmt.Println("\t-v: print versions and tags")
-		fmt.Println("\t-h: print vhelp")
+		fmt.Println("\t-h: print help")
 		fmt.Println("\t-m: input the running mode[shell|environment]")
 		return
 	}
