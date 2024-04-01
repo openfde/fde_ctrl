@@ -78,12 +78,13 @@ func detect(mainCtx context.Context) error {
 
 	scanner := bufio.NewScanner(output)
 
-	var se []string
+	var se string
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.Contains(line, "I2C bus") {
 			lines := strings.Split(line, "-")
-			se = append(se, lines[len(lines)-1])
+			se = lines[len(lines)-1]
+			break
 		}
 	}
 
