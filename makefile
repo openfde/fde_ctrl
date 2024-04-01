@@ -8,6 +8,8 @@ build:
 install:
 	sudo install cmd/ctrl/fde_ctrl /usr/bin/fde_ctrl -m 755
 	if [ -e /usr/local/bin/mutter ]; then sudo install /usr/local/bin/mutter /usr/bin/fde_wm -m 755; else sudo install /usr/bin/mutter /usr/bin/fde_wm -m 755; fi
+	sudo install cmd/brightness/fde_brightness /usr/bin/fde_brightness -m 755
+	sudo chmod ug+s /usr/bin/fde_brightness
 
 	sudo install conf/fde.conf /etc/fde.conf -m 644
 	sudo install installed/svg/fde_badge.svg /usr/share/ukui-greeter/images/badges/fde_badge.svg -m 644
