@@ -1,3 +1,5 @@
+all: build install
+
 build:
 	$(MAKE) -C cmd/ctrl
 	sudo chown root:root cmd/ctrl/fde_ctrl
