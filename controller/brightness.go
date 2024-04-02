@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
+	"errors"
 	"net/http"
 	"os/exec"
 	"strings"
@@ -67,8 +68,10 @@ type BrightnessResponse struct {
 
 func (impl BrightNessManager) getHandler(c *gin.Context) {
 	if len(__BUS) == 0 {
-		response.Response(c, BrightnessResponse{Brightness: "80", MaxBrightness: "0"})
-		return
+		err := errors.New("i2c bus has not been detected")
+		logger.Error("get_brightness_empty_bus",nil,err)
+		response.ResponseError(c,http.StatusPreconditionFailed,err)
+		return 
 	}
 	cmd := exec.Command("fde_brightness", "-mode", "get", __BUS)
 	output, err := cmd.StdoutPipe()
@@ -122,12 +125,17 @@ func (impl BrightNessManager) setHandler(c *gin.Context) {
 		logger.Error("parse_brightness_process_set", nil, err)
 		return
 	}
+	if len(__BUS) == 0 {
+		err = errors.New("i2c bus has not been detected")
+		logger.Error("set_brightness_empty_bus",nil,err)
+		response.ResponseError(c,http.StatusPreconditionFailed,err)
+		return 
+	}
 	cmd := exec.Command("fde_brightness", "-mode", "set", "-bus", __BUS, "-brightness", request.Brightness)
 
 	if err := cmd.Start(); err != nil {
 		response.ResponseError(c, http.StatusInternalServerError, err)
 		logger.Error("start_brightness_process_set", nil, err)
-
 		return
 	}
 
