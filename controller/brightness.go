@@ -17,7 +17,7 @@ type BrightNessManager struct {
 
 var __BUS string
 
-func init_get() {
+func detect() {
 	cmd := exec.Command("fde_brightness", "-mode", "detect")
 	output, err := cmd.StdoutPipe()
 	if err != nil {
@@ -48,10 +48,15 @@ func init_get() {
 	return
 }
 
+func (impl BrightNessManager) detectHandler(c *gin.Context) {
+	detect()
+}
+
 func (impl BrightNessManager) Setup(r *gin.RouterGroup) {
-	go init_get()
+	go detect()
 	v1 := r.Group("/v1")
 	v1.GET("/brightness", impl.getHandler)
+	v1.POST("/brightness/detect", impl.detectHandler)
 	v1.POST("/brightness", impl.setHandler)
 }
 
