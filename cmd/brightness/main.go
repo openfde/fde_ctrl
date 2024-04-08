@@ -69,6 +69,8 @@ func main() {
 	} else {
 		brightnessImpl = new(DDcutil)
 	}
+	msg := "-bus " + bus + "-brightness " + brightness + "-mode " + mode
+	logger.Info("fde_brightness_cmd", msg)
 	mainCtx, _ := context.WithCancel(context.Background())
 	switch {
 	case mode == "detect":

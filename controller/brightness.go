@@ -34,7 +34,8 @@ func detect() {
 	if strings.Compare("sys", string(output)) == 0 {
 		__BUS = []string{"sys"}
 	} else {
-		__BUS = strings.Split(string(output), ",")
+		current := strings.ReplaceAll(string(output), "\n", "")
+		__BUS = strings.Split(current, ",")
 	}
 	return
 }
@@ -98,7 +99,8 @@ type setBrightnessRequest struct {
 
 func (impl BrightNessManager) set(brightness, bus string) error {
 	cmd := exec.Command("fde_brightness", "-mode", "set", "-bus", bus, "-brightness", brightness)
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			if exitError.ExitCode() == BrightnessErrorBusInvalid {
 				go detect()
@@ -118,6 +120,7 @@ func (impl BrightNessManager) setHandler(c *gin.Context) {
 		logger.Error("parse_brightness_process_set", nil, err)
 		return
 	}
+	logger.Info("set_brightness", request)
 	if len(request.Brightness) == 0 {
 		err := errors.New("Birghtness invalid")
 		response.ResponseParamterError(c, err)
