@@ -57,14 +57,16 @@ func main() {
 		logger.Error("decide_brightness_type", nil, err)
 	}
 	var brightnessImpl Brightness
-
-	if len(bus) > 0 && strings.Compare(bus, "sys") == 0 && len(displayPath) == 0 {
-		logger.Error("compare_bus_sys", displayPath, nil)
-		os.Exit(BrightnessErrorBusInvalid) // 2 means wrong bus type
-	} else if len(bus) > 0 && strings.Compare(bus, "sys") != 0 && len(displayPath) > 0 {
-		logger.Error("compare_sys_bus", bus, nil)
-		os.Exit(BrightnessErrorBusInvalid)
+	if strings.Compare(mode, "detect") != 0 {
+		if strings.Compare(bus, "sys") == 0 && len(displayPath) == 0 {
+			logger.Error("compare_bus_sys", displayPath, nil)
+			os.Exit(BrightnessErrorBusInvalid)
+		} else if strings.Compare(bus, "sys") != 0 && len(displayPath) > 0 {
+			logger.Error("compare_sys_bus", bus, nil)
+			os.Exit(BrightnessErrorBusInvalid)
+		}
 	}
+
 	if len(displayPath) > 0 {
 		brightnessImpl = new(SysMethod)
 	} else {
