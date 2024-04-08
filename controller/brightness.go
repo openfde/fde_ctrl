@@ -125,7 +125,7 @@ func (impl BrightNessManager) setHandler(c *gin.Context) {
 		lock.Unlock()
 		return
 	}
-	var buses []string
+	buses := make([]string, len(__BUS))
 	copy(buses, __BUS)
 	lock.Unlock()
 	for _, bus := range buses {
