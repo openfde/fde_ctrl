@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"bufio"
 	"errors"
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
@@ -16,36 +15,22 @@ type BrightNessManager struct {
 	mode string
 }
 
-var __BUS string
+const (
+	BrightnessErrorBusInvalid = 2
+)
+
+var __BUS []string
 
 func detect() {
 	cmd := exec.Command("fde_brightness", "-mode", "detect")
-	output, err := cmd.StdoutPipe()
+	output, err := cmd.Output()
 	if err != nil {
-		logger.Error("detect_brightness_stdout_pipe", nil, err)
-		return
+		logger.Error("brightness_detect", nil, err)
 	}
-
-	if err := cmd.Start(); err != nil {
-		logger.Error("detect_start_brightness", nil, err)
-		return
-	}
-
-	scanner := bufio.NewScanner(output)
-
-	for scanner.Scan() {
-		__BUS = scanner.Text()
-		logger.Info("detect_bus", __BUS)
-	}
-
-	if err := scanner.Err(); err != nil {
-		logger.Error("detect_scanner_brightness", nil, err)
-		return
-	}
-
-	if err := cmd.Wait(); err != nil {
-		logger.Error("detect_brightness_wait", nil, err)
-		return
+	if strings.Compare("sys", string(output)) == 0 {
+		__BUS = []string{"sys"}
+	} else {
+		__BUS = strings.Split(string(output), ",")
 	}
 	return
 }
@@ -71,42 +56,31 @@ func (impl BrightNessManager) getHandler(c *gin.Context) {
 	if len(__BUS) == 0 {
 		err := errors.New("i2c bus has not been detected")
 		logger.Error("get_brightness_empty_bus", nil, err)
+		go detect()
 		response.ResponseError(c, http.StatusPreconditionFailed, err)
 		return
 	}
-	cmd := exec.Command("fde_brightness", "-mode", "get", "-bus", __BUS)
-	output, err := cmd.StdoutPipe()
-	if err != nil {
-		logger.Error("stdoutpipe_brightness_process", nil, err)
-		response.ResponseError(c, http.StatusInternalServerError, err)
-		return
-	}
-
-	if err := cmd.Start(); err != nil {
-		logger.Error("start_brightness_process", nil, err)
-		response.ResponseError(c, http.StatusInternalServerError, err)
-		return
-	}
-
-	scanner := bufio.NewScanner(output)
+	cmd := exec.Command("fde_brightness", "-mode", "get", "-bus", __BUS[0])
 	var res BrightnessResponse
-	for scanner.Scan() {
-		line := scanner.Text()
-		lines := strings.Fields(line)
-		if len(lines) >= 2 {
-			res.Brightness = lines[0]
-			res.MaxBrightness = lines[1]
-		}
-	}
 
-	if err := scanner.Err(); err != nil {
-		logger.Error("scanner_brightness_process", nil, err)
+	output, err := cmd.Output()
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if exitError.ExitCode() == BrightnessErrorBusInvalid {
+				go detect()
+			}
+		}
+		logger.Error("get_brightness_exec", nil, err)
 		response.ResponseError(c, http.StatusInternalServerError, err)
 		return
 	}
-
-	if err := cmd.Wait(); err != nil {
-		logger.Error("wait_brightness_process", nil, err)
+	lines := strings.Fields(string(output))
+	if len(lines) >= 2 {
+		res.Brightness = lines[0]
+		res.MaxBrightness = lines[1]
+	} else {
+		err = errors.New("output is invalid")
+		logger.Error("get_brightness", lines, err)
 		response.ResponseError(c, http.StatusInternalServerError, err)
 		return
 	}
@@ -116,6 +90,20 @@ func (impl BrightNessManager) getHandler(c *gin.Context) {
 
 type setBrightnessRequest struct {
 	Brightness string
+}
+
+func (impl BrightNessManager) set(brightness, bus string) error {
+	cmd := exec.Command("fde_brightness", "-mode", "set", "-bus", bus, "-brightness", brightness)
+	if err := cmd.Run(); err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if exitError.ExitCode() == BrightnessErrorBusInvalid {
+				go detect()
+			}
+		}
+		logger.Error("run_brightness_process_set", brightness, err)
+		return err
+	}
+	return nil
 }
 
 func (impl BrightNessManager) setHandler(c *gin.Context) {
@@ -135,21 +123,16 @@ func (impl BrightNessManager) setHandler(c *gin.Context) {
 	if len(__BUS) == 0 {
 		err = errors.New("i2c bus has not been detected")
 		logger.Error("set_brightness_empty_bus", nil, err)
+		go detect()
 		response.ResponseError(c, http.StatusPreconditionFailed, err)
 		return
 	}
-	cmd := exec.Command("fde_brightness", "-mode", "set", "-bus", __BUS, "-brightness", request.Brightness)
-
-	if err := cmd.Start(); err != nil {
-		response.ResponseError(c, http.StatusInternalServerError, err)
-		logger.Error("start_brightness_process_set", nil, err)
-		return
-	}
-
-	if err := cmd.Wait(); err != nil {
-		response.ResponseError(c, http.StatusInternalServerError, err)
-		logger.Error("wait_brightness_process_set", nil, err)
-		return
+	for _, bus := range __BUS {
+		err = impl.set(request.Brightness, bus)
+		if err != nil {
+			response.ResponseError(c, http.StatusInternalServerError, err)
+			return
+		}
 	}
 	response.Response(c, nil)
 	return

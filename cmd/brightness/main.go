@@ -26,8 +26,7 @@ type Brightness interface {
 }
 
 const (
-	BrightnessErrorWrongType = 2
-	BrightnessErrorBusInvalid
+	BrightnessErrorBusInvalid = 2
 )
 
 func main() {
@@ -60,10 +59,10 @@ func main() {
 	var brightnessImpl Brightness
 	if strings.Compare(bus, "sys") == 0 && len(displayPath) == 0 {
 		logger.Error("compare_bus_sys", displayPath, nil)
-		os.Exit(2) // 2 means wrong bus type
+		os.Exit(BrightnessErrorBusInvalid) // 2 means wrong bus type
 	} else if strings.Compare(bus, "sys") != 0 && len(displayPath) > 0 {
 		logger.Error("compare_sys_bus", bus, nil)
-		os.Exit(2)
+		os.Exit(BrightnessErrorBusInvalid)
 	}
 	if len(displayPath) > 0 {
 		brightnessImpl = new(SysMethod)
