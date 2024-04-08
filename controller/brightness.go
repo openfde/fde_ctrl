@@ -120,10 +120,16 @@ type setBrightnessRequest struct {
 
 func (impl BrightNessManager) setHandler(c *gin.Context) {
 	var request setBrightnessRequest
-	err := c.ShouldBind(&request)
+	err := c.ShouldBindJSON(&request)
 	if err != nil {
 		response.ResponseParamterError(c, err)
 		logger.Error("parse_brightness_process_set", nil, err)
+		return
+	}
+	if len(request.Brightness) == 0 {
+		err := errors.New("Birghtness invalid")
+		response.ResponseParamterError(c, err)
+		logger.Error("brightness_set_para_checking", nil, err)
 		return
 	}
 	if len(__BUS) == 0 {
