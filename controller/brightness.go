@@ -58,14 +58,18 @@ type BrightnessResponse struct {
 }
 
 func (impl BrightNessManager) getHandler(c *gin.Context) {
+	lock.Lock()
 	if len(__BUS) == 0 {
 		err := errors.New("i2c bus has not been detected")
 		logger.Error("get_brightness_empty_bus", nil, err)
 		go detect()
 		response.ResponseError(c, http.StatusPreconditionFailed, err)
+		lock.Unlock()
 		return
 	}
-	cmd := exec.Command("fde_brightness", "-mode", "get", "-bus", __BUS[0])
+	bus := __BUS[0]
+	lock.Unlock()
+	cmd := exec.Command("fde_brightness", "-mode", "get", "-bus", bus)
 	var res BrightnessResponse
 
 	output, err := cmd.Output()
@@ -112,16 +116,19 @@ func (impl BrightNessManager) setHandler(c *gin.Context) {
 		logger.Error("brightness_set_para_checking", nil, err)
 		return
 	}
+	lock.Lock()
 	if len(__BUS) == 0 {
 		err = errors.New("i2c bus has not been detected")
 		logger.Error("set_brightness_empty_bus", nil, err)
 		go detect()
 		response.ResponseError(c, http.StatusPreconditionFailed, err)
+		lock.Unlock()
 		return
 	}
-	lock.Lock()
-	defer lock.Unlock()
-	for _, bus := range __BUS {
+	var buses []string
+	copy(buses, __BUS)
+	lock.Unlock()
+	for _, bus := range buses {
 		cmd := exec.Command("fde_brightness", "-mode", "set", "-bus", bus, "-brightness", request.Brightness)
 		err := cmd.Run()
 		if err != nil {
