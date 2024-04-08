@@ -97,21 +97,6 @@ type setBrightnessRequest struct {
 	Brightness string
 }
 
-func (impl BrightNessManager) set(brightness, bus string) error {
-	cmd := exec.Command("fde_brightness", "-mode", "set", "-bus", bus, "-brightness", brightness)
-	err := cmd.Run()
-	if err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			if exitError.ExitCode() == BrightnessErrorBusInvalid {
-				go detect()
-			}
-		}
-		logger.Error("run_brightness_process_set", brightness, err)
-		return err
-	}
-	return nil
-}
-
 func (impl BrightNessManager) setHandler(c *gin.Context) {
 	var request setBrightnessRequest
 	err := c.ShouldBindJSON(&request)
@@ -134,9 +119,20 @@ func (impl BrightNessManager) setHandler(c *gin.Context) {
 		response.ResponseError(c, http.StatusPreconditionFailed, err)
 		return
 	}
+	lock.Lock()
+	defer lock.Unlock()
 	for _, bus := range __BUS {
-		err = impl.set(request.Brightness, bus)
+		cmd := exec.Command("fde_brightness", "-mode", "set", "-bus", bus, "-brightness", request.Brightness)
+		err := cmd.Run()
 		if err != nil {
+			if exitError, ok := err.(*exec.ExitError); ok {
+				if exitError.ExitCode() == BrightnessErrorBusInvalid {
+					go detect()
+					response.ResponseError(c, http.StatusPreconditionFailed, err)
+					return
+				}
+			}
+			logger.Error("run_brightness_process_set", request.Brightness, err)
 			response.ResponseError(c, http.StatusInternalServerError, err)
 			return
 		}
