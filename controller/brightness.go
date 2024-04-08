@@ -7,12 +7,12 @@ import (
 	"net/http"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 )
 
 type BrightNessManager struct {
-	mode string
 }
 
 const (
@@ -21,7 +21,11 @@ const (
 
 var __BUS []string
 
+var lock sync.Mutex
+
 func detect() {
+	lock.Lock()
+	defer lock.Unlock()
 	cmd := exec.Command("fde_brightness", "-mode", "detect")
 	output, err := cmd.Output()
 	if err != nil {
