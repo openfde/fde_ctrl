@@ -5,19 +5,30 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fde_ctrl/logger"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
-	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
 var _version_ = "v0.1"
 var _tag_ = "v0.1"
 var _date_ = "20230101"
+
+type Brightness interface {
+	Set(context.Context, string, string) error
+	Get(context.Context, string) error
+	Detect(context.Context) error
+}
+
+const (
+	BrightnessErrorWrongType = 2
+	BrightnessErrorBusInvalid
+)
 
 func main() {
 
@@ -42,19 +53,36 @@ func main() {
 		return
 	}
 	var err error
+	displayPath, err := decideType()
+	if err != nil {
+		logger.Error("decide_brightness_type", nil, err)
+	}
+	var brightnessImpl Brightness
+	if strings.Compare(bus, "sys") == 0 && len(displayPath) == 0 {
+		logger.Error("compare_bus_sys", displayPath, nil)
+		os.Exit(2) // 2 means wrong bus type
+	} else if strings.Compare(bus, "sys") != 0 && len(displayPath) > 0 {
+		logger.Error("compare_sys_bus", bus, nil)
+		os.Exit(2)
+	}
+	if len(displayPath) > 0 {
+		brightnessImpl = new(SysMethod)
+	} else {
+		brightnessImpl = new(DDcutil)
+	}
 	mainCtx, _ := context.WithCancel(context.Background())
 	switch {
 	case mode == "detect":
 		{
-			err = detect(mainCtx)
+			err = brightnessImpl.Detect(mainCtx)
 		}
 	case mode == "get":
 		{
-			err = get(mainCtx, bus)
+			err = brightnessImpl.Get(mainCtx, bus)
 		}
 	case mode == "set":
 		{
-			err = set(mainCtx, bus, brightness)
+			err = brightnessImpl.Set(mainCtx, bus, brightness)
 		}
 	}
 	if err != nil {
@@ -62,96 +90,24 @@ func main() {
 	}
 }
 
-func detect(mainCtx context.Context) error {
-	var cmd *exec.Cmd
-	cmd = exec.CommandContext(mainCtx, "ddcutil", "detect")
-	output, err := cmd.StdoutPipe()
+func decideType() (string, error) {
+	//decide type by checking the existence of the backlight
+	backDirPath := "/sys/class/backlight"
+
+	files, err := ioutil.ReadDir(backDirPath)
 	if err != nil {
-		logger.Error("brightness_stdout", nil, err)
-		return err
+		logger.Error("brightness_read_backlight", nil, err)
+		return "", err
 	}
-
-	if err := cmd.Start(); err != nil {
-		logger.Error("start_ddcutil", nil, err)
-		return err
+	if len(files) == 0 {
+		//means there is no backlinght backend
+		return "", nil
 	}
-
-	scanner := bufio.NewScanner(output)
-
-	var se string
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.Contains(line, "I2C bus") {
-			lines := strings.Split(line, "-")
-			se = lines[len(lines)-1]
-			break
-		}
+	var displayPath string
+	for _, file := range files {
+		fileName := file.Name()
+		displayPath = filepath.Join(backDirPath, fileName)
+		break //break after reading the first one
 	}
-
-	if err := scanner.Err(); err != nil {
-		logger.Error("scan_ddcutil", nil, err)
-		return err
-	}
-
-	if err := cmd.Wait(); err != nil {
-		logger.Error("wait_ddcutil", nil, err)
-		return err
-	}
-	fmt.Println(se)
-	return nil
-}
-
-func set(mainCtx context.Context, bus, brightness string) error {
-	var cmd *exec.Cmd
-	cmd = exec.CommandContext(mainCtx, "ddcutil", "--bus", bus, "setvcp", "10", brightness)
-
-	if err := cmd.Start(); err != nil {
-		logger.Error("start_ddcutil_set", nil, err)
-		return err
-	}
-
-	if err := cmd.Wait(); err != nil {
-		logger.Error("wait_ddcutil_set", nil, err)
-		return err
-	}
-	return nil
-}
-
-func get(mainCtx context.Context, bus string) error {
-	var cmd *exec.Cmd
-	cmd = exec.CommandContext(mainCtx, "ddcutil", "--bus", bus, "getvcp", "10")
-	output, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-
-	if err := cmd.Start(); err != nil {
-		logger.Error("start_ddcutil_set", nil, err)
-		return err
-	}
-
-	scanner := bufio.NewScanner(output)
-	var brightness, maxBrightness string
-	for scanner.Scan() {
-		line := scanner.Text()
-		lines := strings.Fields(line)
-		if len(lines) > 10 {
-			brightness = lines[8]
-			brightness = strings.TrimSuffix(brightness, ",")
-			maxBrightness = lines[len(lines)-1]
-			break
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		logger.Error("scanner_ddcutil_get", nil, err)
-		return err
-	}
-
-	if err := cmd.Wait(); err != nil {
-		logger.Error("wait_ddcutil_get", nil, err)
-		return err
-	}
-	fmt.Println(brightness, maxBrightness)
-	return nil
+	return displayPath, nil
 }
