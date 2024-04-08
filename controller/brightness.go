@@ -73,7 +73,7 @@ func (impl BrightNessManager) getHandler(c *gin.Context) {
 		response.ResponseError(c,http.StatusPreconditionFailed,err)
 		return 
 	}
-	cmd := exec.Command("fde_brightness", "-mode", "get", __BUS)
+	cmd := exec.Command("fde_brightness", "-mode", "get", "-bus", __BUS)
 	output, err := cmd.StdoutPipe()
 	if err != nil {
 		logger.Error("stdoutpipe_brightness_process", nil, err)
