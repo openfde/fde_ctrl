@@ -13,7 +13,6 @@ import (
 	"fde_ctrl/gpu"
 	"fde_ctrl/logger"
 	"fde_ctrl/process_chan"
-	"fde_ctrl/websocket"
 	"fde_ctrl/windows_manager"
 	"flag"
 	"fmt"
@@ -119,7 +118,6 @@ func main() {
 	}
 	cmds = append(cmds, cmdSession)
 
-	go websocket.SetupWebSocket()
 	//scan app from linux
 	engine := gin.New()
 	engine.Use(middleware.LogHandler(), gin.Recovery())
