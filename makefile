@@ -2,10 +2,10 @@ all: build install
 
 build:
 	$(MAKE) -C cmd/ctrl
-	sudo chown root:root cmd/ctrl/fde_ctrl
 	$(MAKE) -C cmd/brightness
-	sudo chown root:root cmd/brightness/fde_brightness
 install:
+	sudo chown root:root cmd/brightness/fde_brightness
+	sudo chown root:root cmd/ctrl/fde_ctrl
 	sudo install cmd/ctrl/fde_ctrl /usr/bin/fde_ctrl -m 755
 	if [ -e /usr/local/bin/mutter ]; then sudo install /usr/local/bin/mutter /usr/bin/fde_wm -m 755; else sudo install /usr/bin/mutter /usr/bin/fde_wm -m 755; fi
 	sudo install cmd/brightness/fde_brightness /usr/bin/fde_brightness -m 755
