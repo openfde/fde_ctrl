@@ -1,4 +1,4 @@
-all: build install
+all: build 
 
 build:
 	$(MAKE) -C cmd/ctrl
