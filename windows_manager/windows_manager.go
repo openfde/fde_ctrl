@@ -22,10 +22,18 @@ type WindowsManager interface {
 
 func Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, mode FDEMode) (cmdWinMan *exec.Cmd, err error) {
 	var wm WindowsManager
+
+	userID := os.Getuid()
+	//todo the wayland display could be wayland-1 or n not only just wayland-0
+	path := "/run/user/" + fmt.Sprint(userID) + "/wayland-0"
+
 	if mode == DESKTOP_MODE_SHELL {
 		wm = new(WestonWM)
 	} else {
 		wm = new(Mutter)
+		//rm wayland-0 before run mutter
+		os.Remove(path)
+		os.Remove(path + ".lock")
 	}
 	cmdWinMan, err = wm.Start(mainCtx, mainCtxCancelFunc)
 	if err != nil {
@@ -34,11 +42,8 @@ func Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, mode F
 	waitCnt := 0
 	//wait for the wayland-0
 	for {
-		userID := os.Getuid()
-		//todo the wayland display could be wayland-1 or n not only just wayland-0
-		path := "/run/user/" + fmt.Sprint(userID) + "/wayland-0"
 		if _, err := os.Stat(path); os.IsNotExist(err) {
-			logger.Info("wayland-disopay", "not exist")
+			logger.Info("wayland-display", "not exist")
 			time.Sleep(time.Second)
 			waitCnt++
 		} else {
