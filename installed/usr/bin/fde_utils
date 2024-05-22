@@ -25,7 +25,7 @@ case $1 in
         if [ $? = 0 ];then
             exit 1
         fi
-        echo "screencap -p " |waydroid shell  2>/dev/null
+        echo "screencap -j " |waydroid shell  2>/dev/null
     ;;
     "stop")
         waydroid session stop 1>/dev/null 2>&1
