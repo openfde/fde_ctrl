@@ -10,6 +10,7 @@ case $1 in
         echo "Usage: $0 [status|screenshot|stop]"
     ;;
     "start")
+        export FDE_USE_X11="yes"
         fde_ctrl -m shell 1>/dev/null 2>&1
     ;;
     "status")
