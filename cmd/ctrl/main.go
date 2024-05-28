@@ -28,13 +28,14 @@ func setup(r *gin.Engine, configure conf.Configure) error {
 	var pm controller.PowerManager
 	var xserver controller.XserverAppImpl
 	var brightness controller.BrightNessManager
+	var fsfusing controller.FsFuseManager
 	group := r.Group("/api")
 	err := apps.Scan(configure)
 	if err != nil {
 		return err
 	}
 	var controllers []controller.Controller
-	controllers = append(controllers, pm, &apps, vnc, xserver, brightness)
+	controllers = append(controllers, pm, &apps, vnc, xserver, brightness, fsfusing)
 	for _, value := range controllers {
 		value.Setup(group)
 	}
