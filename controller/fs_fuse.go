@@ -24,6 +24,7 @@ func (impl FsFuseManager) Setup(r *gin.RouterGroup) {
 	v1 := r.Group("/v1")
 	v1.GET("/fs_fusing", impl.getHandler)
 	v1.POST("/fs_fusing", impl.setHandler)
+	v1.POST("/fs_fusing/exit", impl.exitHandler)
 }
 
 type fdefsResponse struct {
@@ -116,6 +117,8 @@ func getUserFolders() ([]string, error) {
 
 }
 
+var fsExit chan string
+
 func (impl FsFuseManager) setHandler(c *gin.Context) {
 	if get() {
 		response.Response(c, nil)
@@ -127,9 +130,24 @@ func (impl FsFuseManager) setHandler(c *gin.Context) {
 		response.ResponseError(c, http.StatusInternalServerError, err)
 		return
 	}
-	for i, v := range list {
-		go mountFdePtfs(v, androidDirList[i])
-	}
+	go func() {
+		for i, v := range list {
+			go mountFdePtfs(v, androidDirList[i])
+		}
+		select {
+		case <-fsExit:
+			return
+		}
+	}()
+
 	response.Response(c, nil)
-	return
+}
+
+func (impl FsFuseManager) exitHandler(c *gin.Context) {
+	if get() {
+		fsExit <- "exit"
+		return
+	}
+
+	response.Response(c, nil)
 }
