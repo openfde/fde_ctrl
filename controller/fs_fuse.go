@@ -97,23 +97,26 @@ func init() {
 	androidDirList = append(androidDirList, "Pictures")
 }
 
-func getUserFolders() ([]string, error) {
+func getUserFolders() ([]string, []string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var realLinuxDirList = make([]string, len(linuxDirList))
+	var realAndroidList = make([]string, len(androidDirList))
 	_, err = os.Stat(filepath.Join(homeDir, linuxDirList[0]))
 	if err == nil { //en
 		for i, v := range linuxDirList {
 			realLinuxDirList[i] = filepath.Join(homeDir, v)
+			realAndroidList[i] = filepath.Join(homeDir, ".local/share/openfde/media/0", androidDirList[i])
 		}
 	} else { //zh
 		for i, v := range linuxDirList {
 			realLinuxDirList[i] = filepath.Join(homeDir, homeDirNameMap[v])
+			realAndroidList[i] = filepath.Join(homeDir, ".local/share/openfde/media/0", androidDirList[i])
 		}
 	}
-	return realLinuxDirList, nil
+	return realLinuxDirList, realAndroidList, nil
 
 }
 
@@ -124,7 +127,7 @@ func (impl FsFuseManager) setHandler(c *gin.Context) {
 		response.Response(c, nil)
 		return
 	}
-	list, err := getUserFolders()
+	list, androidList, err := getUserFolders()
 	if err != nil {
 		logger.Error("get_user_folders", nil, err)
 		response.ResponseError(c, http.StatusInternalServerError, err)
@@ -132,7 +135,8 @@ func (impl FsFuseManager) setHandler(c *gin.Context) {
 	}
 	go func() {
 		for i, v := range list {
-			go mountFdePtfs(v, androidDirList[i])
+			logger.Info("mount_fde_ptfs", list[i]+" "+androidList[i])
+			go mountFdePtfs(v, androidList[i])
 		}
 		select {
 		case <-fsExit:
