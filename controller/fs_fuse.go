@@ -39,7 +39,6 @@ func get() bool {
 		logger.Error("read_mounts_file", nil, err)
 		return false
 	}
-	defer fslock.Unlock()
 	if strings.Contains(string(mounts), "fde_ptfs") {
 		logger.Info("fde_ptfs_found", nil)
 		return true
