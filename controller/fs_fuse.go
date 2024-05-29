@@ -80,12 +80,12 @@ func init() {
 	homeDirNameMap = make(map[string]string)
 	// Initialize the map with key-value pairs
 	homeDirNameMap["Documents"] = "文档"
-	homeDirNameMap["Download"] = "下载"
+	homeDirNameMap["Downloads"] = "下载"
 	homeDirNameMap["Music"] = "音乐"
 	homeDirNameMap["Videos"] = "视频"
 	homeDirNameMap["Pictures"] = "图片"
 	linuxDirList = append(linuxDirList, "Documents")
-	linuxDirList = append(linuxDirList, "Download")
+	linuxDirList = append(linuxDirList, "Downloads")
 	linuxDirList = append(linuxDirList, "Music")
 	linuxDirList = append(linuxDirList, "Videos")
 	linuxDirList = append(linuxDirList, "Pictures")
@@ -147,11 +147,14 @@ func (impl FsFuseManager) setHandler(c *gin.Context) {
 	response.Response(c, nil)
 }
 
-func (impl FsFuseManager) exitHandler(c *gin.Context) {
+func FsFusingExit() {
 	if get() {
 		fsExit <- "exit"
 		return
 	}
+}
 
+func (impl FsFuseManager) exitHandler(c *gin.Context) {
+	FsFusingExit()
 	response.Response(c, nil)
 }

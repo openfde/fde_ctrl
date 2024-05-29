@@ -188,6 +188,7 @@ func main() {
 	}
 }
 func exitFde(configure conf.Configure, cmds []*exec.Cmd) {
+	controller.FsFusingExit()
 	err := exec.Command("fde_fs", "-u").Run()
 	if err != nil {
 		logger.Error("umount_in_main", nil, err)
