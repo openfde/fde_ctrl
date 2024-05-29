@@ -14,6 +14,10 @@ const (
 	sectionApp        = "App"
 )
 
+const (
+	sectionFusion = "PersonalDirFusing"
+)
+
 type App struct {
 	IconSizes  []string //16 x 16 default
 	IconThemes []string //hicolor
@@ -43,7 +47,15 @@ type Configure struct {
 	App     App
 }
 
-func Read() (configure Configure, err error) {
+type PersonalDirFusing struct {
+	Fusing bool
+}
+
+type CustomerConfigure struct {
+	PersonalDirFusing PersonalDirFusing
+}
+
+func Read() (configure Configure, customerConfigure CustomerConfigure, error) {
 	cfg, err := ini.Load("/etc/fde.conf")
 	if err != nil {
 		logger.Error("load config", nil, err)
@@ -71,5 +83,14 @@ func Read() (configure Configure, err error) {
 	sectionApp := cfg.Section(sectionApp)
 	configure.App.IconSizes = sectionApp.Key("IconSizes").Strings(",")
 	configure.App.IconThemes = sectionApp.Key("IconThemes").Strings(",")
+
+	cfg, err = ini.Load("/etc/fde.d/customer.conf")
+	if err != nil {
+		logger.Error("load config", nil, err)
+		return
+	}
+	sectionFusion := cfg.Section(sectionFusion)
+	customerConfigure.PersonalDirFusing.Fusing = sectionFusion.Key("Fusing").Strings()
 	return
+
 }

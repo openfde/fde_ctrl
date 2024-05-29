@@ -21,14 +21,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func setup(r *gin.Engine, configure conf.Configure) error {
+func setup(r *gin.Engine, configure conf.Configure, customConf conf.CustomerConfigure) error {
 
 	var vnc controller.VncAppImpl
 	var apps controller.Apps
 	var pm controller.PowerManager
 	var xserver controller.XserverAppImpl
 	var brightness controller.BrightNessManager
-	var fsfusing controller.FsFuseManager
+	fsfusing := controller.FsFuseManager{
+		Config: customConf,
+	}
 	group := r.Group("/api")
 	err := apps.Scan(configure)
 	if err != nil {
@@ -66,7 +68,7 @@ func main() {
 		fmt.Printf("Version: %s, tag: %s , date: %s \n", _version_, _tag_, _date_)
 		return
 	}
-	configure, err := conf.Read()
+	configure, customerConf, err := conf.Read()
 	if err != nil {
 		logger.Error("read_conf", nil, err)
 		return
@@ -123,7 +125,7 @@ func main() {
 	engine := gin.New()
 	engine.Use(middleware.LogHandler(), gin.Recovery())
 	engine.Use(middleware.ErrHandler())
-	if err := setup(engine, configure); err != nil {
+	if err := setup(engine, configure, customerConf); err != nil {
 		logger.Error("setup", nil, err)
 		return
 	}
