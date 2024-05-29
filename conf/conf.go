@@ -55,7 +55,7 @@ type CustomerConfigure struct {
 	PersonalDirFusing PersonalDirFusing
 }
 
-func Read() (configure Configure, customerConfigure CustomerConfigure, error) {
+func Read() (configure Configure, customerConfigure CustomerConfigure, err error) {
 	cfg, err := ini.Load("/etc/fde.conf")
 	if err != nil {
 		logger.Error("load config", nil, err)
@@ -90,7 +90,7 @@ func Read() (configure Configure, customerConfigure CustomerConfigure, error) {
 		return
 	}
 	sectionFusion := cfg.Section(sectionFusion)
-	customerConfigure.PersonalDirFusing.Fusing = sectionFusion.Key("Fusing").Strings()
+	customerConfigure.PersonalDirFusing.Fusing = sectionFusion.Key("Fusing").MustBool()
 	return
 
 }
