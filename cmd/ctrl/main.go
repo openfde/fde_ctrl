@@ -21,7 +21,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func setup(r *gin.Engine, configure conf.Configure, customConf conf.CustomerConfigure) error {
+func setup(r *gin.Engine, configure conf.Configure, customConf conf.CustomConfigure) error {
 
 	var vnc controller.VncAppImpl
 	var apps controller.Apps
