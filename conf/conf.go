@@ -88,6 +88,7 @@ func Read() (configure Configure, customConfigure CustomConfigure, err error) {
 	_, err = os.Stat("/etc/fde.d/custom.conf")
 	if err != nil {
 		logger.Warn("custom_conf_not_found", nil, err)
+		err = nil //ignore the error
 		return
 	}
 	cfg, err = ini.Load("/etc/fde.d/custom.conf")
