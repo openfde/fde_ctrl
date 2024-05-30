@@ -2,7 +2,6 @@ package conf
 
 import (
 	"fde_ctrl/logger"
-	"os"
 
 	"github.com/go-ini/ini"
 )
@@ -48,15 +47,7 @@ type Configure struct {
 	App     App
 }
 
-type PersonalDirFusing struct {
-	Fusing bool
-}
-
-type CustomConfigure struct {
-	PersonalDirFusing PersonalDirFusing
-}
-
-func Read() (configure Configure, customConfigure CustomConfigure, err error) {
+func Read() (configure Configure, err error) {
 	cfg, err := ini.Load("/etc/fde.conf")
 	if err != nil {
 		logger.Error("load config", nil, err)
@@ -85,19 +76,6 @@ func Read() (configure Configure, customConfigure CustomConfigure, err error) {
 	configure.App.IconSizes = sectionApp.Key("IconSizes").Strings(",")
 	configure.App.IconThemes = sectionApp.Key("IconThemes").Strings(",")
 
-	_, err = os.Stat("/etc/fde.d/custom.conf")
-	if err != nil {
-		logger.Warn("custom_conf_not_found", nil, err)
-		err = nil //ignore the error
-		return
-	}
-	cfg, err = ini.Load("/etc/fde.d/custom.conf")
-	if err != nil {
-		logger.Error("load config", nil, err)
-		return
-	}
-	sectionFusion := cfg.Section(sectionFusion)
-	customConfigure.PersonalDirFusing.Fusing = sectionFusion.Key("Fusing").MustBool()
 	return
 
 }

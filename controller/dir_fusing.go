@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fde_ctrl/conf"
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
 	"io/ioutil"
@@ -13,7 +12,6 @@ import (
 )
 
 type FsFuseManager struct {
-	Config conf.CustomConfigure
 }
 
 var fslock sync.Mutex
@@ -80,10 +78,6 @@ type mountInfo struct {
 }
 
 func (impl FsFuseManager) setHandler(c *gin.Context) {
-	if !impl.Config.PersonalDirFusing.Fusing {
-		response.Response(c, nil)
-		return
-	}
 	if get() {
 		response.Response(c, nil)
 		return

@@ -21,16 +21,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func setup(r *gin.Engine, configure conf.Configure, customConf conf.CustomConfigure) error {
+func setup(r *gin.Engine, configure conf.Configure) error {
 
 	var vnc controller.VncAppImpl
 	var apps controller.Apps
 	var pm controller.PowerManager
 	var xserver controller.XserverAppImpl
 	var brightness controller.BrightNessManager
-	fsfusing := controller.FsFuseManager{
-		Config: customConf,
-	}
+	fsfusing := controller.FsFuseManager{}}
 	group := r.Group("/api")
 	err := apps.Scan(configure)
 	if err != nil {
