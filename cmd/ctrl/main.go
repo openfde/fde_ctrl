@@ -28,7 +28,7 @@ func setup(r *gin.Engine, configure conf.Configure) error {
 	var pm controller.PowerManager
 	var xserver controller.XserverAppImpl
 	var brightness controller.BrightNessManager
-	fsfusing := controller.FsFuseManager{}}
+	fsfusing := controller.FsFuseManager{}
 	group := r.Group("/api")
 	err := apps.Scan(configure)
 	if err != nil {
@@ -66,7 +66,7 @@ func main() {
 		fmt.Printf("Version: %s, tag: %s , date: %s \n", _version_, _tag_, _date_)
 		return
 	}
-	configure, customerConf, err := conf.Read()
+	configure, err := conf.Read()
 	if err != nil {
 		logger.Error("read_conf", nil, err)
 		return
@@ -123,7 +123,7 @@ func main() {
 	engine := gin.New()
 	engine.Use(middleware.LogHandler(), gin.Recovery())
 	engine.Use(middleware.ErrHandler())
-	if err := setup(engine, configure, customerConf); err != nil {
+	if err := setup(engine, configure); err != nil {
 		logger.Error("setup", nil, err)
 		return
 	}
