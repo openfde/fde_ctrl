@@ -13,7 +13,7 @@ import (
 )
 
 type FsFuseManager struct {
-	Config conf.CustomerConfigure
+	Config conf.CustomConfigure
 }
 
 var fslock sync.Mutex
