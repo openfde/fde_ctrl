@@ -76,7 +76,7 @@ func getActivityDisplaySizes() (width, height string) {
 	width = strings.Trim(parts[0]," ")
 	height = strings.Trim(parts[1]," ")
 	height = strings.Trim(height,"\n")
-	logger.Info("fde_display_geo.py "+width","+height,nil)
+	logger.Info("fde_display_geo.py "+width+","+height,nil)
 	return
 }
 
@@ -94,7 +94,7 @@ func (wm *WestonWM) Start(mainCtx context.Context, mainCtxCancelFunc context.Can
 		height = fmt.Sprint(heighti)
 	}
 
-	logger.Info("fde_weston_w_h"+width","+height,nil)
+	logger.Info("fde_weston_w_h"+width+","+height,nil)
 	cmdWeston := exec.CommandContext(mainCtx, "fde-weston", "--width="+width, "--height="+height, "--fullscreen")
 	err = cmdWeston.Start()
 	if err != nil {
