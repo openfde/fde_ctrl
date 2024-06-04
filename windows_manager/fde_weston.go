@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/randr"
@@ -58,14 +59,40 @@ func getPrimaryDisplaySizes() (width, height int, err error) {
 	return
 }
 
-func (wm *WestonWM) Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc) (cmdWinMan *exec.Cmd, err error) {
-	width, height, err := getPrimaryDisplaySizes()
+func getActivityDisplaySizes() (width, height string) {
+	//run fde_display_geo.py to get the active display geometry
+
+	output, err := exec.Command("python3", "fde_display_geo.py").Output()
 	if err != nil {
-		logger.Error("get_primary_display_sizes", nil, err)
+		logger.Error("run_fde_display_geo", nil, err)
 		return
 	}
+	outputStr := string(output)
+	parts := strings.Split(outputStr, ",")
+	if len(parts) != 2 {
+		logger.Error("invalid_output_format", nil, nil)
+		return
+	}
+	width = parts[0]
+	height = parts[1]
+	return
+}
 
-	cmdWeston := exec.CommandContext(mainCtx, "fde-weston", "--width="+fmt.Sprint(width), "--height="+fmt.Sprint(height), "--fullscreen")
+func (wm *WestonWM) Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc) (cmdWinMan *exec.Cmd, err error) {
+	var widthi, heighti int
+	width, height := getActivityDisplaySizes()
+	if width == "" || height == "" {
+		logger.Error("get_activity_display_sizes", nil, nil)
+		widthi, heighti, err = getPrimaryDisplaySizes()
+		if err != nil {
+			logger.Error("get_primary_display_sizes", nil, err)
+			return
+		}
+		width = fmt.Sprint(widthi)
+		height = fmt.Sprint(heighti)
+	}
+
+	cmdWeston := exec.CommandContext(mainCtx, "fde-weston", "--width="+width, "--height="+height, "--fullscreen")
 	err = cmdWeston.Start()
 	if err != nil {
 		logger.Error("start_weston", nil, err)
