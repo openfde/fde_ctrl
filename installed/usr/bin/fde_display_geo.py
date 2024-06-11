@@ -28,7 +28,7 @@ def get_current_screen_resolution():
 if __name__ == "__main__":
     width, height = get_current_screen_resolution()
     if width and height:
-        print(width,height)
+        print(width,",",height)
         exit(0)
     else:
         exit(1)
