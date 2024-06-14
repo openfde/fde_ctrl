@@ -52,16 +52,41 @@ func removeDesktopArgs(path string) (filteredPath string) {
 	return
 }
 
+func checkDistribID() bool {
+	filePath := "/etc/lsb-release"
+	distribID := ""
+	content, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		logger.Error("Error reading file:", filePath, err)
+		return false
+	}
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "DISTRIB_ID") {
+			fields := strings.Split(line, "=")
+			if len(fields) == 2 {
+				distribID = strings.Trim(fields[1], `"`)
+				break
+			}
+		}
+	}
+	return distribID == "Kylin"
+}
+
 func constructXstartup(name, path string) error {
 	path = removeDesktopArgs(path)
 	data := []byte("#!/bin/bash\n" +
-		"fde-set-ime-engine "+ name +" &\n" +
+		"fde-set-ime-engine" + name + " &\n" +
 		"export GDK_BACKEND=x11\n" +
 		"export QT_QPA_PLATFORM=xcb\n" +
 		"export GTK_IM_MODULE=ibus\n" +
 		"export QT_IM_MODULE=ibus\n" +
 		"export QT4_IM_MODULE=ibus\n" +
-		"export im=ibus\n" + path + " &\n")
+		"export im=ibus\n")
+	if checkDistribID() {
+		data = append(data, []byte("export QT_QPA_PLATFORMTHEME=ukui \n ")...)
+	}
+	data = append(data, []byte(path+" &\n")...)
 
 	file, err := os.OpenFile("/tmp/"+name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {

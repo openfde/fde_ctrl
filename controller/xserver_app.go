@@ -57,8 +57,15 @@ func (impl XserverAppImpl) copyFile(dst, src string) (err error) {
 func constructXServerstartup(name, path, display string) (bashFile string, err error) {
 	path = removeDesktopArgs(path)
 	data := []byte("#!/bin/bash\n" +
-		"export DISPLAY=" + display + "\n" +
-		path + "\n")
+		"export GDK_BACKEND=x11\n" +
+		"export QT_QPA_PLATFORM=xcb\n" +
+		"export DISPLAY=" + display + "\n")
+	if checkDistribID() {
+		data = append(data, []byte(
+			"export QT_QPA_PLATFORMTHEME=ukui \n ")...)
+	}
+	data = append(data, []byte(path+"\n")...)
+
 	bashFile = "/tmp/" + name
 	file, err := os.OpenFile(bashFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
