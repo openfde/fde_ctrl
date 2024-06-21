@@ -76,7 +76,7 @@ func checkDistribID() bool {
 func constructXstartup(name, path string) error {
 	path = removeDesktopArgs(path)
 	data := []byte("#!/bin/bash\n" +
-		"fde-set-ime-engine" + name + " &\n" +
+		"fde-set-ime-engine " + name + " &\n" +
 		"export GDK_BACKEND=x11\n" +
 		"export QT_QPA_PLATFORM=xcb\n" +
 		"export GTK_IM_MODULE=ibus\n" +
