@@ -11,8 +11,10 @@ case $1 in
     ;;
     "umount")
 	curl http://127.0.0.1:18080/api/v1/fs_fusing/exit -X POST
+    ;;
     "mount")
 	curl http://127.0.0.1:18080/api/v1/fs_fusing -X POST
+    ;;
     "start")
         export FDE_USE_X11="yes"
         fde_ctrl -m shell 1>/dev/null 2>&1
