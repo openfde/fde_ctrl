@@ -3,18 +3,14 @@ package controller
 import (
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
-	"io/ioutil"
 	"os/exec"
 	"strings"
-	"sync"
 
 	"github.com/gin-gonic/gin"
 )
 
 type FsFuseManager struct {
 }
-
-var fslock sync.Mutex
 
 func (impl FsFuseManager) Setup(r *gin.RouterGroup) {
 	v1 := r.Group("/v1")
@@ -28,22 +24,18 @@ type fdefsResponse struct {
 }
 
 func get() bool {
-	fslock.Lock()
-	// Check if /proc/self/mounts contains "fde_ptfs" keyword
-	mounts, err := ioutil.ReadFile("/proc/self/mounts")
-	defer fslock.Unlock()
+	cmd := exec.Command("fde_fs", "-pq")
+	output, err := cmd.Output()
 	if err != nil {
-		logger.Error("read_mounts_file", nil, err)
+		logger.Error("execute_command", nil, err)
 		return false
 	}
-	if strings.Contains(string(mounts), "fde_ptfs") {
-		logger.Info("fde_ptfs_found", nil)
+	result := strings.TrimSpace(string(output))
+	if result == "true" {
 		return true
 	} else {
-		logger.Info("fde_ptfs_not_found", nil)
 		return false
 	}
-
 }
 
 func (impl FsFuseManager) getHandler(c *gin.Context) {
