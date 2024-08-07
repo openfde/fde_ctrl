@@ -10,7 +10,7 @@ type Gpu interface {
 	IsReady() (bool, error)
 }
 
-func IsRead() (bool, error) {
+func IsReady() (bool, error) {
 	node := "/sys/class/drm/card0/device/uevent"
 
 	_, err := os.Stat(node)
