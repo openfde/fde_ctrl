@@ -35,17 +35,15 @@ func IsReady() (bool, error) {
 			lists := strings.Split(line, "=")
 			if len(lists) == 2 {
 				var gpu Gpu
-				switch lists[1] {
-				case "phytium_display_pci":
-					{ //x100
-						gpu = new(x100)
-					}
-				case "jmgpu":
-					{ //jm9100
-						gpu = new(JM9100)
-					}
+				gpu = nil
+				if strings.Contains(lists[1], "phytium_display_pci") {
+					gpu = new(x100)
+				} else if strings.Contains(lists[1], "jmgpu") {
+					gpu = new(JM9100)
 				}
-				return gpu.IsReady()
+				if gpu != nil {
+					return gpu.IsReady()
+				}
 			}
 		}
 	}
