@@ -1,6 +1,8 @@
 package gpu
 
 import (
+	"errors"
+	"fde_ctrl/logger"
 	"os/exec"
 	"time"
 )
@@ -14,10 +16,16 @@ func (gpu JM9100) IsReady() (bool, error) {
 	cmd := exec.Command("pgrep", "fde-renderer")
 	if err := cmd.Run(); err == nil {
 		// fde-renderer process is already running
+		// Kill fde-renderer process
+		if err := exec.Command("pkill", "fde-renderer").Run(); err != nil {
+			logger.Error("kill_fde_renderer_exist", nil, err)
+			return false, err
+		}
 		return true, nil
 	}
-	// Run fde_fs -s command
+	// Run fde_fs -s command to set secure mode to softmode on kylin os
 	if err := exec.Command("fde_fs", "-s").Run(); err != nil {
+		logger.Error("set_secure_softmode", nil, err)
 		return false, err
 	}
 
@@ -32,6 +40,7 @@ func (gpu JM9100) IsReady() (bool, error) {
 			}
 			time.Sleep(time.Second) // Wait for 1 second before checking again
 		}
+		logger.Error("check_fde_renderer_exists", nil, errors.New("fde-renderer process is not running"))
 		return false, nil
 	}
 
