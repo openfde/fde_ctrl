@@ -21,7 +21,6 @@ func (gpu JM9100) IsReady() (bool, error) {
 			logger.Error("kill_fde_renderer_exist", nil, err)
 			return false, err
 		}
-		return true, nil
 	}
 	// Run fde_fs -s command to set secure mode to softmode on kylin os
 	if err := exec.Command("fde_fs", "-s").Run(); err != nil {
