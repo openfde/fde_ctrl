@@ -17,7 +17,6 @@ case $1 in
     ;;
     "start")
         export FDE_USE_X11="yes"
-        imwheel -k -b "0 0 0 0 8 9" 1>/dev/null 2>&1
         fde_ctrl -m shell 1>/dev/null 2>&1
     ;;
     "status")
