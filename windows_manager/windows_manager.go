@@ -15,6 +15,7 @@ type FDEMode string
 
 const DESKTOP_MODE_SHELL FDEMode = "shell"             //start by manual
 const DESKTOP_MODE_ENVIRONMENT FDEMode = "environment" // start by lightdm
+const DESKTOP_MODE_SHARED FDEMode = "shared" // start by manual on ubuntu shared with the wayland server
 
 type WindowsManager interface {
 	Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc) (*exec.Cmd, error)
@@ -29,29 +30,34 @@ func Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, mode F
 
 	if mode == DESKTOP_MODE_SHELL {
 		wm = new(WestonWM)
-	} else {
+	} else if mode == DESKTOP_MODE_ENVIRONMENT {
 		wm = new(Mutter)
 		//rm wayland-0 before run mutter
 		os.Remove(path)
 		os.Remove(path + ".lock")
 	}
-	cmdWinMan, err = wm.Start(mainCtx, mainCtxCancelFunc)
-	if err != nil {
-		return
-	}
-	waitCnt := 0
-	//wait for the wayland-0
-	for {
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			logger.Info("wayland-display", "not exist")
-			time.Sleep(time.Second)
-			waitCnt++
-		} else {
-			break
+
+	if mode == DESKTOP_MODE_SHARED { // shared mode: shared the wayland server with the host
+		//no need to start windows manager
+	}else {
+		cmdWinMan, err = wm.Start(mainCtx, mainCtxCancelFunc)
+		if err != nil {
+			return
 		}
-		if waitCnt > 60 {
-			logger.Error("wait_for_wayland-display", "timeout 60s", nil)
-			return nil, errors.New("time out for waiting wayland display")
+		waitCnt := 0
+		//wait for the wayland-0
+		for {
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				logger.Info("wayland-display", "not exist")
+				time.Sleep(time.Second)
+				waitCnt++
+			} else {
+				break
+			}
+			if waitCnt > 60 {
+				logger.Error("wait_for_wayland-display", "timeout 60s", nil)
+				return nil, errors.New("time out for waiting wayland display")
+			}
 		}
 	}
 	//enable tap to click

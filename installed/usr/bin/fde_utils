@@ -16,8 +16,18 @@ case $1 in
 	curl http://127.0.0.1:18080/api/v1/fs_fusing -X POST
     ;;
     "start")
-        export FDE_USE_X11="yes"
-        fde_ctrl -m shell 1>/dev/null 2>&1
+	. /etc/lsb-release
+	if [ "$DISTRIB_ID" = "Ubuntu" ];then
+		if [ "$XDG_SESSION_TYPE" = "wayland" ];then
+			fde_ctrl -m shared 1>/dev/null 2>&1
+		else
+			echo "Error: Unsupport xdg_session_type \"$XDG_SESSION_TYPE\" "
+			exit 1
+		fi
+	else
+		export FDE_USE_X11="yes"
+		fde_ctrl -m shell 1>/dev/null 2>&1
+	fi
     ;;
     "status")
         waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1

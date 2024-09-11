@@ -58,7 +58,7 @@ func main() {
 		fmt.Println("fde_ctrl:")
 		fmt.Println("\t-v: print versions and tags")
 		fmt.Println("\t-h: print help")
-		fmt.Println("\t-m: input the running mode[shell|environment]")
+		fmt.Println("\t-m: input the running mode[shell|environment|shared]")
 		return
 	}
 
