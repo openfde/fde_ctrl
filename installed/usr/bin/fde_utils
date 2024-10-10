@@ -54,6 +54,10 @@ case $1 in
 		if [ "$#" -eq 2 ];then
 			if [ "$2" = "shortcut" ];then	#start by the app shortcut
 				if [ -e "/usr/bin/fde_navi" ];then
+					ps -ef |grep fde_navi  -w |grep -v grep 1>/dev/null 2>&1
+					if [ $? = 1 ];then
+						fde_navi &
+					fi
 					num_of_desktop=`wmctrl -d  |wc -l` 
 					current_desktop=`wmctrl -d  |grep '*' |awk -F " " '{print $1}'`
 					next=`expr $current_desktop + 1 `
