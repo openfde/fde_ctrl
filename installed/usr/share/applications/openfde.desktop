@@ -1,6 +1,6 @@
 [Desktop Entry]
 Comment=OpenFDE
-Exec=/usr/bin/fde_utils start
+Exec=/usr/bin/fde_utils start shortcut
 Name=OpenFDE
 Name[zh_CN]=OpenFDE
 StartupNotify=false
