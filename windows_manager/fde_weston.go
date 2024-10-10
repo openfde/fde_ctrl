@@ -95,7 +95,7 @@ func (wm *WestonWM) Start(mainCtx context.Context, mainCtxCancelFunc context.Can
 	}
 
 	logger.Info("fde_weston_w_h"+width+","+height,nil)
-	cmdWeston := exec.CommandContext(mainCtx, "fde-weston", "--width="+width, "--height="+height, "--fullscreen")
+	cmdWeston := exec.CommandContext(mainCtx, "fde-weston", "--width="+width, "--height="+height, "--fullscreen","--enable-backend-cursor")
 	err = cmdWeston.Start()
 	if err != nil {
 		logger.Error("start_weston", nil, err)
