@@ -15,6 +15,7 @@ install:
 
 	sudo install conf/fde.conf /etc/fde.conf -m 644
 	sudo install installed/wayland-sessions/fde.desktop /usr/share/wayland-sessions/fde.desktop -m 644 -D
+	sudo install -d /lib/pm-utils/power.d -m 755
 	sudo install installed/lib/pm-utils/power.d/99openfde /lib/pm-utils/power.d/99openfde -m 755 
 	sudo install installed/lib/systemd/system-sleep/openfde /lib/systemd/system-sleep/openfde -m 755
 	sudo install installed/usr/bin/fde-set-ime-engine /usr/bin/fde-set-ime-engine -m 755

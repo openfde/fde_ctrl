@@ -66,7 +66,7 @@ func constructXServerstartup(name, path, display string) (bashFile string, err e
 	}
 	data = append(data, []byte(path+"\n")...)
 
-	bashFile = "/tmp/" + name
+	bashFile = "/tmp/xserver_" + name
 	file, err := os.OpenFile(bashFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
 		logger.Error("Error creating file:", name, err)
