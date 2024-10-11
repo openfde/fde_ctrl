@@ -6,30 +6,6 @@ if [ $# -lt 1 ];then
     exit 
 fi
 
-has_win_on_desktop() {
-	original_desktop=$1
-	windows=$(wmctrl -l | awk -v desktop="$original_desktop" '$2 == desktop {print $1}')
-	if [ -z "$windows" ];then
-		return 0
-	else
-		return 1
-	fi
-}
-
-move_windows_between_desktops() {
-	original_desktop=$1
-	target_desktop=$2
-
-	# 获取特定桌面中所有窗口的窗口 ID
-	windows=$(wmctrl -l | awk -v desktop="$original_desktop" '$2 == desktop {print $1}')
-
-	# 将这些窗口移动到目标桌面
-	for window in $windows
-	do
-		wmctrl -ir $window -t $target_desktop
-	done
-}
-
 case $1 in
     "-h")
         echo "Usage: $0 [status|screenshot|stop]"
@@ -52,36 +28,11 @@ case $1 in
 		fi
 	else
 		export FDE_USE_X11="yes"
-		if [ "$#" -eq 2 ];then
-			if [ "$2" = "shortcut" ];then	#start by the app shortcut
-				if [ -e "/usr/bin/fde_navi" ];then
-					ps -ef |grep fde_navi  -w |grep -v grep 1>/dev/null 2>&1
-					if [ $? = 1 ];then
-						fde_navi &
-					fi
-					num_of_desktop=`wmctrl -d  |wc -l` 
-					current_desktop=`wmctrl -d  |grep '*' |awk -F " " '{print $1}'`
-					next=`expr $current_desktop + 1 `
-					if [ "$next" -eq "$num_of_desktop" ];then
-						res=1		
-					else
-						has_win_on_desktop $next
-						res=$?
-					fi
-					if [ "$res" -eq 1 ];then
-						new_num_of_desktop=`expr $num_of_desktop + 1`
-						wmctrl -n "$new_num_of_desktop"
-						# 从桌面num_of_desktop开始（就是new_num_of_desktop的index），逐步将上一个桌面的窗口移动到下一个桌面
-						for ((i=$num_of_desktop; i>$current_desktop + 1 ; i--))
-						do
-						    move_windows_between_desktops  $((i-1)) $i
-						done
-					fi
-					wmctrl -s "$next" 
-				fi
-			fi
+		if [ "$2" = "shortcut" ];then	#start by the app shortcut
+			fde_ctrl -m shell -n  1>/dev/null 2>&1
+		else
+			fde_ctrl -m shell 1>/dev/null 2>&1
 		fi
-		fde_ctrl -m shell 1>/dev/null 2>&1
 	fi
     ;;
     "status")
