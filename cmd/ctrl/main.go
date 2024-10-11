@@ -9,6 +9,7 @@ import (
 	"fde_ctrl/conf"
 	"fde_ctrl/controller"
 	"fde_ctrl/controller/middleware"
+	navi "fde_ctrl/desktop_navi"
 	"fde_ctrl/fdedroid"
 	"fde_ctrl/gpu"
 	"fde_ctrl/logger"
@@ -48,16 +49,18 @@ var _tag_ = "v0.1"
 var _date_ = "20230101"
 
 func main() {
-	var version, help bool
+	var version, help, snavi bool
 	var mode string
 	flag.BoolVar(&version, "v", false, "-v")
 	flag.BoolVar(&help, "h", false, "-h")
+	flag.BoolVar(&snavi, "n", false, "-n")
 	flag.StringVar(&mode, "m", string(windows_manager.DESKTOP_MODE_ENVIRONMENT), "-m")
 	flag.Parse()
 	if help {
 		fmt.Println("fde_ctrl:")
 		fmt.Println("\t-v: print versions and tags")
 		fmt.Println("\t-h: print help")
+		fmt.Println("\t-n: start navi")
 		fmt.Println("\t-m: input the running mode[shell|environment|shared]")
 		return
 	}
@@ -79,6 +82,11 @@ func main() {
 	if !ready {
 		logger.Warn("gpu_is_not_ready", nil)
 		return
+	}
+
+	if snavi {
+		logger.Info("start_navi", nil)
+		navi.StartFdeNavi() // start desktop navi
 	}
 	mainCtx, mainCtxCancelFunc := context.WithCancel(context.Background())
 
