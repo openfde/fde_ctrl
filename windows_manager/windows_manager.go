@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 )
 
@@ -15,32 +16,37 @@ type FDEMode string
 
 const DESKTOP_MODE_SHELL FDEMode = "shell"             //start by manual
 const DESKTOP_MODE_ENVIRONMENT FDEMode = "environment" // start by lightdm
-const DESKTOP_MODE_SHARED FDEMode = "shared" // start by manual on ubuntu shared with the wayland server
+const DESKTOP_MODE_SHARED FDEMode = "shared"           // start by manual on ubuntu shared with the wayland server
+
+const SocketCustomName = "fde-wayland-0"
+const SocketDefaultName = "wayland-0"
 
 type WindowsManager interface {
-	Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc) (*exec.Cmd, error)
+	Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, socket string) (*exec.Cmd, error)
 }
 
-func Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, mode FDEMode) (cmdWinMan *exec.Cmd, err error) {
+func Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, mode FDEMode) (cmdWinMan *exec.Cmd, socket string, err error) {
 	var wm WindowsManager
 
 	userID := os.Getuid()
 	//todo the wayland display could be wayland-1 or n not only just wayland-0
-	path := "/run/user/" + fmt.Sprint(userID) + "/wayland-0"
-
+	path := "/run/user/" + fmt.Sprint(userID)
+	socket = SocketDefaultName
 	if mode == DESKTOP_MODE_SHELL {
 		wm = new(WestonWM)
+		socket = SocketCustomName
 	} else if mode == DESKTOP_MODE_ENVIRONMENT {
 		wm = new(Mutter)
 		//rm wayland-0 before run mutter
 		os.Remove(path)
 		os.Remove(path + ".lock")
 	}
+	path = filepath.Join(path, socket)
 
 	if mode == DESKTOP_MODE_SHARED { // shared mode: shared the wayland server with the host
 		//no need to start windows manager
-	}else {
-		cmdWinMan, err = wm.Start(mainCtx, mainCtxCancelFunc)
+	} else {
+		cmdWinMan, err = wm.Start(mainCtx, mainCtxCancelFunc, socket)
 		if err != nil {
 			return
 		}
@@ -56,7 +62,7 @@ func Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, mode F
 			}
 			if waitCnt > 60 {
 				logger.Error("wait_for_wayland-display", "timeout 60s", nil)
-				return nil, errors.New("time out for waiting wayland display")
+				return nil, socket, errors.New("time out for waiting wayland display")
 			}
 		}
 	}
@@ -66,5 +72,5 @@ func Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, mode F
 	if err != nil {
 		logger.Error("wayland_set_tap_to_click", nil, err)
 	}
-	return cmdWinMan, nil
+	return cmdWinMan, socket, nil
 }

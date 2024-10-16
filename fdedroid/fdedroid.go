@@ -7,5 +7,5 @@ import (
 )
 
 type Fdedroid interface {
-	Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, configure conf.Configure) (cmdWaydroid *exec.Cmd, err error)
+	Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, configure conf.Configure, socket string) (cmdWaydroid *exec.Cmd, err error)
 }

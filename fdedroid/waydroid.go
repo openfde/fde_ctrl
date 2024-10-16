@@ -13,7 +13,7 @@ import (
 type Waydroid struct {
 }
 
-func (fdedroid *Waydroid) Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, conf conf.Configure) (cmdWaydroid *exec.Cmd, err error) {
+func (fdedroid *Waydroid) Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, conf conf.Configure, socket string) (cmdWaydroid *exec.Cmd, err error) {
 	uid := os.Getuid()
 	nativeFile := "/run/user/" + fmt.Sprint(uid) + "/pulse/native"
 	if _, err := os.Stat(nativeFile); err != nil {
@@ -29,6 +29,7 @@ func (fdedroid *Waydroid) Start(mainCtx context.Context, mainCtxCancelFunc conte
 	exec.Command("waydroid", "session", "stop").Run()
 	// logger.Error("before waydroid_start", nil, nil)
 	cmdWaydroid = exec.CommandContext(mainCtx, "waydroid", "show-full-ui")
+	cmdWaydroid.Env = append(cmdWaydroid.Env, "WAYLAND_DISPLAY="+socket)
 	// logger.Error("before waydroid_start", "run", nil)
 	// var stdout, stderr io.ReadCloser
 	// stdout, err = cmdWaydroid.StdoutPipe()

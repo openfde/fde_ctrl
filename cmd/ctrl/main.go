@@ -108,7 +108,8 @@ func main() {
 
 	//step 1 start windowsmanager
 	var cmdWinMan *exec.Cmd
-	cmdWinMan, err = windows_manager.Start(mainCtx, mainCtxCancelFunc, windows_manager.FDEMode(mode))
+	var socketName string
+	cmdWinMan, socketName, err = windows_manager.Start(mainCtx, mainCtxCancelFunc, windows_manager.FDEMode(mode))
 	if err != nil {
 		logger.Error("start_windows_manager", mode, err)
 		return
@@ -119,7 +120,7 @@ func main() {
 	}
 	var droid fdedroid.Fdedroid
 	droid = new(fdedroid.Waydroid)
-	cmdSession, err := droid.Start(mainCtx, mainCtxCancelFunc, configure)
+	cmdSession, err := droid.Start(mainCtx, mainCtxCancelFunc, configure, socketName)
 	if err != nil {
 		logger.Error("fdedroid_start", mode, err)
 		killSonProcess(cmds)
