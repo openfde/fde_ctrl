@@ -28,8 +28,9 @@ func (fdedroid *Waydroid) Start(mainCtx context.Context, mainCtxCancelFunc conte
 
 	exec.Command("waydroid", "session", "stop").Run()
 	// logger.Error("before waydroid_start", nil, nil)
+	os.Environ()
 	cmdWaydroid = exec.CommandContext(mainCtx, "waydroid", "show-full-ui")
-	cmdWaydroid.Env = append(cmdWaydroid.Env, "WAYLAND_DISPLAY="+socket)
+	cmdWaydroid.Env = append(os.Environ(), "WAYLAND_DISPLAY="+socket)
 	// logger.Error("before waydroid_start", "run", nil)
 	// var stdout, stderr io.ReadCloser
 	// stdout, err = cmdWaydroid.StdoutPipe()
