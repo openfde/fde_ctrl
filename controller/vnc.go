@@ -52,7 +52,11 @@ func removeDesktopArgs(path string) (filteredPath string) {
 	return
 }
 
-func checkDistribID() bool {
+type Distrib string
+
+const Kylin Distrib = "Kylin"
+
+func checkDistribID(distrib Distrib) bool {
 	filePath := "/etc/lsb-release"
 	distribID := ""
 	content, err := ioutil.ReadFile(filePath)
@@ -70,7 +74,7 @@ func checkDistribID() bool {
 			}
 		}
 	}
-	return distribID == "Kylin"
+	return distribID == string(distrib)
 }
 
 func constructXstartup(name, path string) error {
@@ -104,10 +108,11 @@ func constructXstartup(name, path string) error {
 }
 
 type startAppRequest struct {
-	App     string
-	Path    string
-	SysOnly bool
-	Display string
+	App          string
+	Path         string
+	SysOnly      bool
+	Display      string
+	WithOutTheme bool
 }
 
 func (impl VncAppImpl) stopVncAppHandle(c *gin.Context) {
