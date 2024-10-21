@@ -2,6 +2,7 @@ package controller
 
 import (
 	"errors"
+	"fde_ctrl/conf"
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
 	"io"
@@ -16,6 +17,7 @@ import (
 )
 
 type XserverAppImpl struct {
+	Conf conf.Configure
 }
 
 func (impl XserverAppImpl) Setup(r *gin.RouterGroup) {
@@ -23,27 +25,24 @@ func (impl XserverAppImpl) Setup(r *gin.RouterGroup) {
 	v1.POST("/xserver", impl.startAppHandle)
 }
 
-func (impl XserverAppImpl) copyFile(dst, src string) (err error) {
-	srcFile, _ := os.Open(src)
-	defer srcFile.Close()
-
-	dstFile, _ := os.Create(dst)
-	defer dstFile.Close()
-
-	_, err = io.Copy(dstFile, srcFile)
-	if err != nil {
-		logger.Error("copy_i3_config", nil, err)
+func (impl XserverAppImpl) isClientServer(app string) string {
+	for _, v := range impl.Conf.FusionApp.CServerList {
+		if v.ClientName == app {
+			return v.ServerName
+		}
 	}
-	return
+	return ""
 }
 
-func constructXServerstartup(name, path, display string) (bashFile string, err error) {
+func constructXServerstartup(name, path, display, serverName string) (bashFile string, err error) {
 	path = removeDesktopArgs(path)
 	data := []byte("#!/bin/bash\n" +
 		"export GDK_BACKEND=x11\n" +
 		"export QT_QPA_PLATFORM=xcb\n" +
 		"export DISPLAY=" + display + "\n")
-
+	if serverName != "" {
+		data = append(data, []byte(serverName+" & \n")...)
+	}
 	data = append(data, []byte(path+"\n")...)
 
 	bashFile = "/tmp/xserver_" + name
@@ -79,23 +78,34 @@ func (impl XserverAppImpl) startAppHandle(c *gin.Context) {
 	})
 }
 
+func (impl XserverAppImpl) isWitoutTheme(app string) bool {
+	for _, v := range impl.Conf.Xserver.WithOutThemeList {
+		if strings.Contains(app, v) {
+			return true
+		}
+	}
+	return false
+}
+
 // start a app ,return the port or error
 func (impl XserverAppImpl) startApp(app, path, display string, withoutTheme bool) (err error) {
 	logger.Info("start_app", app+" "+display)
-	filePath, err := constructXServerstartup(app, path, display)
+	serverName := impl.isClientServer(app)
+
+	filePath, err := constructXServerstartup(app, path, display, serverName)
 	if err != nil {
 		return
 	}
-
+	withoutThemeConfig := impl.isWitoutTheme(app)
 	cmdApp := exec.Command(filePath)
 	if checkDistribID(Kylin) {
-		if !withoutTheme {
+		if !withoutTheme || withoutThemeConfig {
 			cmdApp.Env = append(cmdApp.Env, "QT_QPA_PLATFORMTHEME=ukui")
 		}
 	}
 	// cmdVnc.Env = append(os.Environ())
 	for _, v := range os.Environ() {
-		if withoutTheme {
+		if withoutTheme || withoutThemeConfig {
 			if strings.Contains(v, "QT_QPA_PLATFORMTHEME") || strings.Contains(v, "XDG_CURRENT_DESKTOP") {
 				continue
 			}

@@ -15,7 +15,7 @@ const (
 )
 
 type Xserver struct {
-	WithOutTheme []string
+	WithOutThemeList []string
 }
 
 type CServer struct {
@@ -24,7 +24,7 @@ type CServer struct {
 }
 
 type FusionApp struct {
-	CServer []CServer
+	CServerList []CServer
 }
 
 type App struct {
@@ -51,10 +51,10 @@ func Read() (configure Configure, err error) {
 	configure.App.IconThemes = sectionApp.Key("IconThemes").Strings(",")
 
 	sectionXserver := cfg.Section(sectonXserver)
-	configure.Xserver.WithOutTheme = sectionXserver.Key("WithoutTheme").Strings(",")
+	configure.Xserver.WithOutThemeList = sectionXserver.Key("WithoutThemeList").Strings(",")
 
 	sectionFusionApp := cfg.Section(fusionApp)
-	cserverList := sectionFusionApp.Key("CServer").Strings(",")
+	cserverList := sectionFusionApp.Key("CServerList").Strings(",")
 	if len(cserverList)%2 != 0 {
 		logger.Error("cserver_list", len(cserverList), errors.New("cserver list is not even"))
 		return
@@ -63,7 +63,7 @@ func Read() (configure Configure, err error) {
 		if i%2 != 0 {
 			continue
 		}
-		configure.FusionApp.CServer = append(configure.FusionApp.CServer, CServer{ClientName: v, ServerName: cserverList[i+1]})
+		configure.FusionApp.CServerList = append(configure.FusionApp.CServerList, CServer{ClientName: v, ServerName: cserverList[i+1]})
 	}
 	//go to find configure which locate at  /etc/fde.d/
 	//获取/etc/fde.d/下的所有文件
@@ -81,7 +81,7 @@ func Read() (configure Configure, err error) {
 				return
 			}
 			sectionFusionApp := cfg.Section(fusionApp)
-			cserverList := sectionFusionApp.Key("CServer").Strings(",")
+			cserverList := sectionFusionApp.Key("CServerList").Strings(",")
 			if len(cserverList)%2 != 0 {
 				logger.Error("cserver_list", len(cserverList), errors.New("cserver list is not even "+file.Name()))
 				return
@@ -90,10 +90,10 @@ func Read() (configure Configure, err error) {
 				if i%2 != 0 {
 					continue
 				}
-				configure.FusionApp.CServer = append(configure.FusionApp.CServer, CServer{ClientName: v, ServerName: cserverList[i+1]})
+				configure.FusionApp.CServerList = append(configure.FusionApp.CServerList, CServer{ClientName: v, ServerName: cserverList[i+1]})
 			}
 			sectionXserver := cfg.Section(sectonXserver)
-			configure.Xserver.WithOutTheme = append(configure.Xserver.WithOutTheme, sectionXserver.Key("WithoutTheme").Strings(",")...)
+			configure.Xserver.WithOutThemeList = append(configure.Xserver.WithOutThemeList, sectionXserver.Key("WithoutThemeList").Strings(",")...)
 		}
 	}
 	err = nil

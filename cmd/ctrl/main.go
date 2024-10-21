@@ -25,9 +25,11 @@ import (
 func setup(r *gin.Engine, configure conf.Configure) error {
 
 	var vnc controller.VncAppImpl
+	vnc.Conf = configure
 	var apps controller.Apps
 	var pm controller.PowerManager
 	var xserver controller.XserverAppImpl
+	xserver.Conf = configure
 	var brightness controller.BrightNessManager
 	fsfusing := controller.FsFuseManager{}
 	group := r.Group("/api")

@@ -3,6 +3,7 @@ package controller
 import (
 	"bytes"
 	"errors"
+	"fde_ctrl/conf"
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 )
 
 type VncAppImpl struct {
+	Conf conf.Configure
 }
 
 func (impl VncAppImpl) Setup(r *gin.RouterGroup) {
@@ -56,6 +58,15 @@ type Distrib string
 
 const Kylin Distrib = "Kylin"
 
+func (impl VncAppImpl) isClientServer(app string) string {
+	for _, v := range impl.Conf.FusionApp.CServerList {
+		if v.ClientName == app {
+			return v.ServerName
+		}
+	}
+	return ""
+}
+
 func checkDistribID(distrib Distrib) bool {
 	filePath := "/etc/lsb-release"
 	distribID := ""
@@ -77,7 +88,7 @@ func checkDistribID(distrib Distrib) bool {
 	return distribID == string(distrib)
 }
 
-func constructXstartup(name, path string) error {
+func constructXstartup(name, path, serverName string) error {
 	path = removeDesktopArgs(path)
 	data := []byte("#!/bin/bash\n" +
 		"fde-set-ime-engine " + name + " &\n" +
@@ -89,6 +100,9 @@ func constructXstartup(name, path string) error {
 		"export im=ibus\n")
 	if checkDistribID(Kylin) {
 		data = append(data, []byte("export QT_QPA_PLATFORMTHEME=ukui \n ")...)
+	}
+	if serverName != "" {
+		data = append(data, []byte(serverName+" & \n")...)
 	}
 	data = append(data, []byte(path+" &\n")...)
 
@@ -276,12 +290,13 @@ func (impl VncAppImpl) startVncApp(app, path string, sysOnly bool) (port string,
 	if exist {
 		return
 	}
+	serverName := impl.isClientServer(app)
 	var arg []string
 	arg = append(arg, "--SecurityTypes=None", "-name="+app, "--I-KNOW-THIS-IS-INSECURE",
 		"-BlacklistThreshold=10000000", "-BlacklistTimeout=0")
 	logger.Info("app_not_start", app)
 	if !sysOnly {
-		err = constructXstartup(app, path)
+		err = constructXstartup(app, path, serverName)
 		if err != nil {
 			return
 		}
