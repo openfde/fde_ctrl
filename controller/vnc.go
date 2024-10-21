@@ -87,7 +87,7 @@ func constructXstartup(name, path string) error {
 		"export QT_IM_MODULE=ibus\n" +
 		"export QT4_IM_MODULE=ibus\n" +
 		"export im=ibus\n")
-	if checkDistribID() {
+	if checkDistribID(Kylin) {
 		data = append(data, []byte("export QT_QPA_PLATFORMTHEME=ukui \n ")...)
 	}
 	data = append(data, []byte(path+" &\n")...)
