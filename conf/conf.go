@@ -1,50 +1,41 @@
 package conf
 
 import (
+	"errors"
 	"fde_ctrl/logger"
+	"io/ioutil"
 
 	"github.com/go-ini/ini"
 )
 
 const (
-	sectionAndroid    = "Android"
-	sectionHttp       = "Http Server"
-	sectionWinManager = "WindowsManager"
-	sectionDisplay    = "Display"
-	sectionApp        = "App"
+	sectionApp    = "App"
+	sectonXserver = "Xserver"
+	fusionApp     = "FusingApp"
 )
 
-const (
-	sectionFusion = "PersonalDirFusing"
-)
+type Xserver struct {
+	WithOutTheme []string
+}
+
+type CServer struct {
+	ClientName string //gnome-terminal
+	ServerName string //gnome-terminal-server
+}
+
+type FusionApp struct {
+	CServer []CServer
+}
 
 type App struct {
 	IconSizes  []string //16 x 16 default
 	IconThemes []string //hicolor
 }
 
-type Android struct {
-	Image string
-}
-
-type Http struct {
-	Host string
-}
-
-// func (win WindowsManager) IsWayland() bool {
-// 	//actually fde_wm is renamed from mutter, because mutter is a protected process name on kylin operator system
-// 	return win.Protocol == "wayland" || win.Name == "fde_wm"
-// }
-
-type Display struct {
-	Resolution string
-}
-
 type Configure struct {
-	Android Android
-	Display Display
-	Http    Http
-	App     App
+	App       App
+	Xserver   Xserver
+	FusionApp FusionApp
 }
 
 func Read() (configure Configure, err error) {
@@ -55,27 +46,56 @@ func Read() (configure Configure, err error) {
 	}
 
 	// 获取配置文件中的值
-	sectionAndroid := cfg.Section(sectionAndroid)
-	configure.Android.Image = sectionAndroid.Key("Image").String()
-	if len(configure.Android.Image) == 0 {
-		configure.Android.Image = "fde:latest"
-	}
-
-	sectionHttp := cfg.Section(sectionHttp)
-	configure.Http.Host = sectionHttp.Key("Host").String()
-	if len(configure.Http.Host) == 0 {
-		configure.Http.Host = "128.128.0.1"
-	}
-
-	sectionDisplay := cfg.Section(sectionDisplay)
-	configure.Display.Resolution = sectionDisplay.Key("Resolution").String()
-	if len(configure.Display.Resolution) == 0 {
-		configure.Display.Resolution = "1920,1080"
-	}
 	sectionApp := cfg.Section(sectionApp)
 	configure.App.IconSizes = sectionApp.Key("IconSizes").Strings(",")
 	configure.App.IconThemes = sectionApp.Key("IconThemes").Strings(",")
 
-	return
+	sectionXserver := cfg.Section(sectonXserver)
+	configure.Xserver.WithOutTheme = sectionXserver.Key("WithoutTheme").Strings(",")
 
+	sectionFusionApp := cfg.Section(fusionApp)
+	cserverList := sectionFusionApp.Key("CServer").Strings(",")
+	if len(cserverList)%2 != 0 {
+		logger.Error("cserver_list", len(cserverList), errors.New("cserver list is not even"))
+		return
+	}
+	for i, v := range cserverList {
+		if i%2 != 0 {
+			continue
+		}
+		configure.FusionApp.CServer = append(configure.FusionApp.CServer, CServer{ClientName: v, ServerName: cserverList[i+1]})
+	}
+	//go to find configure which locate at  /etc/fde.d/
+	//获取/etc/fde.d/下的所有文件
+	files, err := ioutil.ReadDir("/etc/fde.d/")
+	if err != nil {
+		logger.Error("read_dir", nil, err)
+		return
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		//读取文件内容
+		cfg, err = ini.Load("/etc/fde.d/" + file.Name())
+		if err != nil {
+			logger.Error("load config", nil, err)
+			return
+		}
+		sectionFusionApp := cfg.Section(fusionApp)
+		cserverList := sectionFusionApp.Key("CServer").Strings(",")
+		if len(cserverList)%2 != 0 {
+			logger.Error("cserver_list", len(cserverList), errors.New("cserver list is not even "+file.Name()))
+			return
+		}
+		for i, v := range cserverList {
+			if i%2 != 0 {
+				continue
+			}
+			configure.FusionApp.CServer = append(configure.FusionApp.CServer, CServer{ClientName: v, ServerName: cserverList[i+1]})
+		}
+		sectionXserver := cfg.Section(sectonXserver)
+		configure.Xserver.WithOutTheme = append(configure.Xserver.WithOutTheme, sectionXserver.Key("WithoutTheme").Strings(",")...)
+	}
+	return
 }
