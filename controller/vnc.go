@@ -290,7 +290,7 @@ func (impl VncAppImpl) startVncApp(app, path string, sysOnly bool) (port string,
 	if exist {
 		return
 	}
-	serverName := impl.isClientServer(app)
+	serverName := impl.isClientServer(path)
 	var arg []string
 	arg = append(arg, "--SecurityTypes=None", "-name="+app, "--I-KNOW-THIS-IS-INSECURE",
 		"-BlacklistThreshold=10000000", "-BlacklistTimeout=0")

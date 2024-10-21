@@ -90,7 +90,7 @@ func (impl XserverAppImpl) isWitoutTheme(app string) bool {
 // start a app ,return the port or error
 func (impl XserverAppImpl) startApp(app, path, display string, withoutTheme bool) (err error) {
 	logger.Info("start_app", app+" "+display)
-	serverName := impl.isClientServer(app)
+	serverName := impl.isClientServer(path)
 
 	filePath, err := constructXServerstartup(app, path, display, serverName)
 	if err != nil {
@@ -99,7 +99,7 @@ func (impl XserverAppImpl) startApp(app, path, display string, withoutTheme bool
 	withoutThemeConfig := impl.isWitoutTheme(app)
 	cmdApp := exec.Command(filePath)
 	if checkDistribID(Kylin) {
-		if !withoutTheme || withoutThemeConfig {
+		if !withoutTheme && !withoutThemeConfig {
 			cmdApp.Env = append(cmdApp.Env, "QT_QPA_PLATFORMTHEME=ukui")
 		}
 	}
