@@ -68,34 +68,34 @@ func Read() (configure Configure, err error) {
 	//go to find configure which locate at  /etc/fde.d/
 	//获取/etc/fde.d/下的所有文件
 	files, err := ioutil.ReadDir("/etc/fde.d/")
-	if err != nil {
-		logger.Error("read_dir", nil, err)
-		return
-	}
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		//读取文件内容
-		cfg, err = ini.Load("/etc/fde.d/" + file.Name())
-		if err != nil {
-			logger.Error("load config", nil, err)
-			return
-		}
-		sectionFusionApp := cfg.Section(fusionApp)
-		cserverList := sectionFusionApp.Key("CServer").Strings(",")
-		if len(cserverList)%2 != 0 {
-			logger.Error("cserver_list", len(cserverList), errors.New("cserver list is not even "+file.Name()))
-			return
-		}
-		for i, v := range cserverList {
-			if i%2 != 0 {
+	if err == nil {
+		for _, file := range files {
+			if file.IsDir() {
 				continue
 			}
-			configure.FusionApp.CServer = append(configure.FusionApp.CServer, CServer{ClientName: v, ServerName: cserverList[i+1]})
+			//读取文件内容
+			cfg, err = ini.Load("/etc/fde.d/" + file.Name())
+			if err != nil {
+				logger.Error("load config", file.Name(), err)
+				err = nil
+				return
+			}
+			sectionFusionApp := cfg.Section(fusionApp)
+			cserverList := sectionFusionApp.Key("CServer").Strings(",")
+			if len(cserverList)%2 != 0 {
+				logger.Error("cserver_list", len(cserverList), errors.New("cserver list is not even "+file.Name()))
+				return
+			}
+			for i, v := range cserverList {
+				if i%2 != 0 {
+					continue
+				}
+				configure.FusionApp.CServer = append(configure.FusionApp.CServer, CServer{ClientName: v, ServerName: cserverList[i+1]})
+			}
+			sectionXserver := cfg.Section(sectonXserver)
+			configure.Xserver.WithOutTheme = append(configure.Xserver.WithOutTheme, sectionXserver.Key("WithoutTheme").Strings(",")...)
 		}
-		sectionXserver := cfg.Section(sectonXserver)
-		configure.Xserver.WithOutTheme = append(configure.Xserver.WithOutTheme, sectionXserver.Key("WithoutTheme").Strings(",")...)
 	}
+	err = nil
 	return
 }
