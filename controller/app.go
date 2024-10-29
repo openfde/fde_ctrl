@@ -31,19 +31,15 @@ var defaultIconSizes = []string{"64x64", "scalable"}
 
 var config conf.Configure
 
-func (appImpl *Apps) Scan(configure conf.Configure) error {
+func (appImpl *Apps) Scan(configure conf.Configure) {
 	mutex.Lock()
 	defer mutex.Unlock()
 	if len(*appImpl) > 0 {
 		*appImpl = make(Apps, 0)
 	}
 	config = configure
-	err := appImpl.scan(iconPixmapPath, desktopEntryPath, configure.App.IconThemes, configure.App.IconSizes)
-	if err != nil {
-		logger.Error("scan_apps_init", nil, err)
-		return err
-	}
-	return nil
+	appImpl.scan(iconPixmapPath, desktopEntryPath, configure.App.IconThemes, configure.App.IconSizes)
+	return
 }
 
 type AppImpl struct {
@@ -98,7 +94,7 @@ func (impls *Apps) ScanHandler(c *gin.Context) {
 	response.ResponseWithPagination(c, pageQuery, data)
 }
 
-func (impls *Apps) scan(iconPixmapsPath, desktopEntryPath string, iconThemes, iconSizes []string) error {
+func (impls *Apps) scan(iconPixmapsPath, desktopEntryPath string, iconThemes, iconSizes []string) {
 	var iconPathList []string
 	iconPathList = append(iconPathList, iconPixmapsPath)
 	if len(iconSizes) == 0 || (len(iconSizes) == 1 && iconSizes[0] == "") {
@@ -113,10 +109,7 @@ func (impls *Apps) scan(iconPixmapsPath, desktopEntryPath string, iconThemes, ic
 		}
 	}
 	// 调用递归函数遍历目录下的所有文件
-	err := filepath.Walk(desktopEntryPath, impls.visitDesktopEntries)
-	if err != nil {
-		return err
-	}
+	filepath.Walk(desktopEntryPath, impls.visitDesktopEntries)
 	absPath := ""
 	// var filterApps *Apps
 	var filteredApps Apps
@@ -134,7 +127,7 @@ func (impls *Apps) scan(iconPixmapsPath, desktopEntryPath string, iconThemes, ic
 		} else {
 			//寻找这个相对路径的文件
 			for _, pathValue := range iconPathList {
-				_, err = os.Stat(pathValue)
+				_, err := os.Stat(pathValue)
 				if os.IsNotExist(err) {
 					continue
 				}
@@ -157,7 +150,7 @@ func (impls *Apps) scan(iconPixmapsPath, desktopEntryPath string, iconThemes, ic
 		*impls = append(*impls, app)
 	}
 
-	return nil
+	return
 }
 
 func (impl *AppImpl) readIconForApp(path string, info fs.FileInfo, err error) error {
@@ -193,7 +186,8 @@ func (impl *AppImpl) readIconForApp(path string, info fs.FileInfo, err error) er
 // 递归访问指定目录下的所有文件和子目录
 func (impl *Apps) visitDesktopEntries(path string, info fs.FileInfo, err error) error {
 	if err != nil {
-		return err
+		logger.Error("visit_lstat_desktop_file", path, err)
+		return nil
 	}
 	if !strings.Contains(path, ".desktop") {
 		return nil
@@ -201,7 +195,8 @@ func (impl *Apps) visitDesktopEntries(path string, info fs.FileInfo, err error) 
 
 	cfg, err := ini.Load(path)
 	if err != nil {
-		return err
+		logger.Error("load_desktop_file", path, err)
+		return nil // skip invalid desktop file
 	}
 
 	// 获取配置文件中的值
