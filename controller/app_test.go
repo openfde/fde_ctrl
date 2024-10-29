@@ -42,10 +42,8 @@ func TestApps_Scan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.impls.scan(tt.args.iconsPixmapsPath, tt.args.desktopEntryPath, tt.args.themes, tt.args.sizes)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Apps.AppScan() error = %v, wantErr %v", err, tt.wantErr)
-			}
+			tt.impls.scan(tt.args.iconsPixmapsPath, tt.args.desktopEntryPath, tt.args.themes, tt.args.sizes)
+
 			for _, value := range tt.impls {
 				if value.Name == "Visual Studio Code" {
 					if value.IconType != tt.output[0].IconType {

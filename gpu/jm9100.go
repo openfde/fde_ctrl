@@ -3,6 +3,8 @@ package gpu
 import (
 	"errors"
 	"fde_ctrl/logger"
+	"fde_ctrl/windows_manager"
+	"os"
 	"os/exec"
 	"time"
 )
@@ -10,7 +12,10 @@ import (
 type JM9100 struct {
 }
 
-func (gpu JM9100) IsReady() (bool, error) {
+func (gpu JM9100) IsReady(mode windows_manager.FDEMode) (bool, error) {
+	if mode == windows_manager.DESKTOP_MODE_ENVIRONMENT {
+		return false, errors.New("JM9100 is not supported in environment mode")
+	}
 	//start fde-renderer
 	// Check if fde-renderer process is already running
 	cmd := exec.Command("pgrep", "fde-renderer")
@@ -41,6 +46,10 @@ func (gpu JM9100) IsReady() (bool, error) {
 		}
 		logger.Error("check_fde_renderer_exists", nil, errors.New("fde-renderer process is not running"))
 		return false, nil
+	}
+	if _, err := os.Stat("/var/lib/fde/sockets/qemu_pipe"); os.IsNotExist(err) {
+		logger.Error("check_fde_renderer_qemupipe_exists", nil, errors.New("qemu_pipe not exist"))
+		return false, err
 	}
 
 	return true, nil

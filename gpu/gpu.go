@@ -2,15 +2,16 @@ package gpu
 
 import (
 	"bufio"
+	"fde_ctrl/windows_manager"
 	"os"
 	"strings"
 )
 
 type Gpu interface {
-	IsReady() (bool, error)
+	IsReady(windows_manager.FDEMode) (bool, error)
 }
 
-func IsReady() (bool, error) {
+func IsReady(mode windows_manager.FDEMode) (bool, error) {
 	node := "/sys/class/drm/card0/device/uevent"
 
 	_, err := os.Stat(node)
@@ -42,7 +43,7 @@ func IsReady() (bool, error) {
 					gpu = new(JM9100)
 				}
 				if gpu != nil {
-					return gpu.IsReady()
+					return gpu.IsReady(mode)
 				}
 			}
 		}
