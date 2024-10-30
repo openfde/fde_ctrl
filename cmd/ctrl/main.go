@@ -73,7 +73,7 @@ func main() {
 		logger.Error("read_conf", nil, err)
 		return
 	}
-	ready, err := gpu.IsReady()
+	ready, err := gpu.IsReady(windows_manager.FDEMode(mode))
 	if err != nil {
 		logger.Error("gpu_is_ready", nil, err)
 		return
