@@ -15,11 +15,12 @@ type contextLine struct {
 	levels []logrus.Level
 }
 
+const skipLayer = 2 //call stack layer
 // NewContextLine use to make an hook
 func NewContextLine(levels ...logrus.Level) logrus.Hook {
 	hook := contextLine{
 		Field:  "LINE",
-		Skip:   5,
+		Skip:   skipLayer,
 		levels: levels,
 	}
 	if len(hook.levels) == 0 {

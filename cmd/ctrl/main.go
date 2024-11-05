@@ -78,6 +78,9 @@ func main() {
 	if mode, snavi, return_directly = parseArgs(); return_directly {
 		return
 	}
+	if checkPidMax() {
+		return
+	}
 
 	configure, err := conf.Read()
 	if err != nil {
