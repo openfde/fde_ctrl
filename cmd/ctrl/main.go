@@ -22,7 +22,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func setup(r *gin.Engine, configure conf.Configure) error {
+func setup(r *gin.Engine, configure conf.Configure) {
 
 	var vnc controller.VncAppImpl
 	vnc.Conf = configure
@@ -40,16 +40,15 @@ func setup(r *gin.Engine, configure conf.Configure) error {
 		value.Setup(group)
 	}
 
-	return nil
+	return
 }
 
 var _version_ = "v0.1"
 var _tag_ = "v0.1"
 var _date_ = "20230101"
 
-func main() {
-	var version, help, snavi bool
-	var mode string
+func parseArgs() (mode string, snavi, return_directly bool) {
+	var version, help bool
 	flag.BoolVar(&version, "v", false, "-v")
 	flag.BoolVar(&help, "h", false, "-h")
 	flag.BoolVar(&snavi, "n", false, "-n")
@@ -61,13 +60,25 @@ func main() {
 		fmt.Println("\t-h: print help")
 		fmt.Println("\t-n: start navi")
 		fmt.Println("\t-m: input the running mode[shell|environment|shared]")
+		return_directly = true
+		return
+	}
+	if version {
+		fmt.Printf("Version: %s, tag: %s , date: %s \n", _version_, _tag_, _date_)
+		return_directly = true
+		return
+	}
+	return
+}
+
+func main() {
+	var mode string
+	var snavi bool
+	var return_directly bool
+	if mode, snavi, return_directly = parseArgs(); return_directly {
 		return
 	}
 
-	if version {
-		fmt.Printf("Version: %s, tag: %s , date: %s \n", _version_, _tag_, _date_)
-		return
-	}
 	configure, err := conf.Read()
 	if err != nil {
 		logger.Error("read_conf", nil, err)
@@ -131,10 +142,7 @@ func main() {
 	engine := gin.New()
 	engine.Use(middleware.LogHandler(), gin.Recovery())
 	engine.Use(middleware.ErrHandler())
-	if err := setup(engine, configure); err != nil {
-		logger.Error("setup", nil, err)
-		return
-	}
+	setup(engine, configure)
 	go engine.Run("localhost:18080")
 
 	if mainCtx.Err() == nil {
