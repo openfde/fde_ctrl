@@ -8,7 +8,6 @@ import (
 	"context"
 	"fde_ctrl/conf"
 	"fde_ctrl/controller"
-	"os"
 	"fde_ctrl/controller/middleware"
 	navi "fde_ctrl/desktop_navi"
 	"fde_ctrl/fdedroid"
@@ -18,6 +17,7 @@ import (
 	"fde_ctrl/windows_manager"
 	"flag"
 	"fmt"
+	"os"
 	"os/exec"
 
 	"github.com/gin-gonic/gin"
@@ -72,6 +72,8 @@ func parseArgs() (mode string, snavi, return_directly bool) {
 	return
 }
 
+const errnoPidMaxOutOfLimit = 10
+
 func main() {
 	var mode string
 	var snavi bool
@@ -79,8 +81,8 @@ func main() {
 	if mode, snavi, return_directly = parseArgs(); return_directly {
 		return
 	}
-	if checkPidMax() {
-		os.Exit(10)
+	if CheckPidMax() {
+		os.Exit(errnoPidMaxOutOfLimit)
 	}
 
 	configure, err := conf.Read()
@@ -176,7 +178,7 @@ func main() {
 						}
 						return
 					}
-				case process_chan.Logout,process_chan.Unexpected:
+				case process_chan.Logout, process_chan.Unexpected:
 					{
 						// logout
 						var vnc controller.VncAppImpl
@@ -184,7 +186,7 @@ func main() {
 						if action == process_chan.Unexpected {
 							logger.Info("unexpected_exit", "pid max is out of limit 65535")
 							os.Exit(10)
-						}else{
+						} else {
 							logger.Info("logout", "exit due to some one send logout signal")
 						}
 						return
