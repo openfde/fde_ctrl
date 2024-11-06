@@ -5,6 +5,7 @@ type PowerAction string
 const (
 	Logout   = PowerAction("logout")
 	Poweroff = PowerAction("poweroff")
+	Unexpected = PowerAction("unexpected")
 	Restart  = PowerAction("restart")
 )
 
@@ -23,4 +24,8 @@ func SendPoweroff() {
 
 func SendLogout() {
 	sendMessage(Logout)
+}
+
+func SendUnexpected() {
+	sendMessage(Unexpected)
 }

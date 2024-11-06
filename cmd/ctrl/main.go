@@ -8,6 +8,7 @@ import (
 	"context"
 	"fde_ctrl/conf"
 	"fde_ctrl/controller"
+	"os"
 	"fde_ctrl/controller/middleware"
 	navi "fde_ctrl/desktop_navi"
 	"fde_ctrl/fdedroid"
@@ -79,7 +80,7 @@ func main() {
 		return
 	}
 	if checkPidMax() {
-		return
+		os.Exit(10)
 	}
 
 	configure, err := conf.Read()
@@ -175,12 +176,17 @@ func main() {
 						}
 						return
 					}
-				case process_chan.Logout:
+				case process_chan.Logout,process_chan.Unexpected:
 					{
 						// logout
 						var vnc controller.VncAppImpl
 						vnc.StopAll()
-						logger.Info("logout", "exit due to some one send logout signal")
+						if action == process_chan.Unexpected {
+							logger.Info("unexpected_exit", "pid max is out of limit 65535")
+							os.Exit(10)
+						}else{
+							logger.Info("logout", "exit due to some one send logout signal")
+						}
 						return
 					}
 				case process_chan.Poweroff:

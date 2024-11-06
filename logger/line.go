@@ -15,7 +15,7 @@ type contextLine struct {
 	levels []logrus.Level
 }
 
-const skipLayer = 2 //call stack layer
+const skipLayer = 5 //call stack layer
 // NewContextLine use to make an hook
 func NewContextLine(levels ...logrus.Level) logrus.Hook {
 	hook := contextLine{
@@ -44,7 +44,7 @@ func findCaller(skip int) string {
 	line := 0
 	for i := 0; i < 10; i++ {
 		file, line = getCaller(skip + i)
-		if !strings.HasPrefix(file, "logrus") {
+		if !strings.HasPrefix(file, "logrus") && !strings.HasPrefix(file,"logger") {
 			break
 		}
 	}
