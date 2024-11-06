@@ -2,10 +2,9 @@ package main
 
 import (
 	"bytes"
-	"time"
 	"errors"
-	"fde_ctrl/process_chan"
 	"fde_ctrl/logger"
+	"fde_ctrl/process_chan"
 	"os"
 	"strconv"
 	"time"
@@ -44,9 +43,9 @@ func CheckPidMax() (shouldExit bool) {
 }
 
 func detectPidMaxTimingly() {
-	defer func(){
+	defer func() {
 		if err := recover(); err != nil {
-		    logger.Error("recover_pid_max_timingly",nil,err)
+			logger.Error("recover_pid_max_timingly", nil, nil)
 		}
 	}()
 	ticker := time.NewTicker(1 * time.Minute)
@@ -57,7 +56,7 @@ func detectPidMaxTimingly() {
 		case <-ticker.C:
 			if checkPidMax() {
 				logger.Error("pid_max_check", nil, errors.New("pid_max check failed"))
-				os.Exit(1)
+				process_chan.SendUnexpected()
 			}
 		}
 	}
