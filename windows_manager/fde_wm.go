@@ -15,7 +15,7 @@ type Mutter struct {
 const fdeWindowsManager = "fde_wm" //actually fde_wm is renamed from mutter
 
 func (wm Mutter) Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, socket string) (cmdWinMan *exec.Cmd, err error) {
-	cmdWinMan = exec.CommandContext(mainCtx, fdeWindowsManager)
+	cmdWinMan = exec.CommandContext(mainCtx, fdeWindowsManager,"--mutter-plugin=/usr/local/lib/aarch64-linux-gnu/mutter-6/plugins/libdefault.so")
 	_, exist := tools.ProcessExists(fdeWindowsManager)
 	if exist {
 		return nil, nil
