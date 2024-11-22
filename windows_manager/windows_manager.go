@@ -14,20 +14,26 @@ import (
 // mode including desktop shell and desktop environment
 type FDEMode string
 
-const DESKTOP_MODE_SHELL FDEMode = "shell"             //start by manual
-const DESKTOP_MODE_ENVIRONMENT FDEMode = "environment" // start by lightdm
+const DESKTOP_MODE_SHELL FDEMode = "shell"             //start by manual with X11 server
+const DESKTOP_MODE_ENVIRONMENT FDEMode = "environment" // start by lightdm with wayland server
 const DESKTOP_MODE_SHARED FDEMode = "shared"           // start by manual on ubuntu shared with the wayland server
 
 const SocketCustomName = "fde-wayland-0"
 const SocketDefaultName = "wayland-0"
 
+var fdeMode FDEMode = DESKTOP_MODE_ENVIRONMENT
+
 type WindowsManager interface {
 	Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, socket string) (*exec.Cmd, error)
 }
 
+func GetFDEMode() FDEMode {
+	return fdeMode
+}
+
 func Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, mode FDEMode) (cmdWinMan *exec.Cmd, socket string, err error) {
 	var wm WindowsManager
-
+	fdeMode = mode
 	userID := os.Getuid()
 	//todo the wayland display could be wayland-1 or n not only just wayland-0
 	path := "/run/user/" + fmt.Sprint(userID)
