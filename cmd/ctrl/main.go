@@ -23,27 +23,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func setup(r *gin.Engine, configure conf.Configure) {
-
-	var vnc controller.VncAppImpl
-	vnc.Conf = configure
-	var apps controller.Apps
-	var pm controller.PowerManager
-	var xserver controller.XserverAppImpl
-	xserver.Conf = configure
-	var brightness controller.BrightNessManager
-	fsfusing := controller.FsFuseManager{}
-	group := r.Group("/api")
-	apps.Scan(configure)
-	var controllers []controller.Controller
-	controllers = append(controllers, pm, &apps, vnc, xserver, brightness, fsfusing)
-	for _, value := range controllers {
-		value.Setup(group)
-	}
-
-	return
-}
-
 var _version_ = "v0.1"
 var _tag_ = "v0.1"
 var _date_ = "20230101"
@@ -148,7 +127,7 @@ func main() {
 	engine := gin.New()
 	engine.Use(middleware.LogHandler(), gin.Recovery())
 	engine.Use(middleware.ErrHandler())
-	setup(engine, configure)
+	controller.Setup(engine, configure)
 	go engine.Run("localhost:18080")
 
 	if mainCtx.Err() == nil {
