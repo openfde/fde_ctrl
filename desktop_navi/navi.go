@@ -77,6 +77,7 @@ func StartFdeNavi() {
 	}
 
 	var currentDesktop string
+
 	for _, line := range strings.Split(out.String(), "\n") {
 		if strings.Contains(line, "*") {
 			fields := strings.Fields(line)
@@ -84,30 +85,46 @@ func StartFdeNavi() {
 			break
 		}
 	}
+
 	logger.Info("current_dekstop", currentDesktop)
 
 	currentDesktopInt, _ := strconv.Atoi(currentDesktop)
-	next := currentDesktopInt + 1
-	logger.Info("next_dekstop", next)
-
-	var res int
-	if next == numOfDesktop {
-		res = 1
-	} else {
-		if hasWinOnDesktop(strconv.Itoa(next)) {
-			res = 1
-		} else {
-			res = 0
+	fdeDesktopInt := currentDesktopInt
+	if currentDesktopInt == 0 {
+		fdeDesktopInt++
+	}
+	haveAIdleDesktop := false
+	var hasWinOnDesktopFlg bool
+	if numOfDesktop == 1 { //only 1 desktop
+		hasWinOnDesktopFlg = true
+	} else { //condition: two or more desktops
+		hasWinOnDesktopFlg = hasWinOnDesktop(strconv.Itoa(fdeDesktopInt))
+	}
+	if hasWinOnDesktopFlg && numOfDesktop >= 4 { //find a idle desktop from 1 to the last one
+		for i := 1; i < numOfDesktop-1; i++ {
+			if !hasWinOnDesktop(strconv.Itoa(i)) {
+				haveAIdleDesktop = true
+				fdeDesktopInt = i
+				break
+			}
+		}
+		if haveAIdleDesktop {
+			if currentDesktopInt != fdeDesktopInt {
+				exec.Command("wmctrl", "-s", strconv.Itoa(fdeDesktopInt)).Run()
+				return
+			}
 		}
 	}
 
-	if res == 1 {
+	if hasWinOnDesktopFlg {
+		logger.Info(" win on desktop", nil)
 		newNumOfDesktop := numOfDesktop + 1
 		exec.Command("wmctrl", "-n", strconv.Itoa(newNumOfDesktop)).Run()
-		for i := numOfDesktop; i > currentDesktopInt+1; i-- {
+		for i := newNumOfDesktop - 1; i > fdeDesktopInt; i-- {
 			moveWindowsBetweenDesktops(strconv.Itoa(i-1), strconv.Itoa(i))
 		}
 	}
-
-	exec.Command("wmctrl", "-s", strconv.Itoa(next)).Run()
+	if currentDesktopInt != fdeDesktopInt {
+		exec.Command("wmctrl", "-s", strconv.Itoa(fdeDesktopInt)).Run()
+	}
 }
