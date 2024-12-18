@@ -18,12 +18,12 @@ case $1 in
     ;;
     "start")
 	unset LD_LIBRARY_PATH
-	. /etc/lsb-release
-	if [ "$DISTRIB_ID" = "Ubuntu" ];then
+	. /etc/os-release
+	if [ "$ID" = "ubuntu" -o "$ID" = "debian" ];then
 		if [ "$XDG_SESSION_TYPE" = "wayland" ];then
 			fde_ctrl -m shared 1>/dev/null 2>&1
 		else
-			echo "Error: Unsupport xdg_session_type \"$XDG_SESSION_TYPE\" "
+			zenity --error --text="FDE is not supported by X11 on $ID , only wayland supported" --width=350 2>/dev/null &
 			exit 1
 		fi
 	else
