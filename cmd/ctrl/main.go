@@ -146,7 +146,7 @@ func main() {
 					{
 						logger.Info("restart", "exit due to some one send restart signal")
 						var cmd *exec.Cmd
-						if mode == string(windows_manager.DESKTOP_MODE_SHELL) {
+						if mode != string(windows_manager.DESKTOP_MODE_ENVIRONMENT) {
 							cmd = exec.Command("fde_utils restart &")
 						} else {
 							cmd = exec.Command("reboot")
@@ -175,7 +175,7 @@ func main() {
 						// poweroff
 						logger.Info("power_off", "exit due to some one send poweroff signal")
 						var cmd *exec.Cmd
-						if mode == string(windows_manager.DESKTOP_MODE_SHELL) {
+						if mode != string(windows_manager.DESKTOP_MODE_ENVIRONMENT) {
 							cmd = exec.Command("fde_utils", "stop")
 						} else {
 							cmd = exec.Command("shutdown", "-h", "now")
