@@ -27,12 +27,13 @@ var _version_ = "v0.1"
 var _tag_ = "v0.1"
 var _date_ = "20230101"
 
-func parseArgs() (mode string, snavi, return_directly bool) {
+func parseArgs() (mode, app string, snavi, return_directly bool) {
 	var version, help bool
 	flag.BoolVar(&version, "v", false, "-v")
 	flag.BoolVar(&help, "h", false, "-h")
 	flag.BoolVar(&snavi, "n", false, "-n")
 	flag.StringVar(&mode, "m", string(windows_manager.DESKTOP_MODE_ENVIRONMENT), "-m")
+	flag.StringVar(&app, "a", string("openfde"), "-a")
 	flag.Parse()
 	if help {
 		fmt.Println("fde_ctrl:")
@@ -54,12 +55,13 @@ func parseArgs() (mode string, snavi, return_directly bool) {
 const errnoPidMaxOutOfLimit = 10
 
 func main() {
-	var mode string
+	var mode, app string
 	var snavi bool
 	var return_directly bool
-	if mode, snavi, return_directly = parseArgs(); return_directly {
+	if mode, app, snavi, return_directly = parseArgs(); return_directly {
 		return
 	}
+
 	if CheckPidMax() {
 		os.Exit(errnoPidMaxOutOfLimit)
 	}
@@ -127,7 +129,7 @@ func main() {
 	engine := gin.New()
 	engine.Use(middleware.LogHandler(), gin.Recovery())
 	engine.Use(middleware.ErrHandler())
-	controller.Setup(engine, configure)
+	controller.Setup(engine, app, configure)
 	go engine.Run("localhost:18080")
 
 	if mainCtx.Err() == nil {

@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Setup(r *gin.Engine, configure conf.Configure) {
+func Setup(r *gin.Engine, app string, configure conf.Configure) {
 
 	var vnc VncAppImpl
 	vnc.Conf = configure
@@ -17,10 +17,13 @@ func Setup(r *gin.Engine, configure conf.Configure) {
 	xserver.Conf = configure
 	var brightness BrightNessManager
 	fsfusing := FsFuseManager{}
+	fsfusing.Init()
 	group := r.Group("/api")
 	apps.Scan(configure)
+	var userManager *UserManager
+	userManager.Init(app)
 	var controllers []Controller
-	controllers = append(controllers, pm, &apps, vnc, xserver, brightness, fsfusing, fdeModeCtrl)
+	controllers = append(controllers, pm, &apps, vnc, xserver, brightness, fsfusing, fdeModeCtrl, userManager)
 	for _, value := range controllers {
 		value.Setup(group)
 	}

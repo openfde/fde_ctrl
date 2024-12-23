@@ -69,6 +69,20 @@ type mountInfo struct {
 	Target string
 }
 
+func (impl FsFuseManager) notify() {
+	if get() {
+		return
+	}
+	go func() {
+		mountFdePtfs()
+	}()
+}
+
+func (impl *FsFuseManager) Init() {
+	userEventNotifier.Register(impl.notify)
+	return
+}
+
 func (impl FsFuseManager) setHandler(c *gin.Context) {
 	if get() {
 		response.Response(c, nil)
