@@ -23,6 +23,9 @@ func (impl UserManager) unlockHandler(c *gin.Context) {
 }
 
 func (impl *UserManager) Init(app string) {
+	if app == "" {
+		return
+	}
 	impl.AppName = app
 	userEventNotifier.Register(impl.notify)
 	return

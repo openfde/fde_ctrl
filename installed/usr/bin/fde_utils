@@ -18,10 +18,11 @@ case $1 in
     ;;
     "start")
 	unset LD_LIBRARY_PATH
+	app_pacakge_name=$3
 	. /etc/os-release
 	if [ "$ID" = "ubuntu" -o "$ID" = "debian" ];then
 		if [ "$XDG_SESSION_TYPE" = "wayland" ];then
-			fde_ctrl -m shared 1>/dev/null 2>&1
+			fde_ctrl -m shared  -a $app_package_name 1>/dev/null 2>&1
 		else
 			zenity --error --text="FDE is not supported by X11 on $ID , only wayland supported" --width=350 2>/dev/null &
 			exit 1
@@ -29,9 +30,9 @@ case $1 in
 	else
 		export FDE_USE_X11="yes"
 		if [ "$2" = "shortcut" ];then	#start by the app shortcut
-			fde_ctrl -m shell -n  1>/dev/null 2>&1
+			fde_ctrl -m shell -n  -a $app_package_name 1>/dev/null 2>&1
 		else
-			fde_ctrl -m shell 1>/dev/null 2>&1
+			fde_ctrl -m shell -a $app_package_name 1>/dev/null 2>&1
 		fi
 		if [ $? -eq 10 ];then
 			if [ -e /usr/bin/zenity ];then

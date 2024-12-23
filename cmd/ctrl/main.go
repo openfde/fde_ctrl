@@ -33,7 +33,7 @@ func parseArgs() (mode, app string, snavi, return_directly bool) {
 	flag.BoolVar(&help, "h", false, "-h")
 	flag.BoolVar(&snavi, "n", false, "-n")
 	flag.StringVar(&mode, "m", string(windows_manager.DESKTOP_MODE_ENVIRONMENT), "-m")
-	flag.StringVar(&app, "a", string("openfde"), "-a")
+	flag.StringVar(&app, "a", string(""), "-a")
 	flag.Parse()
 	if help {
 		fmt.Println("fde_ctrl:")
