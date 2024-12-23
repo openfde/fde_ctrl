@@ -23,7 +23,7 @@ func (impl UserManager) unlockHandler(c *gin.Context) {
 }
 
 func (impl *UserManager) Init(app string) {
-	if app == "" {
+	if app == "openfde" || app == "" {
 		return
 	}
 	impl.AppName = app
