@@ -18,7 +18,6 @@ case $1 in
     ;;
     "start")
 	unset LD_LIBRARY_PATH
-	app_pacakge_name=$3
 	. /etc/os-release
 	if [ "$ID" = "ubuntu" -o "$ID" = "debian" ];then
 		if [ "$XDG_SESSION_TYPE" = "wayland" ];then
@@ -30,8 +29,10 @@ case $1 in
 	else
 		export FDE_USE_X11="yes"
 		if [ "$2" = "shortcut" ];then	#start by the app shortcut
+			app_package_name=$3
 			fde_ctrl -m shell -n  -a $app_package_name 1>/dev/null 2>&1
 		else
+			app_package_name=$2
 			fde_ctrl -m shell -a $app_package_name 1>/dev/null 2>&1
 		fi
 		if [ $? -eq 10 ];then

@@ -5,7 +5,7 @@ waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
 if [ $? = 0 ];then
 	fde_utils start shortcut $app_package_name
 else
-	waydroid app list |grep $app_package_name
+	waydroid app list |grep $app_package_name 1>/dev/null 2>&1
 	if [ $? = 0 ];then
 		waydroid app launch $app_package_name
 	else

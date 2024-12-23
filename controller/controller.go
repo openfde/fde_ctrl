@@ -20,7 +20,7 @@ func Setup(r *gin.Engine, app string, configure conf.Configure) {
 	fsfusing.Init()
 	group := r.Group("/api")
 	apps.Scan(configure)
-	var userManager *UserManager
+	userManager := UserManager{}
 	userManager.Init(app)
 	var controllers []Controller
 	controllers = append(controllers, pm, &apps, vnc, xserver, brightness, fsfusing, fdeModeCtrl, userManager)
