@@ -19,6 +19,13 @@ case $1 in
     "start")
 	unset LD_LIBRARY_PATH
 	. /etc/os-release
+	app_package_name=$2
+	if [ "$2" = "shortcut" ];then	#start by the app shortcut
+		app_package_name=$3
+	fi
+	if [ -z "$app_package_name" ];then
+		app_package_name="openfde"
+	fi
 	if [ "$ID" = "ubuntu" -o "$ID" = "debian" ];then
 		if [ "$XDG_SESSION_TYPE" = "wayland" ];then
 			fde_ctrl -m shared  -a $app_package_name 1>/dev/null 2>&1
@@ -29,10 +36,8 @@ case $1 in
 	else
 		export FDE_USE_X11="yes"
 		if [ "$2" = "shortcut" ];then	#start by the app shortcut
-			app_package_name=$3
 			fde_ctrl -m shell -n  -a $app_package_name 1>/dev/null 2>&1
 		else
-			app_package_name=$2
 			fde_ctrl -m shell -a $app_package_name 1>/dev/null 2>&1
 		fi
 		if [ $? -eq 10 ];then
