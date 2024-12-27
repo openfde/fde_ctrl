@@ -66,8 +66,4 @@ case $1 in
     "stop")
         waydroid session stop 1>/dev/null 2>&1
     ;;
-    "get_desktop")
-          nofDesktop=`wmctrl -l |grep  “FDE Weston Compositor" |awk -F " " '{print $2}' |tr -d " "`
-          echo $nofDesktop
-    ;;
 esac 
