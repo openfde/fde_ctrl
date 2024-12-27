@@ -9,9 +9,10 @@ else
 	if [ $? = 0 ];then
 		waydroid app launch $app_package_name
         nofDesktop=`fde_utils get_desktop`
-        wmctrl -s $nofDesktop
+	if [ $? -eq 0 ];then
+		wmctrl -s $nofDesktop
+	fi
 	else
 		zenity --error --text="The app \"$app_package_name\" is not installed" --width=350 2>/dev/null &
 	fi
-
 fi

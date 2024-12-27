@@ -67,7 +67,11 @@ case $1 in
         waydroid session stop 1>/dev/null 2>&1
     ;;
     "get_desktop")
-          nofDesktop=`wmctrl -l |grep  “FDE Weston Compositor" |awk -F " " '{print $2}' |tr -d " "`
-          echo $nofDesktop
+	nofDesktop=`wmctrl -l 2>/dev/null |grep "FDE Weston Compositor" |awk -F " " '{print $2}' |tr -d " "`
+	if [ $? != 0 ];then
+		exit 1
+	fi
+	echo $nofDesktop
+	exit 0
     ;;
 esac 
