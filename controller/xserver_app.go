@@ -34,6 +34,8 @@ func (impl XserverAppImpl) isClientServer(app string) string {
 	return ""
 }
 
+const LOCAL_SERVER = ":0"
+
 func constructXServerstartup(name, path, display, serverName string) (bashFile string, err error) {
 	path = removeDesktopArgs(path)
 	data := []byte("#!/bin/bash\n" +
@@ -42,6 +44,9 @@ func constructXServerstartup(name, path, display, serverName string) (bashFile s
 		"export DISPLAY=" + display + "\n")
 	if serverName != "" {
 		data = append(data, []byte(serverName+" & \n")...)
+	}
+	if display == LOCAL_SERVER { //local server means
+		data = append(data, []byte("fde_switch_next_desktop \n")...)
 	}
 	data = append(data, []byte(path+"\n")...)
 
