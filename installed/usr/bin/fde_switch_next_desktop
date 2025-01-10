@@ -1,0 +1,14 @@
+#!/bin/bash
+
+numdesktop=`wmctrl -d |wc -l`
+if [ $numdesktop -eq 1 ];then
+	wmctrl -n 2 
+fi
+current_desktop_index=`wmctrl -d |grep '*' |awk -F " " '{print $1}' `
+current_desktop=`expr $current_desktop_index + 1`
+
+if [ $current_desktop -eq $numdesktop ];then
+	newnum=`expr $numdesktop + 1`
+	wmctrl -n $newnum
+fi
+wmctrl -s $current_desktop 

@@ -24,6 +24,7 @@ install:
 	sudo install installed/sysctl.conf /etc/sysctl.conf -m 644
 	sudo install installed/usr/bin/fde_utils /usr/bin/fde_utils -m 755
 	sudo install installed/usr/bin/fde_launch /usr/bin/fde_launch -m 755
+	sudo install installed/usr/bin/fde_switch_next_desktop /usr/bin/fde_switch_next_desktop -m 755
 	sudo install installed/usr/share/icons/hicolor/96x96/apps/openfde.png /usr/share/icons/hicolor/96x96/apps/openfde.png -m 644 
 	sudo install installed/usr/share/applications/openfde.desktop /usr/share/applications/openfde.desktop
 	sudo install installed/usr/bin/fde_display_geo.py /usr/bin/fde_display_geo.py -m 755
