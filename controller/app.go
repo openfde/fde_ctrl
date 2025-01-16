@@ -22,7 +22,10 @@ import (
 const baseDir = "/usr/share"
 const desktopEntryPath = baseDir + "/applications"
 const iconPixmapPath = baseDir + "/pixmaps"
+const iconKylinCenterPath = baseDir + "/kylin-software-center/data/icons/"
 const iconPath = baseDir + "/icons/"
+
+var iconOtherPathList = []string{iconPixmapPath, iconKylinCenterPath}
 
 var defaultIconThemes = []string{"hicolor", "ukui-icon-theme-deafult", "gnome"}
 var defaultIconSizes = []string{"64x64", "scalable"}
@@ -38,7 +41,7 @@ func (appImpl *Apps) Scan(configure conf.Configure) {
 		*appImpl = make(Apps, 0)
 	}
 	config = configure
-	appImpl.scan(iconPixmapPath, desktopEntryPath, configure.App.IconThemes, configure.App.IconSizes)
+	appImpl.scan(iconOtherPathList, desktopEntryPath, configure.App.IconThemes, configure.App.IconSizes)
 	return
 }
 
@@ -94,20 +97,24 @@ func (impls *Apps) ScanHandler(c *gin.Context) {
 	response.ResponseWithPagination(c, pageQuery, data)
 }
 
-func (impls *Apps) scan(iconPixmapsPath, desktopEntryPath string, iconThemes, iconSizes []string) {
+func (impls *Apps) scan(iconOtherPathList []string, desktopEntryPath string, iconThemes, iconSizes []string) {
 	var iconPathList []string
-	iconPathList = append(iconPathList, iconPixmapsPath)
+
 	if len(iconSizes) == 0 || (len(iconSizes) == 1 && iconSizes[0] == "") {
 		iconSizes = defaultIconSizes
 	}
 	if len(iconThemes) == 0 || (len(iconThemes) == 1 && iconThemes[0] == "") {
 		iconThemes = defaultIconThemes
 	}
+	//add icon themes path into icon path list
 	for index, _ := range iconThemes {
 		for sizeIndex, _ := range iconSizes {
 			iconPathList = append(iconPathList, iconPath+iconThemes[index]+"/"+iconSizes[sizeIndex])
 		}
 	}
+	//add pixmap path into icon path list
+	iconPathList = append(iconPathList, iconOtherPathList...)
+
 	// 调用递归函数遍历目录下的所有文件
 	filepath.Walk(desktopEntryPath, impls.visitDesktopEntries)
 	absPath := ""
