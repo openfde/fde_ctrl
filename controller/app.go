@@ -164,17 +164,25 @@ func (impl *AppImpl) readIconForApp(path string, info fs.FileInfo, err error) er
 	if err != nil {
 		return err
 	}
+	//unmatched file
 	if !strings.Contains(path, impl.IconPath) {
+		return nil
+	}
+	IconType := filepath.Ext(path)
+	//only need the type of below
+	if !(IconType == ".jpg" || IconType == ".jpeg" || IconType == ".svg" || IconType == ".png" || IconType == ".svgz") {
 		return nil
 	}
 	//如果已经获取文件内容了，也退出
 	if len(impl.Icon) > 0 {
 		return nil
 	}
+
 	file, err := os.Open(path)
 	if err != nil {
 		return err
 	}
+
 	defer file.Close()
 	data, err := ioutil.ReadAll(file)
 	if err != nil {
@@ -183,6 +191,7 @@ func (impl *AppImpl) readIconForApp(path string, info fs.FileInfo, err error) er
 	impl.Icon = base64.StdEncoding.EncodeToString(data)
 
 	impl.IconType = filepath.Ext(path)
+
 	if len(impl.IconType) == 0 && strings.Contains(path, "pixmaps") {
 		impl.IconType = ".png"
 	}
