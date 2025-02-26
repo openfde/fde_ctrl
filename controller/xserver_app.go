@@ -75,12 +75,11 @@ func (impl XserverAppImpl) startAppHandle(c *gin.Context) {
 	}
 	// Check if xserver process is already running
 	cmd := exec.Command("pgrep", "-f", "com.fde.x11.xserver")
-	if err := cmd.Run(); err == nil {
-		// Process exists
-		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
-			response.ResponseError(c, http.StatusPreconditionRequired, errors.New("xserver process already running"))
-			return
-		}
+	cmd.Run()
+	logger.Info("pgrep_x11_exit_code",cmd.ProcessState.ExitCode())
+	if cmd.ProcessState.ExitCode() == 1 {
+		response.ResponseError(c, http.StatusPreconditionRequired, errors.New("xserver service is not running"))
+		return
 	}
 	err = impl.startApp(request.App, request.Path, request.Display, request.WithOutTheme)
 	if err != nil {
