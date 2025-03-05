@@ -28,7 +28,7 @@ const iconPath = baseDir + "/icons/"
 var iconOtherPathList = []string{iconPixmapPath, iconKylinCenterPath}
 
 var defaultIconThemes = []string{"ukui-icon-theme-default", "bloom", "hicolor", "gnome"}
-var defaultIconSizes = []string{"64x64", "scalable", "64"}
+var defaultIconSizes = []string{"64x64", "scalable", "64", "apps/64", "places/64"}
 
 // var iconPathList = []string{iconsHiColorPath, iconsGnomePath, iconsUKuiPath}
 
@@ -221,7 +221,8 @@ func (impl *Apps) visitDesktopEntries(path string, info fs.FileInfo, err error) 
 	if strings.Contains(strings.ToLower(name), "openfde") {
 		return nil // skip OpenFDE
 	}
-	if len(section.Key("OnlyShowIn").String()) > 0 {
+	onlyShowIn := section.Key("OnlyShowIn").String()
+	if onlyShowIn == "MATE" {
 		return nil
 	}
 
