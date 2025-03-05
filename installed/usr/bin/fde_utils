@@ -49,6 +49,10 @@ case $1 in
 	fi
     ;;
     "status")
+		waydroid status |grep ERROR  -w 1>/dev/null 2>&1
+		if [ $? = 0 ];then
+			exit 0
+		fi
         waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
         if [ $? = 0 ];then
             exit 0
