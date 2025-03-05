@@ -218,10 +218,14 @@ func (impl *Apps) visitDesktopEntries(path string, info fs.FileInfo, err error) 
 	// 获取配置文件中的值
 	section := cfg.Section("Desktop Entry")
 	name := section.Key("Name").String()
-	if name == "OpenFDE" {
+	if strings.Contains(strings.ToLower(name), "openfde") {
 		return nil // skip OpenFDE
 	}
-	zhName := section.Key("Name[zh-CN]").String()
+	if len(section.Key("OnlyShowIn").String()) > 0 {
+		return nil
+	}
+
+	zhName := section.Key("Name[zh_CN]").String()
 	iconPath := section.Key("Icon").String()
 	execPath := section.Key("Exec").String()
 	entryType := section.Key("Type").String()
