@@ -27,8 +27,8 @@ const iconPath = baseDir + "/icons/"
 
 var iconOtherPathList = []string{iconPixmapPath, iconKylinCenterPath}
 
-var defaultIconThemes = []string{"ukui-icon-theme-default", "bloom", "hicolor", "gnome"}
-var defaultIconSizes = []string{"64x64", "scalable", "64", "apps/64", "places/64"}
+var defaultIconThemes = []string{"ukui-icon-theme-default", "bloom", "hicolor", "gnome","bloom-dark","Papirus"}
+var defaultIconSizes = []string{"64x64", "scalable", "64", "apps/64", "places/64","devices/64"}
 
 // var iconPathList = []string{iconsHiColorPath, iconsGnomePath, iconsUKuiPath}
 
