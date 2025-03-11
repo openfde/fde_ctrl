@@ -40,7 +40,11 @@ func constructXServerstartup(name, path, display, serverName string) (bashFile s
 	path = removeDesktopArgs(path)
 	data := []byte("#!/bin/bash\n" +
 		"export GDK_BACKEND=x11\n" +
-		"export QT_QPA_PLATFORM=xcb\n" +
+               "export QT_QPA_PLATFORM=xcb\n")
+
+        if display == "1001" {
+               data = append([]byte("export DISPLAY=" + display + "\n"))
+        }
 		"export DISPLAY=" + display + "\n")
 	if serverName != "" {
 		data = append(data, []byte(serverName+" & \n")...)
