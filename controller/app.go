@@ -349,7 +349,7 @@ func (impl *Apps) visitDesktopEntries(path string, info fs.FileInfo, err error) 
 	zhName := section.Key("Name[zh_CN]").String()
 	iconPath := section.Key("Icon").String()
 	execPath := section.Key("Exec").String()
-	if strings.Contains(execPath, "fde_launcher") {
+	if strings.Contains(execPath, "fde_launch") {
 		return nil
 	}
 	entryType := section.Key("Type").String()
