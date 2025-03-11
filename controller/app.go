@@ -260,16 +260,16 @@ func (impls *Apps) scan(iconOtherPathList []string, desktopEntryPath string) {
 	}
 	*impls = append((*impls)[:0])
 	for _, app := range filteredApps {
-		if !strings.Contains(desktopEntryPath,baseDir) {
+		if !strings.Contains(desktopEntryPath, baseDir) {
 			*impls = append(*impls, AppImpl{
-				Type:app.Type,
-				Path:app.Path,
-				IconPath:app.IconPath,
-				IconType:app.IconType,
-				Name:app.Name,
-				ZhName:app.ZhName,
-				})
-		}else{
+				Type:     app.Type,
+				Path:     app.Path,
+				IconPath: app.IconPath,
+				IconType: app.IconType,
+				Name:     app.Name,
+				ZhName:   app.ZhName,
+			})
+		} else {
 			*impls = append(*impls, app)
 		}
 	}
@@ -349,6 +349,9 @@ func (impl *Apps) visitDesktopEntries(path string, info fs.FileInfo, err error) 
 	zhName := section.Key("Name[zh_CN]").String()
 	iconPath := section.Key("Icon").String()
 	execPath := section.Key("Exec").String()
+	if strings.Contains(execPath, "fde_launcher") {
+		return nil
+	}
 	entryType := section.Key("Type").String()
 	noDisplay := section.Key("NoDisplay").String()
 	if strings.Contains(noDisplay, "true") {
