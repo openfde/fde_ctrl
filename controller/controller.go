@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fde_ctrl/conf"
+	"fde_ctrl/logger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -10,7 +11,7 @@ func Setup(r *gin.Engine, app string, configure conf.Configure) {
 
 	var vnc VncAppImpl
 	vnc.Conf = configure
-	var apps Apps
+	var linuxApps LinuxApps
 	var pm PowerManager
 	var xserver XserverAppImpl
 	var fdeModeCtrl FDEModeCtrl
@@ -19,11 +20,12 @@ func Setup(r *gin.Engine, app string, configure conf.Configure) {
 	fsfusing := FsFuseManager{}
 	fsfusing.Init()
 	group := r.Group("/api")
-	apps.Scan(configure)
+	logger.Info("gy_linux_app_scan", "hello")
+	linuxApps.Scan()
 	userManager := UserManager{}
 	userManager.Init(app)
 	var controllers []Controller
-	controllers = append(controllers, pm, &apps, vnc, xserver, brightness, fsfusing, fdeModeCtrl, userManager)
+	controllers = append(controllers, pm, linuxApps, vnc, xserver, brightness, fsfusing, fdeModeCtrl, userManager)
 	for _, value := range controllers {
 		value.Setup(group)
 	}

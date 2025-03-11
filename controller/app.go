@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"fde_ctrl/conf"
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
 
@@ -27,21 +26,18 @@ const iconPath = baseDir + "/icons/"
 
 var iconOtherPathList = []string{iconPixmapPath, iconKylinCenterPath}
 
-var defaultIconThemes = []string{"ukui-icon-theme-default", "bloom", "hicolor", "gnome","bloom-dark","Papirus"}
-var defaultIconSizes = []string{"64x64", "scalable", "64", "apps/64", "places/64","devices/64"}
+var defaultIconThemes = []string{"ukui-icon-theme-default", "bloom", "hicolor", "gnome", "bloom-dark", "Papirus"}
+var defaultIconSizes = []string{"64x64", "scalable", "64", "apps/64", "places/64", "devices/64"}
 
 // var iconPathList = []string{iconsHiColorPath, iconsGnomePath, iconsUKuiPath}
 
-var config conf.Configure
-
-func (appImpl *Apps) Scan(configure conf.Configure) {
+func (appImpl *Apps) Scan() {
 	mutex.Lock()
 	defer mutex.Unlock()
 	if len(*appImpl) > 0 {
 		*appImpl = make(Apps, 0)
 	}
-	config = configure
-	appImpl.scan(iconOtherPathList, desktopEntryPath, configure.App.IconThemes, configure.App.IconSizes)
+	appImpl.scan(iconOtherPathList, desktopEntryPath)
 	return
 }
 
@@ -57,10 +53,21 @@ type AppImpl struct {
 
 type Apps []AppImpl
 
-func (impl Apps) Setup(r *gin.RouterGroup) {
-	v1 := r.Group("/v1")
-	v1.GET("/apps", impl.ScanHandler)
+type LinuxApps struct {
+	Apps           //apps in the applications
+	Shortcuts Apps //apps on the desktop
 }
+
+func (impl LinuxApps) Setup(r *gin.RouterGroup) {
+	v1 := r.Group("/v1")
+	v1.GET("/apps", impl.Apps.ScanHandler)
+	v1.GET("/desktopapps", impl.ScanDesktopHandler)
+}
+
+// func (impl Apps) Setup(r *gin.RouterGroup) {
+// 	v1 := r.Group("/v1")
+// 	v1.GET("/apps", impl.ScanHandler)
+// }
 
 func validatePage(start, end, length int) (int, int) {
 	switch {
@@ -83,7 +90,7 @@ func (impls *Apps) ScanHandler(c *gin.Context) {
 	refresh := c.DefaultQuery("refresh", "false")
 	if refresh == "true" || refresh == "True" {
 		logger.Info("scan_app_refresh", refresh)
-		impls.Scan(config)
+		impls.Scan()
 	}
 	pageQuery := getPageQuery(c)
 	var data Apps
@@ -97,19 +104,118 @@ func (impls *Apps) ScanHandler(c *gin.Context) {
 	response.ResponseWithPagination(c, pageQuery, data)
 }
 
-func (impls *Apps) scan(iconOtherPathList []string, desktopEntryPath string, iconThemes, iconSizes []string) {
+type personalPath struct {
+	Desktop  string
+	Document string
+	Download string
+	Music    string
+	Picture  string
+	Video    string
+}
+
+func getDefaultDesktopPath() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		logger.Error("get_home_dir_error", nil, err)
+		return ""
+	}
+	defaultDesktopPath := filepath.Join(homeDir, "Desktop")
+	_, err = os.Stat(defaultDesktopPath)
+	if err == nil {
+		return defaultDesktopPath
+	}
+	defaultDesktopPath = filepath.Join(homeDir, "桌面")
+	_, err = os.Stat(defaultDesktopPath)
+	if err == nil {
+		return defaultDesktopPath
+	}
+	return ""
+}
+
+func getDesktopPath() (personalPath, error) {
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		logger.Error("get_home_dir_error", nil, err)
+		return personalPath{}, err
+	}
+
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		logger.Error("get_user_config_dir_error", nil, err)
+		return personalPath{}, nil
+	}
+	desktopConfPath := filepath.Join(configDir, "user-dirs.dirs")
+	content, err := ioutil.ReadFile(desktopConfPath)
+	if err != nil {
+		logger.Error("read_desktop_conf_error", nil, err)
+		return personalPath{}, err
+	}
+	lines := strings.Split(string(content), "\n")
+	var path personalPath
+	for _, line := range lines {
+		if strings.Contains(line, "XDG_DESKTOP_DIR") {
+			parts := strings.Split(line, "=")
+			if len(parts) == 2 {
+				path.Desktop = strings.Trim(parts[1], "\"$HOME/")
+				path.Desktop = filepath.Join(homeDir, path.Desktop)
+			}
+		}
+	}
+	return path, nil
+}
+
+func (linuxAppsImpl *LinuxApps) Scan() {
+	linuxAppsImpl.Apps.Scan()
+	linuxAppsImpl.ScanDesktop()
+}
+
+func (linuxAppsImpl *LinuxApps) ScanDesktop() {
+	homeDir := os.Getenv("HOME")
+	var desktopPath string
+	personalPath, err := getDesktopPath()
+	if err != nil {
+		desktopPath = getDefaultDesktopPath()
+		if desktopPath == "" {
+			logger.Error("get_default_desktop_path_error", nil, err)
+			desktopPath = filepath.Join(homeDir, "Desktop")
+		}
+	}
+	desktopPath = personalPath.Desktop
+	mutex.Lock()
+	defer mutex.Unlock()
+	if len(linuxAppsImpl.Shortcuts) > 0 { //reset the shortcuts
+		linuxAppsImpl.Shortcuts = make([]AppImpl, 0)
+	}
+	linuxAppsImpl.Shortcuts.scan(iconOtherPathList, desktopPath)
+	return
+}
+
+func (impls *LinuxApps) ScanDesktopHandler(c *gin.Context) {
+	refresh := c.DefaultQuery("refresh", "false")
+	if refresh == "true" || refresh == "True" {
+		logger.Info("scan_desktopapp_refresh", refresh)
+		impls.ScanDesktop()
+	}
+	pageQuery := getPageQuery(c)
+	var data Apps
+	pageQuery.Total = len(impls.Shortcuts)
+	if pageQuery.PageEnable {
+		start := (pageQuery.Page - 1) * pageQuery.PageSize
+		end := start + pageQuery.PageSize
+		start, end = validatePage(start, end, len(impls.Shortcuts))
+		data = impls.Shortcuts[start:end]
+	}
+	response.ResponseWithPagination(c, pageQuery, data)
+}
+
+func (impls *Apps) scan(iconOtherPathList []string, desktopEntryPath string) {
 	var iconPathList []string
 
-	if len(iconSizes) == 0 || (len(iconSizes) == 1 && iconSizes[0] == "") {
-		iconSizes = defaultIconSizes
-	}
-	if len(iconThemes) == 0 || (len(iconThemes) == 1 && iconThemes[0] == "") {
-		iconThemes = defaultIconThemes
-	}
 	//add icon themes path into icon path list
-	for index, _ := range iconThemes {
-		for sizeIndex, _ := range iconSizes {
-			iconPathList = append(iconPathList, iconPath+iconThemes[index]+"/"+iconSizes[sizeIndex])
+	for index, _ := range defaultIconThemes {
+		for sizeIndex, _ := range defaultIconSizes {
+			iconPathList = append(iconPathList, iconPath+defaultIconThemes[index]+"/"+defaultIconSizes[sizeIndex])
 		}
 	}
 	//add pixmap path into icon path list
@@ -154,9 +260,19 @@ func (impls *Apps) scan(iconOtherPathList []string, desktopEntryPath string, ico
 	}
 	*impls = append((*impls)[:0])
 	for _, app := range filteredApps {
-		*impls = append(*impls, app)
+		if !strings.Contains(desktopEntryPath,baseDir) {
+			*impls = append(*impls, AppImpl{
+				Type:app.Type,
+				Path:app.Path,
+				IconPath:app.IconPath,
+				IconType:app.IconType,
+				Name:app.Name,
+				ZhName:app.ZhName,
+				})
+		}else{
+			*impls = append(*impls, app)
+		}
 	}
-
 	return
 }
 
@@ -223,6 +339,10 @@ func (impl *Apps) visitDesktopEntries(path string, info fs.FileInfo, err error) 
 	}
 	onlyShowIn := section.Key("OnlyShowIn").String()
 	if onlyShowIn == "MATE" {
+		return nil
+	}
+	notShowIn := section.Key("NotShowIn").String()
+	if notShowIn == "OpenFDE" {
 		return nil
 	}
 
