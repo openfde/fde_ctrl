@@ -43,9 +43,10 @@ func constructXServerstartup(name, path, display, serverName string) (bashFile s
                "export QT_QPA_PLATFORM=xcb\n")
 
         if display == "1001" {
-               data = append([]byte("export DISPLAY=" + display + "\n"))
+               data = append(data,[]byte("export DISPLAY=" + display + "\n")...)
+        }else{
+               data = append(data,[]byte("export DISPLAY=" + os.Getenv("DISPLAY") + "\n")...)
         }
-		"export DISPLAY=" + display + "\n")
 	if serverName != "" {
 		data = append(data, []byte(serverName+" & \n")...)
 	}
