@@ -49,6 +49,7 @@ type AppImpl struct {
 	IconType string
 	Name     string
 	ZhName   string
+	FileName string
 }
 
 type Apps []AppImpl
@@ -262,6 +263,7 @@ func (impls *Apps) scan(iconOtherPathList []string, desktopEntryPath string) {
 	for _, app := range filteredApps {
 		if !strings.Contains(desktopEntryPath, baseDir) {
 			*impls = append(*impls, AppImpl{
+				FileName: app.FileName,
 				Type:     app.Type,
 				Path:     app.Path,
 				IconPath: app.IconPath,
@@ -358,6 +360,7 @@ func (impl *Apps) visitDesktopEntries(path string, info fs.FileInfo, err error) 
 		return nil
 	}
 	*impl = append(*impl, AppImpl{
+		FileName: path,
 		Type:     entryType,
 		Path:     execPath,
 		IconPath: iconPath,
