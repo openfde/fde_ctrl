@@ -17,7 +17,7 @@ func IsReady(mode windows_manager.FDEMode) (bool, error) {
 	_, err := os.Stat(node)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return false, nil
+			return true, nil
 		}
 	}
 	file, err := os.Open(node)
