@@ -40,13 +40,13 @@ func constructXServerstartup(name, path, display, serverName string) (bashFile s
 	path = removeDesktopArgs(path)
 	data := []byte("#!/bin/bash\n" +
 		"export GDK_BACKEND=x11\n" +
-               "export QT_QPA_PLATFORM=xcb\n")
+		"export QT_QPA_PLATFORM=xcb\n")
 
-        if display == "1001" {
-               data = append(data,[]byte("export DISPLAY=" + display + "\n")...)
-        }else{
-               data = append(data,[]byte("export DISPLAY=" + os.Getenv("DISPLAY") + "\n")...)
-        }
+	if display == ":1001" {
+		data = append(data, []byte("export DISPLAY="+display+"\n")...)
+	} else {
+		data = append(data, []byte("export DISPLAY="+os.Getenv("DISPLAY")+"\n")...)
+	}
 	if serverName != "" {
 		data = append(data, []byte(serverName+" & \n")...)
 	}
@@ -81,7 +81,7 @@ func (impl XserverAppImpl) startAppHandle(c *gin.Context) {
 	// Check if xserver process is already running
 	cmd := exec.Command("pgrep", "-f", "com.fde.x11.xserver")
 	cmd.Run()
-	logger.Info("pgrep_x11_exit_code",cmd.ProcessState.ExitCode())
+	logger.Info("pgrep_x11_exit_code", cmd.ProcessState.ExitCode())
 	if cmd.ProcessState.ExitCode() == 1 {
 		response.ResponseError(c, http.StatusPreconditionRequired, errors.New("xserver service is not running"))
 		return
