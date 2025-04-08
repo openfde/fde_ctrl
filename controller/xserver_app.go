@@ -35,6 +35,8 @@ func (impl XserverAppImpl) isClientServer(app string) string {
 }
 
 const LOCAL_SERVER = ":0"
+const FDE_DISPLAY = ":1001"
+const FDE_SERVER = "com.fde.x11.xserver"
 
 func constructXServerstartup(name, path, display, serverName string) (bashFile string, err error) {
 	path = removeDesktopArgs(path)
@@ -78,14 +80,17 @@ func (impl XserverAppImpl) startAppHandle(c *gin.Context) {
 		response.ResponseParamterError(c, err)
 		return
 	}
-	// Check if xserver process is already running
-	cmd := exec.Command("pgrep", "-f", "com.fde.x11.xserver")
-	cmd.Run()
-	logger.Info("pgrep_x11_exit_code", cmd.ProcessState.ExitCode())
-	if cmd.ProcessState.ExitCode() == 1 {
-		response.ResponseError(c, http.StatusPreconditionRequired, errors.New("xserver service is not running"))
-		return
+	if request.Display == FDE_DISPLAY {
+		// Check if xserver process is already running
+		cmd := exec.Command("pgrep", "-f", FDE_SERVER)
+		cmd.Run()
+		logger.Info("pgrep_x11_exit_code", cmd.ProcessState.ExitCode())
+		if cmd.ProcessState.ExitCode() == 1 {
+			response.ResponseError(c, http.StatusPreconditionRequired, errors.New("xserver service is not running"))
+			return
+		}
 	}
+
 	err = impl.startApp(request.App, request.Path, request.Display, request.WithOutTheme)
 	if err != nil {
 		response.ResponseError(c, http.StatusInternalServerError, err)
