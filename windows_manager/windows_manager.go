@@ -43,11 +43,11 @@ func Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, mode F
 		socket = SocketCustomName
 	} else if mode == DESKTOP_MODE_ENVIRONMENT {
 		wm = new(Mutter)
-		//rm wayland-0 before run mutter
-		os.Remove(path)
-		os.Remove(path + ".lock")
 	}
 	path = filepath.Join(path, socket)
+	//rm wayland-0 before run mutter
+	os.Remove(path)
+	os.Remove(path + ".lock")
 
 	if mode == DESKTOP_MODE_SHARED { // shared mode: shared the wayland server with the host
 		//no need to start windows manager
@@ -70,6 +70,11 @@ func Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, mode F
 				logger.Error("wait_for_wayland-display", "timeout 60s", nil)
 				return nil, socket, errors.New("time out for waiting wayland display")
 			}
+		}
+		err = os.Chmod(path, 0777)
+		if err != nil {
+			logger.Error("chmod_wayland_display", "failed to set permissions", err)
+			return nil, socket, err
 		}
 	}
 	//enable tap to click

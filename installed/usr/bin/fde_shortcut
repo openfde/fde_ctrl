@@ -1,3 +1,15 @@
 #!/bin/bash
 
+ps -ef |grep fde_ctrl |grep -v grep
+if [ $? -eq 0 ]; then
+    nofDesktop=`fde_utils get_desktop`
+    if [ $? -eq 0 ];then
+        wmctrl -s $nofDesktop
+    fi
+    window=`fde_utils get_window`
+    if [ $? -eq 0 ];then
+        wmctrl -ia $window
+    fi
+    exit 0
+fi
 fde_utils start shortcut
