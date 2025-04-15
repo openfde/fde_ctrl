@@ -45,13 +45,11 @@ func Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, mode F
 		wm = new(Mutter)
 	}
 	path = filepath.Join(path, socket)
-	//rm wayland-0 before run mutter
-	os.Remove(path)
-	os.Remove(path + ".lock")
-
 	if mode == DESKTOP_MODE_SHARED { // shared mode: shared the wayland server with the host
 		//no need to start windows manager
 	} else {
+		os.Remove(path) //do not rm socket when in shared mode
+		os.Remove(path + ".lock")
 		cmdWinMan, err = wm.Start(mainCtx, mainCtxCancelFunc, socket)
 		if err != nil {
 			return
