@@ -42,14 +42,15 @@ func (appImpl *Apps) Scan() {
 }
 
 type AppImpl struct {
-	Type     string
-	Path     string
-	Icon     string
-	IconPath string
-	IconType string
-	Name     string
-	ZhName   string
-	FileName string
+	Type         string
+	Path         string
+	Icon         string
+	IconPath     string
+	IconType     string
+	Name         string
+	ZhName       string
+	FileName     string
+	IsAndroidApp bool
 }
 
 type Apps []AppImpl
@@ -263,13 +264,14 @@ func (impls *Apps) scan(iconOtherPathList []string, desktopEntryPath string) {
 	for _, app := range filteredApps {
 		if !strings.Contains(desktopEntryPath, baseDir) {
 			*impls = append(*impls, AppImpl{
-				FileName: app.FileName,
-				Type:     app.Type,
-				Path:     app.Path,
-				IconPath: app.IconPath,
-				IconType: app.IconType,
-				Name:     app.Name,
-				ZhName:   app.ZhName,
+				FileName:     app.FileName,
+				Type:         app.Type,
+				Path:         app.Path,
+				IconPath:     app.IconPath,
+				IconType:     app.IconType,
+				Name:         app.Name,
+				ZhName:       app.ZhName,
+				IsAndroidApp: app.IsAndroidApp,
 			})
 		} else {
 			*impls = append(*impls, app)
@@ -351,21 +353,19 @@ func (impl *Apps) visitDesktopEntries(path string, info fs.FileInfo, err error) 
 	zhName := section.Key("Name[zh_CN]").String()
 	iconPath := section.Key("Icon").String()
 	execPath := section.Key("Exec").String()
-	if strings.Contains(execPath, "fde_launch") {
-		return nil
-	}
 	entryType := section.Key("Type").String()
 	noDisplay := section.Key("NoDisplay").String()
 	if strings.Contains(noDisplay, "true") {
 		return nil
 	}
 	*impl = append(*impl, AppImpl{
-		FileName: path,
-		Type:     entryType,
-		Path:     execPath,
-		IconPath: iconPath,
-		Name:     name,
-		ZhName:   zhName,
+		FileName:     path,
+		Type:         entryType,
+		Path:         execPath,
+		IconPath:     iconPath,
+		Name:         name,
+		ZhName:       zhName,
+		IsAndroidApp: strings.Contains(execPath, "fde_launch"),
 	})
 	return nil
 }
