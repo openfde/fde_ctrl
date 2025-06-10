@@ -37,7 +37,7 @@ func (appImpl *Apps) Scan() {
 	if len(*appImpl) > 0 {
 		*appImpl = make(Apps, 0)
 	}
-	appImpl.scan(iconOtherPathList, desktopEntryPath)
+	appImpl.scan(iconOtherPathList, desktopEntryPath, false)
 	return
 }
 
@@ -171,7 +171,7 @@ func (linuxAppsImpl *LinuxApps) Scan() {
 	linuxAppsImpl.ScanDesktop()
 }
 
-func (linuxAppsImpl *LinuxApps) ScanDesktop() {
+func (linuxAppsImpl *LinuxApps) ScanDesktop(withAndroid bool) {
 	homeDir := os.Getenv("HOME")
 	var desktopPath string
 	personalPath, err := getDesktopPath()
@@ -188,15 +188,17 @@ func (linuxAppsImpl *LinuxApps) ScanDesktop() {
 	if len(linuxAppsImpl.Shortcuts) > 0 { //reset the shortcuts
 		linuxAppsImpl.Shortcuts = make([]AppImpl, 0)
 	}
-	linuxAppsImpl.Shortcuts.scan(iconOtherPathList, desktopPath)
+	linuxAppsImpl.Shortcuts.scan(iconOtherPathList, desktopPath, withAndroid)
 	return
 }
 
 func (impls *LinuxApps) ScanDesktopHandler(c *gin.Context) {
 	refresh := c.DefaultQuery("refresh", "false")
+	withAndroid := c.DefaultQuery("withAndroid", "false")
 	if refresh == "true" || refresh == "True" {
 		logger.Info("scan_desktopapp_refresh", refresh)
-		impls.ScanDesktop()
+		withAndroidBool := withAndroid == "true" || withAndroid == "True"
+		impls.ScanDesktop(withAndroidBool)
 	}
 	pageQuery := getPageQuery(c)
 	var data Apps
@@ -210,7 +212,7 @@ func (impls *LinuxApps) ScanDesktopHandler(c *gin.Context) {
 	response.ResponseWithPagination(c, pageQuery, data)
 }
 
-func (impls *Apps) scan(iconOtherPathList []string, desktopEntryPath string) {
+func (impls *Apps) scan(iconOtherPathList []string, desktopEntryPath string, withAndroid bool) {
 	var iconPathList []string
 
 	//add icon themes path into icon path list
@@ -228,6 +230,11 @@ func (impls *Apps) scan(iconOtherPathList []string, desktopEntryPath string) {
 	// var filterApps *Apps
 	var filteredApps Apps
 	for index, app := range *impls {
+		if !withAndroid {
+			if strings.Contains(app.Path, "fde_launch") {
+				continue
+			}
+		}
 		absPath = ""
 		//首先确定其是不是绝对路径,且有后缀
 		if filepath.IsAbs(app.IconPath) && filepath.Ext(app.IconPath) != "" {
@@ -351,9 +358,7 @@ func (impl *Apps) visitDesktopEntries(path string, info fs.FileInfo, err error) 
 	zhName := section.Key("Name[zh_CN]").String()
 	iconPath := section.Key("Icon").String()
 	execPath := section.Key("Exec").String()
-	if strings.Contains(execPath, "fde_launch") {
-		return nil
-	}
+
 	entryType := section.Key("Type").String()
 	noDisplay := section.Key("NoDisplay").String()
 	if strings.Contains(noDisplay, "true") {
