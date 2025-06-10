@@ -39,7 +39,7 @@ func scanAppInfo(lines []string, home string) AndroidApps {
 		} else if strings.HasPrefix(line, "packageName: ") {
 			app.PackageName = strings.TrimPrefix(line, "packageName: ")
 			app.IconPath = filepath.Join(home, fdeAppIconBaseDir, app.PackageName+".png")
-			app.Uninstll = "waydroid app remove" + app.PackageName
+			app.Uninstll = "waydroid app remove " + app.PackageName
 			app.Path = "fde_launch " + app.PackageName
 			logger.Info("scan_android", app.PackageName)
 			_, err := os.Stat(app.IconPath) // check if the icon file exists
