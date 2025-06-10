@@ -78,6 +78,18 @@ case $1 in
 	echo $window
 	exit 0
     ;;
+	"list")
+	curl http://127.0.0.1:18080/api/v1/android/apps -X GET 2>/dev/null |jq .Data
+	exit 0
+	;;
+	"remove")
+	waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
+        if [ $? = 0 ];then
+            exit 1
+        fi
+	waydroid app remove $2 1>/dev/null 2>&1
+	exit $?
+	;;
     "get_desktop")
 	nofDesktop=`wmctrl -l 2>/dev/null |grep "FDE Weston Compositor" |awk -F " " '{print $2}' |tr -d " "`
 	if [ $? != 0 ];then

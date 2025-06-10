@@ -20,6 +20,10 @@ type AndroidApp struct {
 	Uninstll    string `json:"uninst"` // how to uninstall the app fde_uninstall com.android.app
 }
 
+type AndroidAppsResponse struct {
+	Apps []AndroidApp `json:"app info list"`
+}
+
 var fdeAppIconBaseDir = ".local/share/openfde/icons"
 
 type AndroidApps []AndroidApp
@@ -77,6 +81,6 @@ func (impl AndroidApp) AppsHandler(c *gin.Context) {
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-	response.Response(c, scanAppInfo(lines, home))
+	response.Response(c, AndroidAppsResponse{Apps: scanAppInfo(lines, home)})
 	return
 }
