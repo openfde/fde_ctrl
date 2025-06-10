@@ -32,12 +32,20 @@ func (impl AndroidApp) Setup(r *gin.RouterGroup) {
 func scanAppInfo(lines []string, home string) AndroidApps {
 	var appsList AndroidApps
 	var app AndroidApp
-	for _, line := range lines {
+	for index, line := range lines {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "Name: ") {
 			app.Name = strings.TrimPrefix(line, "Name: ")
 		} else if strings.HasPrefix(line, "packageName: ") {
 			app.PackageName = strings.TrimPrefix(line, "packageName: ")
+			if index+2 <= len(lines) {
+				if strings.HasPrefix(lines[index+1], "categories:") {
+					category := strings.TrimSpace(lines[index+2])
+					if category != "android.intent.category.LAUNCHER" {
+						continue
+					}
+				}
+			}
 			app.IconPath = filepath.Join(home, fdeAppIconBaseDir, app.PackageName+".png")
 			app.Uninstll = "waydroid app remove " + app.PackageName
 			app.Path = "fde_launch " + app.PackageName
