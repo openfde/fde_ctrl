@@ -1,6 +1,12 @@
 
 #!/bin/bash
 
+status_code_stopped=0
+status_code_running=1
+
+return_code_stopped=1
+return_code_invalid_args=6
+return_code_great_than_65535=10
 
 if [ $# -lt 1 ];then
     exit 
@@ -40,11 +46,11 @@ case $1 in
 		else
 			fde_ctrl -m shell -a $app_package_name 1>/dev/null 2>&1
 		fi
-		if [ $? -eq 10 ];then
+		if [ $? -eq $return_code_great_than_65535 ];then
 			if [ -e /usr/bin/zenity ];then
 				zenity --error --text="FDE is exited due to the pid maximum was set to great than 65535" --width=350 2>/dev/null &
 			fi
-			exit 10
+			exit $return_code_great_than_65535
 		fi
 	fi
     ;;
@@ -55,15 +61,15 @@ case $1 in
 		fi
         waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
         if [ $? = 0 ];then
-            exit 0
+            exit $status_code_stopped
         else
-            exit 1
+            exit $status_code_running
         fi
     ;;
     "screenshot")
         waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
         if [ $? = 0 ];then
-            exit 1
+            exit $return_code_stopped
         fi
         echo "screencap -j " |waydroid shell  2>/dev/null
     ;;
@@ -71,29 +77,46 @@ case $1 in
         waydroid session stop 1>/dev/null 2>&1
     ;;
     "get_window")
-	window=`wmctrl -l 2>/dev/null |grep "FDE Weston Compositor" |awk -F " " '{print $1}' |tr -d " "`
-	if [ $? != 0 ];then
-		exit 1
-	fi
-	echo $window
-	exit 0
+		window=`wmctrl -l 2>/dev/null |grep "FDE Weston Compositor" |awk -F " " '{print $1}' |tr -d " "`
+		if [ $? != 0 ];then
+			exit $return_code_stopped
+		fi
+		echo $window
+		exit 0
     ;;
 	"list")
-	curl http://127.0.0.1:18080/api/v1/android/apps -X GET 2>/dev/null |jq .Data
-	exit 0
+		curl http://127.0.0.1:18080/api/v1/android/apps -X GET 2>/dev/null |jq .Data
+		exit 0
 	;;
 	"remove")
-	waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
+		waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
         if [ $? = 0 ];then
-            exit 1
+            exit $return_code_stopped
         fi
-	waydroid app remove $2 1>/dev/null 2>&1
-	exit $?
+		if [ -z "$2" ];then
+			exit $return_code_invalid_args
+		fi
+		waydroid app remove $2 1>/dev/null 2>&1
+		exit $?
+	;;
+	"install_apk")
+		waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
+        if [ $? = 0 ];then
+            exit $return_code_stopped
+        fi
+		if [ -z "$2" ];then
+			exit $return_code_invalid_args
+		fi
+		if [ ! -f "$2" ];then
+			exit $return_code_invalid_args
+		fi
+		waydroid app install $2 1>/dev/null 2>&1
+		exit $?
 	;;
     "get_desktop")
 	nofDesktop=`wmctrl -l 2>/dev/null |grep "FDE Weston Compositor" |awk -F " " '{print $2}' |tr -d " "`
 	if [ $? != 0 ];then
-		exit 1
+		exit $return_code_stopped
 	fi
 	echo $nofDesktop
 	exit 0
