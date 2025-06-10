@@ -168,7 +168,7 @@ func getDesktopPath() (personalPath, error) {
 
 func (linuxAppsImpl *LinuxApps) Scan() {
 	linuxAppsImpl.Apps.Scan()
-	linuxAppsImpl.ScanDesktop()
+	linuxAppsImpl.ScanDesktop(false)
 }
 
 func (linuxAppsImpl *LinuxApps) ScanDesktop(withAndroid bool) {
