@@ -84,7 +84,7 @@ func (impl AndroidApp) AppsHandler(c *gin.Context) {
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 	apps := scanAppInfo(lines, home)
 	if rawresponse == "1" {
-		c.JSON(http.StatusOK, apps)
+		c.JSON(http.StatusOK, AndroidAppsResponse{Apps: apps})
 		return
 	}
 	response.Response(c, AndroidAppsResponse{Apps: apps})
