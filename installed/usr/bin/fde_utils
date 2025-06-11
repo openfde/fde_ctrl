@@ -17,7 +17,7 @@ fi
 #$2 is the mode value: app_fusing or desktop
 function mode_process() {
 	case $1 in
-		read_mode)
+		"read_mode")
 			source /etc/fde.d/fde.conf 2>/dev/null
 			if [ $? -ne 0 ];then
 				echo "Error: Unable to read the configuration file." >&2
@@ -26,7 +26,7 @@ function mode_process() {
 			echo "$mode"
 			return  0
 		;;
-		write_mode)
+		"write_mode")
 			if [ "$(id -u)" -ne 0 ]; then
 				echo "Error: This operation must be run as root." >&2
 				exit $return_code_not_root
@@ -53,7 +53,7 @@ function mode_process() {
 			waydroid init -f
 			return $?
 		;;
-		*)
+		"*")
 			echo "Error: Invalid operation. Use 'read' or 'write'." >&2
 			exit $return_code_invalid_args
 		;;
@@ -64,7 +64,7 @@ function mode_process() {
 #$2=apk file path or app package name
 function apk_process() {
 	case $1 in 
-		install)
+		"install")
 			if [ -z "$2" ];then
 				echo "Error: APK file path is required." >&2
 				exit $return_code_invalid_args
@@ -76,7 +76,7 @@ function apk_process() {
 			waydroid app install "$2" 1>/dev/null 2>&1
 			return $?
 		;;
-		remove)
+		"remove")
 			if [ -z "$2" ];then
 				echo "Error: App package name is required." >&2
 				exit $return_code_invalid_args
@@ -84,9 +84,13 @@ function apk_process() {
 			waydroid app remove "$2" 1>/dev/null 2>&1
 			return $?
 		;;
-		list)
+		"list")
 			curl http://127.0.0.1:18080/api/v1/android/apps?raw=1 -X GET 2>/dev/null 
 			exit 0
+		;;
+		"*")
+			echo "Error: Invalid operation. Use 'install' ,'remove' or 'list'." >&2
+			exit $return_code_invalid_args
 		;;
 	esac
 }
