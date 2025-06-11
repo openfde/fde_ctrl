@@ -69,6 +69,7 @@ func scanAppInfo(lines []string, home string) AndroidApps {
 
 func (impl AndroidApp) AppsHandler(c *gin.Context) {
 	cmd := exec.Command("waydroid", "app", "list")
+	rawresponse := c.DefaultQuery("raw", "0")
 	output, err := cmd.Output()
 	if err != nil {
 		response.ResponseError(c, http.StatusInternalServerError, err)
@@ -81,6 +82,11 @@ func (impl AndroidApp) AppsHandler(c *gin.Context) {
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-	response.Response(c, AndroidAppsResponse{Apps: scanAppInfo(lines, home)})
+	apps := scanAppInfo(lines, home)
+	if rawresponse == "1" {
+		c.JSON(http.StatusOK, apps)
+		return
+	}
+	response.Response(c, AndroidAppsResponse{Apps: apps})
 	return
 }

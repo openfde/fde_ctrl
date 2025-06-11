@@ -4,13 +4,86 @@
 status_code_stopped=0
 status_code_running=1
 
-return_code_stopped=1
 return_code_invalid_args=6
 return_code_great_than_65535=10
+return_code_not_root=12
+return_code_stopped=21
 
 if [ $# -lt 1 ];then
     exit 
 fi
+
+#$1 is the mode: read or write
+#$2 is the mode value: app_fusing or desktop
+func mode_process() {
+	case $1 in
+		read)
+			source /etc/fde.d/phyfde.conf 2>/dev/null
+			if [ $? -ne 0 ];then
+				echo "Error: Unable to read the configuration file." >&2
+				exit $return_code_invalid_args
+			fi
+			echo "$mode"
+			return  0
+		;;
+		write)
+			if [ -z "$2" ];then
+				echo "Error: Mode value is required." >&2
+				exit $return_code_invalid_args
+			fi
+			if [ "$2" != "app_fusing" -a "$2" != "desktop" ];then
+				echo "Error: Invalid mode value. Use 'app_fusing' or 'desktop'." >&2
+				exit $return_code_invalid_args
+			fi
+			sed -i '/^mode=/d' /etc/fde.d/phyfde.conf 2>/dev/null
+			echo "mode=$2" >> /etc/fde.d/phyfde.conf
+			return 0
+		;;
+		apply)
+			if [ "$(id -u)" -ne 0 ]; then
+				echo "Error: This operation must be run as root." >&2
+				exit $return_code_not_root
+			fi
+			waydroid init -f
+			return  $?
+		;;
+		*)
+			echo "Error: Invalid operation. Use 'read' or 'write'." >&2
+			exit $return_code_invalid_args
+		;;
+	esac
+}
+
+#$1=op
+#$2=apk file path or app package name
+func apk_process() {
+	case $1 in 
+		install)
+			if [ -z "$2" ];then
+				echo "Error: APK file path is required." >&2
+				exit $return_code_invalid_args
+			fi
+			if [ ! -f "$2" ];then
+				echo "Error: File '$2' does not exist." >&2
+				exit $return_code_invalid_args
+			fi
+			waydroid app install "$2" 1>/dev/null 2>&1
+			return $?
+		;;
+		remove)
+			if [ -z "$2" ];then
+				echo "Error: App package name is required." >&2
+				exit $return_code_invalid_args
+			fi
+			waydroid app remove "$2" 1>/dev/null 2>&1
+			return $?
+		;;
+		list)
+			curl http://127.0.0.1:18080/api/v1/android/apps?raw=1 -X GET 2>/dev/null 
+			exit 0
+		;;
+	esac
+}
 
 case $1 in
     "-h")
@@ -84,34 +157,11 @@ case $1 in
 		echo $window
 		exit 0
     ;;
-	"list")
-		curl http://127.0.0.1:18080/api/v1/android/apps -X GET 2>/dev/null |jq .Data
-		exit 0
+	"list"|"remove"|"install_apk")
+		apk_process "$1" "$2"
 	;;
-	"remove")
-		waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
-        if [ $? = 0 ];then
-            exit $return_code_stopped
-        fi
-		if [ -z "$2" ];then
-			exit $return_code_invalid_args
-		fi
-		waydroid app remove $2 1>/dev/null 2>&1
-		exit $?
-	;;
-	"install_apk")
-		waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
-        if [ $? = 0 ];then
-            exit $return_code_stopped
-        fi
-		if [ -z "$2" ];then
-			exit $return_code_invalid_args
-		fi
-		if [ ! -f "$2" ];then
-			exit $return_code_invalid_args
-		fi
-		waydroid app install $2 1>/dev/null 2>&1
-		exit $?
+	"write_mode"|"read_mode"|"apply_mode")
+		mode_process "$1" "$2"
 	;;
     "get_desktop")
 	nofDesktop=`wmctrl -l 2>/dev/null |grep "FDE Weston Compositor" |awk -F " " '{print $2}' |tr -d " "`
@@ -122,3 +172,4 @@ case $1 in
 	exit 0
     ;;
 esac 
+
