@@ -15,7 +15,7 @@ fi
 
 #$1 is the mode: read or write
 #$2 is the mode value: app_fusing or desktop
-func mode_process() {
+function mode_process() {
 	case $1 in
 		read)
 			source /etc/fde.d/fde.conf 2>/dev/null
@@ -62,7 +62,7 @@ func mode_process() {
 
 #$1=op
 #$2=apk file path or app package name
-func apk_process() {
+function apk_process() {
 	case $1 in 
 		install)
 			if [ -z "$2" ];then
