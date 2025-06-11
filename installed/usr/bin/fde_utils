@@ -17,7 +17,7 @@ fi
 #$2 is the mode value: app_fusing or desktop
 function mode_process() {
 	case $1 in
-		read)
+		read_mode)
 			source /etc/fde.d/fde.conf 2>/dev/null
 			if [ $? -ne 0 ];then
 				echo "Error: Unable to read the configuration file." >&2
@@ -26,7 +26,7 @@ function mode_process() {
 			echo "$mode"
 			return  0
 		;;
-		write)
+		write_mode)
 			if [ "$(id -u)" -ne 0 ]; then
 				echo "Error: This operation must be run as root." >&2
 				exit $return_code_not_root
@@ -163,10 +163,10 @@ case $1 in
 		echo $window
 		exit 0
     ;;
-	"list"|"remove"|"install_apk")
+	"list"|"remove"|"install")
 		apk_process "$1" "$2"
 	;;
-	"write_mode"|"read_mode"|"apply_mode")
+	"write_mode"|"read_mode")
 		mode_process "$1" "$2"
 	;;
     "get_desktop")
