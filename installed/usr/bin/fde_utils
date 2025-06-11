@@ -16,9 +16,9 @@ fi
 #$1 is the mode: read or write
 #$2 is the mode value: app_fusing or desktop
 function mode_process() {
+	source /etc/fde.d/fde.conf 2>/dev/null
 	case $1 in
 		"read_mode")
-			source /etc/fde.d/fde.conf 2>/dev/null
 			if [ $? -ne 0 ];then
 				echo "Error: Unable to read the configuration file." >&2
 				exit $return_code_invalid_args
@@ -39,17 +39,11 @@ function mode_process() {
 				echo "Error: Invalid mode value. Use 'app_fusing' or 'desktop'." >&2
 				exit $return_code_invalid_args
 			fi
-			sed -i '/^mode=/d' /etc/fde.d/fde.conf 2>/dev/null
-			echo "mode=$2" >> /etc/fde.d/fde.conf
-			source /var/lib/waydroid/waydroid_base.prop
-			if [ "$2" = "app_fusing" -a "${persist.waydroid.multi_windows}" = "true" ];then
+			if [ "$2" = "$mode" ];then
 				exit 0
 			fi
-			if [ "$2" = "desktop" ];then
-				if [ "${persist.waydroid.multi_windows}" = "false" -o -z "${persist.waydroid.multi_windows}" ];then
-					exit 0
-				fi
-			fi
+			sed -i '/^mode=/d' /etc/fde.d/fde.conf 2>/dev/null
+			echo "mode=$2" >> /etc/fde.d/fde.conf
 			waydroid init -f
 			return $?
 		;;
