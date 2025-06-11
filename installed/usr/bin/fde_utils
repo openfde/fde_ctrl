@@ -90,7 +90,8 @@ function apk_process() {
 
 case $1 in
     "-h")
-        echo "Usage: $0 [status|screenshot|stop]"
+        echo "Usage: $0 [status|screenshot|stop|write_mode|read_mode|list|remove|install]"
+		exit 0
     ;;
     "umount")
 	curl http://127.0.0.1:18080/api/v1/fs_fusing/exit -X POST
@@ -174,5 +175,9 @@ case $1 in
 	echo $nofDesktop
 	exit 0
     ;;
+	"*")
+		echo "Usage: $0 [status|screenshot|stop|write_mode|read_mode|list|remove|install]"
+		exit 0
+	;;
 esac 
 
