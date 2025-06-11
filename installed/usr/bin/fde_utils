@@ -27,6 +27,10 @@ func mode_process() {
 			return  0
 		;;
 		write)
+			if [ "$(id -u)" -ne 0 ]; then
+				echo "Error: This operation must be run as root." >&2
+				exit $return_code_not_root
+			fi
 			if [ -z "$2" ];then
 				echo "Error: Mode value is required." >&2
 				exit $return_code_invalid_args
@@ -37,15 +41,17 @@ func mode_process() {
 			fi
 			sed -i '/^mode=/d' /etc/fde.d/fde.conf 2>/dev/null
 			echo "mode=$2" >> /etc/fde.d/fde.conf
-			return 0
-		;;
-		apply)
-			if [ "$(id -u)" -ne 0 ]; then
-				echo "Error: This operation must be run as root." >&2
-				exit $return_code_not_root
+			source /var/lib/waydroid/waydroid_base.prop
+			if [ "$2" = "app_fusing" -a "${persist.waydroid.multi_windows}" = "true" ];then
+				exit 0
+			fi
+			if [ "$2" = "desktop" ];then
+				if [ "${persist.waydroid.multi_windows}" = "false" -o -z "${persist.waydroid.multi_windows}" ];then
+					exit 0
+				fi
 			fi
 			waydroid init -f
-			return  $?
+			return $?
 		;;
 		*)
 			echo "Error: Invalid operation. Use 'read' or 'write'." >&2
