@@ -18,7 +18,7 @@ fi
 func mode_process() {
 	case $1 in
 		read)
-			source /etc/fde.d/phyfde.conf 2>/dev/null
+			source /etc/fde.d/fde.conf 2>/dev/null
 			if [ $? -ne 0 ];then
 				echo "Error: Unable to read the configuration file." >&2
 				exit $return_code_invalid_args
@@ -35,8 +35,8 @@ func mode_process() {
 				echo "Error: Invalid mode value. Use 'app_fusing' or 'desktop'." >&2
 				exit $return_code_invalid_args
 			fi
-			sed -i '/^mode=/d' /etc/fde.d/phyfde.conf 2>/dev/null
-			echo "mode=$2" >> /etc/fde.d/phyfde.conf
+			sed -i '/^mode=/d' /etc/fde.d/fde.conf 2>/dev/null
+			echo "mode=$2" >> /etc/fde.d/fde.conf
 			return 0
 		;;
 		apply)
