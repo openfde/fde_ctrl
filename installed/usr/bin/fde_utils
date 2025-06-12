@@ -194,7 +194,7 @@ case $1 in
 	exit 0
     ;;
 	*)
-		echo "Usage: $0 [status|screenshot|stop|write_mode|read_mode|list|remove|install]"
+		echo "Usage: $0 [start|status|screenshot|stop|write_mode|read_mode|list|remove|install|app_stop]"
 		exit 0
 	;;
 esac 
