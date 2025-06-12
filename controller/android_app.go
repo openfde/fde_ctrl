@@ -40,6 +40,7 @@ func (impl *AndroidAppCtrl) Setup(r *gin.RouterGroup) {
 	userEventNotifier.Register(impl.notify)
 	v1 := r.Group("/v1")
 	v1.GET("/android/apps", impl.AppsHandler)
+	v1.GET("/android/status", impl.StatusHandler)
 }
 
 func scanAppInfo(lines []string, home string) AndroidApps {
@@ -74,6 +75,15 @@ func scanAppInfo(lines []string, home string) AndroidApps {
 		}
 	}
 	return appsList
+}
+
+func (impl *AndroidAppCtrl) StatusHandler(c *gin.Context) {
+	if !impl.Started {
+		response.ResponseError(c, http.StatusProcessing, nil)
+	} else {
+		response.Response(c, nil)
+	}
+	return
 }
 
 func (impl *AndroidAppCtrl) AppsHandler(c *gin.Context) {

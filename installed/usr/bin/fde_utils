@@ -2,6 +2,7 @@
 
 status_code_stopped=0
 status_code_running=1
+status_code_android_start_completely=1
 
 return_code_invalid_args=6
 return_code_great_than_65535=10
@@ -72,6 +73,14 @@ function apk_process() {
             exit $return_code_not_running
 	fi
 	case $1 in 
+		"android_status")
+		code=`curl -s  -w "%{http_code}" http://127.0.0.1:18080/api/v1/android/status -X GET 2>/dev/null`
+		if [ "$code" != "200" ];then
+			echo "Error: fde is not started completely"
+			exit $return_code_not_start_completely
+		fi
+		exit $status_code_android_start_completely
+		;;
 		"install")
 			if [ -z "$2" ];then
 				echo "Error: APK file path is required." >&2
