@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
 	"net/http"
@@ -79,7 +80,7 @@ func scanAppInfo(lines []string, home string) AndroidApps {
 
 func (impl *AndroidAppCtrl) StatusHandler(c *gin.Context) {
 	if !impl.Started {
-		response.ResponseError(c, http.StatusProcessing, nil)
+		response.ResponseError(c, http.StatusProcessing, errors.New("android system not started completely"))
 	} else {
 		response.Response(c, nil)
 	}
