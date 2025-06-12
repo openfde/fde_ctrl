@@ -6,7 +6,9 @@ status_code_running=1
 return_code_invalid_args=6
 return_code_great_than_65535=10
 return_code_not_root=12
-return_code_stopped=21
+return_code_stopped=13
+return_code_not_stopped=14
+return_code_not_running=15
 
 if [ $# -lt 1 ];then
     exit 
@@ -15,21 +17,33 @@ fi
 #$1 is the mode: read or write
 #$2 is the mode value: app_fusing or desktop
 function mode_process() {
-	source /etc/fde.d/fde.conf 2>/dev/null
+	if [ "$(id -u)" -ne 0 ]; then
+		echo "Error: This operation must be run as root." >&2
+		exit $return_code_not_root
+	fi
+	waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
+    if [ $? != 0 ];then
+            exit $return_code_not_stopped
+	fi
+	if [ ! -d "/etc/fde.d" ];then
+		rm -rf /etc/fde.d
+		mkdir /etc/fde.d -p 2>/dev/null
+	fi
+	mode="desktop"
+	if [ ! -e "/etc/fde.d/fde.conf" ] ;then
+		touch /etc/fde.d/fde.conf 2>/dev/null
+	else 
+		source /etc/fde.d/fde.conf 2>/dev/null
+	fi
+	if [ "$mode" != "app_fusing" -a "$mode" != "desktop" ];then
+		mode="desktop"
+	fi
 	case $1 in
 		"read_mode")
-			if [ $? -ne 0 ];then
-				echo "Error: Unable to read the configuration file." >&2
-				exit $return_code_invalid_args
-			fi
 			echo "$mode"
 			return  0
 		;;
 		"write_mode")
-			if [ "$(id -u)" -ne 0 ]; then
-				echo "Error: This operation must be run as root." >&2
-				exit $return_code_not_root
-			fi
 			if [ -z "$2" ];then
 				echo "Error: Mode value is required." >&2
 				exit $return_code_invalid_args
@@ -56,6 +70,10 @@ function mode_process() {
 #$1=op
 #$2=apk file path or app package name
 function apk_process() {
+	waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
+    if [ $? = 0 ];then
+            exit $return_code_not_running
+	fi
 	case $1 in 
 		"install")
 			if [ -z "$2" ];then
@@ -90,7 +108,7 @@ function apk_process() {
 			exit $?
 		;;
 		"*")
-			echo "Error: Invalid operation. Use 'install' ,'remove' or 'list'." >&2
+			echo "Error: Invalid operation. Use 'install' ,'remove' or 'list' 'app_stop' ." >&2
 			exit $return_code_invalid_args
 		;;
 	esac
@@ -98,7 +116,7 @@ function apk_process() {
 
 case $1 in
     "-h")
-        echo "Usage: $0 [status|screenshot|stop|write_mode|read_mode|list|remove|install]"
+        echo "Usage: $0 [status|screenshot|stop|write_mode|read_mode|list|remove|install|app_stop]"
 		exit 0
     ;;
     "umount")

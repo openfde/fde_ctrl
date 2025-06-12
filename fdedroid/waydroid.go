@@ -8,7 +8,13 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 )
+
+type AppMode string
+
+const APP_Fusing AppMode = "app_fusing"
+const Desttop AppMode = "desktop"
 
 type Waydroid struct {
 }
@@ -29,7 +35,30 @@ func (fdedroid *Waydroid) Start(mainCtx context.Context, mainCtxCancelFunc conte
 	exec.Command("waydroid", "session", "stop").Run()
 	// logger.Error("before waydroid_start", nil, nil)
 	os.Environ()
-	cmdWaydroid = exec.CommandContext(mainCtx, "waydroid", "show-full-ui")
+	mode := ""
+	confPath := "/etc/fde.d/fde.conf"
+	if _, err := os.Stat(confPath); err == nil {
+		content, err := os.ReadFile(confPath)
+		if err == nil {
+			lines := string(content)
+			for _, line := range strings.Split(lines, "\n") {
+				line = strings.TrimSpace(line)
+				if line == "" || strings.HasPrefix(line, "#") {
+					continue
+				}
+				parts := strings.SplitN(line, "=", 2)
+				if len(parts) == 2 && strings.TrimSpace(parts[0]) == "mode" {
+					mode = strings.TrimSpace(parts[1])
+					break
+				}
+			}
+		}
+	}
+	if mode == string(APP_Fusing) {
+		cmdWaydroid = exec.CommandContext(mainCtx, "waydroid", "session", "start")
+	} else {
+		cmdWaydroid = exec.CommandContext(mainCtx, "waydroid", "show-full-ui")
+	}
 	cmdWaydroid.Env = append(os.Environ(), "WAYLAND_DISPLAY="+socket)
 	// logger.Error("before waydroid_start", "run", nil)
 	// var stdout, stderr io.ReadCloser

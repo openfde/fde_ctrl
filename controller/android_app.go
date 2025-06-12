@@ -14,10 +14,10 @@ import (
 
 type AndroidApp struct {
 	Name        string `json:"name"`
-	PackageName string
-	IconPath    string `json:"icon"`   // path to the icon file
-	Path        string `json:"path"`   // how to launch the app fde_launch com.android.app
-	Uninstll    string `json:"uninst"` // how to uninstall the app fde_uninstall com.android.app
+	PackageName string `json:"packageName"` // package name of the app, like com.android.app
+	IconPath    string `json:"icon"`        // path to the icon file
+	Path        string `json:"path"`        // how to launch the app fde_launch com.android.app
+	Uninstll    string `json:"uninst"`      // how to uninstall the app fde_uninstall com.android.app
 }
 
 type AndroidAppsResponse struct {
