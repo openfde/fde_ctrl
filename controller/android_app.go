@@ -12,6 +12,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type AndroidAppCtrl struct {
+	Started bool
+}
+
 type AndroidApp struct {
 	Name        string `json:"name"`
 	PackageName string `json:"packageName"` // package name of the app, like com.android.app
@@ -24,11 +28,16 @@ type AndroidAppsResponse struct {
 	Apps []AndroidApp `json:"app info list"`
 }
 
+func (impl *AndroidAppCtrl) notify() {
+	impl.Started = true
+}
+
 var fdeAppIconBaseDir = ".local/share/openfde/icons"
 
 type AndroidApps []AndroidApp
 
-func (impl AndroidApp) Setup(r *gin.RouterGroup) {
+func (impl AndroidAppCtrl) Setup(r *gin.RouterGroup) {
+	userEventNotifier.Register(impl.notify)
 	v1 := r.Group("/v1")
 	v1.GET("/android/apps", impl.AppsHandler)
 }
@@ -67,7 +76,11 @@ func scanAppInfo(lines []string, home string) AndroidApps {
 	return appsList
 }
 
-func (impl AndroidApp) AppsHandler(c *gin.Context) {
+func (impl AndroidAppCtrl) AppsHandler(c *gin.Context) {
+	if !impl.Started {
+		c.JSON(http.StatusPreconditionRequired, nil)
+		return
+	}
 	cmd := exec.Command("waydroid", "app", "list")
 	rawresponse := c.DefaultQuery("raw", "0")
 	output, err := cmd.Output()
