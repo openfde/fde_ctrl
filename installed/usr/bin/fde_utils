@@ -64,7 +64,31 @@ function mode_process() {
 		;;
 	esac
 }
-
+function status_process(){
+	waydroid status |grep ERROR  -w 1>/dev/null 2>&1
+	if [ $? = 0 ];then
+		exit $status_code_stopped
+	fi
+	case $1 in 
+	"android_status")
+		code=`curl -s -w "%{http_code}" http://localhost:18080/api/v1/android/status -X GET 2>/dev/null`
+		if [ "$code" != "200" ];then
+			echo "Error: fde is not started completely"
+			exit $return_code_not_start_completely
+		else 
+			exit $status_code_android_start_completely
+		fi
+		;;
+		"status")
+			waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
+			if [ $? = 0 ];then
+				exit $status_code_stopped
+			else
+				exit $status_code_running
+			fi
+		;;
+	esac
+}
 #$1=op
 #$2=apk file path or app package name
 function apk_process() {
@@ -165,17 +189,8 @@ case $1 in
 		fi
 	fi
     ;;
-    "status")
-		waydroid status |grep ERROR  -w 1>/dev/null 2>&1
-		if [ $? = 0 ];then
-			exit 0
-		fi
-        waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
-        if [ $? = 0 ];then
-            exit $status_code_stopped
-        else
-            exit $status_code_running
-        fi
+    "status"|"android_status")
+		status_process "$1"
     ;;
     "screenshot")
         waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
@@ -195,20 +210,20 @@ case $1 in
 		echo $window
 		exit 0
     ;;
+	"get_desktop")
+		nofDesktop=`wmctrl -l 2>/dev/null |grep "FDE Weston Compositor" |awk -F " " '{print $2}' |tr -d " "`
+		if [ $? != 0 ];then
+			exit $return_code_stopped
+		fi
+		echo $nofDesktop
+		exit 0
+    ;;
 	"list"|"remove"|"install"|"app_stop")
 		apk_process "$1" "$2"
 	;;
 	"write_mode"|"read_mode")
 		mode_process "$1" "$2"
 	;;
-    "get_desktop")
-	nofDesktop=`wmctrl -l 2>/dev/null |grep "FDE Weston Compositor" |awk -F " " '{print $2}' |tr -d " "`
-	if [ $? != 0 ];then
-		exit $return_code_stopped
-	fi
-	echo $nofDesktop
-	exit 0
-    ;;
 	*)
 		echo "Usage: $0 [start|status|screenshot|stop|write_mode|read_mode|list|remove|install|app_stop]"
 		exit 0
