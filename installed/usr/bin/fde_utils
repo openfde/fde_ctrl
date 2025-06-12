@@ -60,10 +60,6 @@ function mode_process() {
 			waydroid init -f
 			return $?
 		;;
-		"*")
-			echo "Error: Invalid operation. Use 'read' or 'write'." >&2
-			exit $return_code_invalid_args
-		;;
 	esac
 }
 
@@ -106,10 +102,6 @@ function apk_process() {
 			fi
 			waydroid shell am force-stop $2 >&2
 			exit $?
-		;;
-		"*")
-			echo "Error: Invalid operation. Use 'install' ,'remove' or 'list' 'app_stop' ." >&2
-			exit $return_code_invalid_args
 		;;
 	esac
 }
@@ -201,7 +193,7 @@ case $1 in
 	echo $nofDesktop
 	exit 0
     ;;
-	"*")
+	*)
 		echo "Usage: $0 [status|screenshot|stop|write_mode|read_mode|list|remove|install]"
 		exit 0
 	;;
