@@ -26,7 +26,7 @@ func Setup(r *gin.Engine, app string, configure conf.Configure) {
 	userManager := UserManager{}
 	userManager.Init(app)
 	var controllers []Controller
-	controllers = append(controllers, pm, linuxApps, vnc, xserver, brightness, fsfusing, fdeModeCtrl, userManager, AndroidAppCtrl)
+	controllers = append(controllers, pm, linuxApps, vnc, xserver, brightness, fsfusing, fdeModeCtrl, userManager, &AndroidAppCtrl)
 	for _, value := range controllers {
 		value.Setup(group)
 	}

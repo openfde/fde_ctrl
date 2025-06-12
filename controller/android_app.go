@@ -36,7 +36,7 @@ var fdeAppIconBaseDir = ".local/share/openfde/icons"
 
 type AndroidApps []AndroidApp
 
-func (impl AndroidAppCtrl) Setup(r *gin.RouterGroup) {
+func (impl *AndroidAppCtrl) Setup(r *gin.RouterGroup) {
 	userEventNotifier.Register(impl.notify)
 	v1 := r.Group("/v1")
 	v1.GET("/android/apps", impl.AppsHandler)
@@ -76,7 +76,7 @@ func scanAppInfo(lines []string, home string) AndroidApps {
 	return appsList
 }
 
-func (impl AndroidAppCtrl) AppsHandler(c *gin.Context) {
+func (impl *AndroidAppCtrl) AppsHandler(c *gin.Context) {
 	if !impl.Started {
 		c.JSON(http.StatusPreconditionRequired, nil)
 		return
