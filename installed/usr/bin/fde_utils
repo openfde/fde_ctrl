@@ -71,7 +71,7 @@ function status_process(){
 	fi
 	case $1 in 
 	"android_status")
-		code=`curl -s -w "%{http_code}" http://localhost:18080/api/v1/android/status -X GET 2>/dev/null`
+		code=`curl -s -o /dev/null -w "%{http_code}" http://localhost:18080/api/v1/android/status -X GET 2>/dev/null`
 		if [ "$code" != "200" ];then
 			echo "Error: fde is not started completely"
 			exit $return_code_not_start_completely
