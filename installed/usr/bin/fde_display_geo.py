@@ -22,8 +22,8 @@ def get_current_screen_resolution():
     
     width = geometry.width
     height = geometry.height
-    
-    return width, height
+    scale = monitor.get_scale_factor()
+    return width * scale, height * scale
 
 if __name__ == "__main__":
     width, height = get_current_screen_resolution()
