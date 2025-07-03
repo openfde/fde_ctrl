@@ -96,7 +96,7 @@ func (wm *WestonWM) Start(mainCtx context.Context, mainCtxCancelFunc context.Can
 
 	logger.Info("fde_weston_w_h"+width+","+height, nil)
 	//args := []string{"--width=" + width, "--height=" + height, "--fullscreen", "--enable-backend-cursor"}
-+       args := []string{"--backend=headless-backend.so"}
+	args := []string{"--backend=headless-backend.so"}
 	if socket == SocketCustomName {
 		args = append(args, "-S"+socket)
 	}
