@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ $# -ne 1 ];then
+	echo "package name is required"
+	exit 6
+fi
+
 app_package_name=$1
 waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
 if [ $? = 0 ];then

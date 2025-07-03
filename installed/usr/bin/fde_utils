@@ -15,6 +15,23 @@ return_code_not_start_completely=16
 if [ $# -lt 1 ];then
     exit 
 fi
+function notify_process() {
+	case $2 in 
+	"start")
+		echo "start" $3
+	;;	
+	"stop")
+		echo "stop" $3
+	;;	
+	"remove")
+		echo "remove" $3
+	;;	
+	"install")
+		echo "install" $3 $4
+	;;	
+	esac
+
+}
 
 #$1 is the mode: read or write
 #$2 is the mode value: app_fusing or desktop
@@ -136,11 +153,7 @@ function apk_process() {
 			exit 0
 		;;
 		"app_stop")
-			if [ "$(id -u)" -ne 0 ]; then
-				echo "Error: This operation must be run as root." >&2
-				exit $return_code_not_root
-			fi
-			waydroid shell am force-stop $2 >&2
+			waydroid app stop $2 >&2
 			exit $?
 		;;
 	esac
@@ -218,6 +231,9 @@ case $1 in
 		echo $nofDesktop
 		exit 0
     ;;
+    	"notify")
+		notify_process $@
+	;;
 	"list"|"remove"|"install"|"app_stop")
 		apk_process "$1" "$2"
 	;;
