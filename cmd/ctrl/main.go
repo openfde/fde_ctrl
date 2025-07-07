@@ -66,10 +66,9 @@ func main() {
 		return
 	}
 
-	dbusNotifyImpl := new(tools.DbusNotify)
-	dbusNotifyImpl.Init()
 	if len(msg) != 0 {
-		err := dbusNotifyImpl.SendDbusMessage(msg)
+		logger.Info("send_dbus_message", msg)
+		err := tools.SendDbusMessage(msg)
 		if err != nil {
 			os.Exit(1)
 			fmt.Println(err)

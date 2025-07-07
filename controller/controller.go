@@ -18,15 +18,17 @@ func Setup(r *gin.Engine, app string, configure conf.Configure) {
 	xserver.Conf = configure
 	var brightness BrightNessManager
 	var AndroidAppCtrl AndroidAppCtrl
+	var appNotify AppNotify
 	fsfusing := FsFuseManager{}
 	fsfusing.Init()
+	appNotify.Init()
 	group := r.Group("/api")
 	logger.Info("gy_linux_app_scan", "hello")
 	linuxApps.Scan()
 	userManager := UserManager{}
 	userManager.Init(app)
 	var controllers []Controller
-	controllers = append(controllers, pm, linuxApps, vnc, xserver, brightness, fsfusing, fdeModeCtrl, userManager, &AndroidAppCtrl)
+	controllers = append(controllers, pm, linuxApps, vnc, xserver, brightness, fsfusing, fdeModeCtrl, userManager, &AndroidAppCtrl,appNotify)
 	for _, value := range controllers {
 		value.Setup(group)
 	}
