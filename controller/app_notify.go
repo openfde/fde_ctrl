@@ -23,6 +23,23 @@ func (impl AppNotify) Setup(r *gin.RouterGroup) {
 	v1.POST("/app_notify", impl.NotifyHandler)
 }
 
+func (impl AppNotify) NotifyHandler(c *gin.Context) {
+	var request AppNotifyRequest
+	err := c.ShouldBindJSON(&request)
+	if err != nil {
+		response.ResponseParamterError(c, err)
+		return
+	}
+	err = impl.SendDbusMessage(request)
+	if err != nil {
+		logger.Error("send_dbus_message", nil, err)
+		response.ResponseError(c, http.StatusBadRequest, err)
+		return
+	}
+
+	response.Response(c, nil)
+}
+
 type AppNotifyRequest struct {
 	PackageName string
 	OpCode      string
@@ -50,7 +67,8 @@ func (d *AppNotify) SendDbusMessage(req AppNotifyRequest) error {
 		logger.Error("marshal_app_notify_request", nil, err)
 		return err
 	}
-	if len(req.PackageName) == 0 {
+	if len(req.PackageName) == 0 || len(req.OpCode) == 0 {
+		logger.Error("invalid_app_notify_request", "packagename or opcoe is empty", nil)
 		return nil
 	}
 	d.dbusChanl <- string(requests)
@@ -71,21 +89,4 @@ func (d *AppNotify) startDbusMessageWorker() {
 			d.conn.Emit(sig.Path, sig.Name, sig.Body...)
 		}
 	}
-}
-
-func (impl AppNotify) NotifyHandler(c *gin.Context) {
-	var request AppNotifyRequest
-	err := c.ShouldBindJSON(&request)
-	if err != nil {
-		response.ResponseParamterError(c, err)
-		return
-	}
-	err = impl.SendDbusMessage(request)
-	if err != nil {
-		logger.Error("send_dbus_message", nil, err)
-		response.ResponseError(c, http.StatusBadRequest, err)
-		return
-	}
-
-	response.Response(c, nil)
 }
