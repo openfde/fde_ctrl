@@ -67,7 +67,6 @@ func main() {
 	}
 
 	if len(msg) != 0 {
-		logger.Info("send_dbus_message", msg)
 		err := tools.SendDbusMessage(msg)
 		if err != nil {
 			os.Exit(1)

@@ -40,7 +40,7 @@ func (d *AppNotify) Init() error {
 	d.iface = "com.openfde.NotifyIf"
 	d.path = dbus.ObjectPath("/com/openfde/Notify")
 	d.signalName = "appStateNotify"
-	d.startDbusMessageWorker()
+	go d.startDbusMessageWorker()
 	return nil
 }
 
@@ -50,6 +50,9 @@ func (d *AppNotify) SendDbusMessage(req AppNotifyRequest) error {
 		logger.Error("marshal_app_notify_request", nil, err)
 		return err
 	}
+	if len(req.PackageName) == 0 {
+		return nil
+	}
 	d.dbusChanl <- string(requests)
 	return nil
 }
@@ -58,6 +61,7 @@ func (d *AppNotify) startDbusMessageWorker() {
 	for {
 		select {
 		case msg := <-d.dbusChanl:
+			logger.Info("dbus worker received", msg)
 			sig := &dbus.Signal{
 				Sender: ":1.0",
 				Path:   d.path,
@@ -65,15 +69,13 @@ func (d *AppNotify) startDbusMessageWorker() {
 				Body:   []interface{}{msg},
 			}
 			d.conn.Emit(sig.Path, sig.Name, sig.Body...)
-		default:
-			return
 		}
 	}
 }
 
 func (impl AppNotify) NotifyHandler(c *gin.Context) {
 	var request AppNotifyRequest
-	err := c.ShouldBind(&request)
+	err := c.ShouldBindJSON(&request)
 	if err != nil {
 		response.ResponseParamterError(c, err)
 		return

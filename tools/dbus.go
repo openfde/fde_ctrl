@@ -1,46 +1,28 @@
 package tools
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
-	"fde_ctrl/logger"
-	"net"
-	"os"
+	"net/http"
 	"time"
 
-	dbus "github.com/godbus/dbus/v5"
-)
-
-const unixSocketPath = "/tmp/fde_ctrl_dbus.sock"
-
-type DbusNotifyInterface interface {
-	Init() error
-	isServerRunning() bool
-	startServer() (net.Listener, error)
-	SendDbusMessage(msg string) error
-}
-
-type DbusNotify struct {
-	dbusChanl  chan (string)
-	conn       *dbus.Conn
-	localSock  net.Listener
-	iface      string
-	path       dbus.ObjectPath
-	signalName string
-}
-
-import (
-	"bytes"
-	"net/http"
+	"fde_ctrl/logger"
 )
 
 const url = "http://127.0.0.1:18080/api/v1/app_notify"
 
-func SendDbusMessage( msg string) error {
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(msg)))
+func SendDbusMessage(msg interface{}) error {
+	data, err := json.Marshal(msg)
+	if err != nil {
+		logger.Info("send_dbus", msg)
+		return err
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewReader(data))
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("Content-Type", "text/json")
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
