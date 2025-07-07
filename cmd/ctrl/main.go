@@ -14,10 +14,12 @@ import (
 	"fde_ctrl/gpu"
 	"fde_ctrl/logger"
 	"fde_ctrl/process_chan"
+	"fde_ctrl/tools"
 	"fde_ctrl/windows_manager"
 	"flag"
 	"fmt"
 	"os"
+
 	"os/exec"
 
 	"github.com/gin-gonic/gin"
@@ -27,13 +29,14 @@ var _version_ = "v0.1"
 var _tag_ = "v0.1"
 var _date_ = "20230101"
 
-func parseArgs() (mode, app string, snavi, return_directly bool) {
+func parseArgs() (mode, app, msg string, snavi, return_directly bool) {
 	var version, help bool
 	flag.BoolVar(&version, "v", false, "-v")
 	flag.BoolVar(&help, "h", false, "-h")
 	flag.BoolVar(&snavi, "n", false, "-n")
 	flag.StringVar(&mode, "m", string(windows_manager.DESKTOP_MODE_ENVIRONMENT), "-m")
 	flag.StringVar(&app, "a", string("openfde"), "-a")
+	flag.StringVar(&msg, "msg", "", "-msg {json string}")
 	flag.Parse()
 	if help {
 		fmt.Println("fde_ctrl:")
@@ -41,6 +44,7 @@ func parseArgs() (mode, app string, snavi, return_directly bool) {
 		fmt.Println("\t-h: print help")
 		fmt.Println("\t-n: start navi")
 		fmt.Println("\t-m: input the running mode[shell|environment|shared]")
+		fmt.Println("\t -msg: input a json string to notify by use dbus ")
 		return_directly = true
 		return
 	}
@@ -55,11 +59,22 @@ func parseArgs() (mode, app string, snavi, return_directly bool) {
 const errnoPidMaxOutOfLimit = 10
 
 func main() {
-	var mode, app string
+	var mode, app, msg string
 	var snavi bool
 	var return_directly bool
-	if mode, app, snavi, return_directly = parseArgs(); return_directly {
+	if mode, app, msg, snavi, return_directly = parseArgs(); return_directly {
 		return
+	}
+
+	dbusNotifyImpl := new(tools.DbusNotify)
+	dbusNotifyImpl.Init()
+	if len(msg) != 0 {
+		err := dbusNotifyImpl.SendDbusMessage(msg)
+		if err != nil {
+			os.Exit(1)
+			fmt.Println(err)
+		}
+		os.Exit(0)
 	}
 
 	if CheckPidMax() {
