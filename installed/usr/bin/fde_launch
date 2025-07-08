@@ -5,11 +5,19 @@ if [ $# -ne 1 ];then
 	exit 6
 fi
 
+return_code_not_start_completely=16
+
+
 app_package_name=$1
 waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
 if [ $? = 0 ];then
 	fde_utils start $app_package_name
 else
+	code=`curl -s -o /dev/null -w "%{http_code}" http://localhost:18080/api/v1/android/status -X GET 2>/dev/null`
+	if [ "$code" != "200" ];then
+		echo "Error: fde is not started completely"
+		exit $return_code_not_start_completely
+	fi
 	waydroid app list |grep $app_package_name 1>/dev/null 2>&1
 	if [ $? = 0 ];then
 		waydroid app launch $app_package_name
