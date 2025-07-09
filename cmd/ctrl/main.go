@@ -18,6 +18,7 @@ import (
 	"fde_ctrl/windows_manager"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 
 	"os/exec"
@@ -57,6 +58,7 @@ func parseArgs() (mode, app, msg string, snavi, return_directly bool) {
 }
 
 const errnoPidMaxOutOfLimit = 10
+const errnoAlreadyRunning = 17
 
 func main() {
 	var mode, app, msg string
@@ -75,9 +77,41 @@ func main() {
 		os.Exit(0)
 	}
 
-	if CheckPidMax() {
-		os.Exit(errnoPidMaxOutOfLimit)
+	if DoCheckPidMax() {
+		err := exec.Command("fde_fs", "-pwrite").Run()
+		if err != nil {
+			logger.Error("pwrite_in_main", nil, err)
+		}
+		if DoCheckPidMax() {
+			os.Exit(errnoPidMaxOutOfLimit)
+		}
+		StartCheckPidMaxWorker()
 	}
+	// 单例检测：通过尝试连接本地 unix socket 判断服务是否已运行
+	unixSock := "/tmp/fde_ctrl.sock"
+	if _, err := os.Stat(unixSock); err == nil {
+		// socket 文件存在，尝试连接
+		conn, err := net.Dial("unix", unixSock)
+		if err == nil {
+			// 能连通，说明已有进程在运行
+			conn.Close()
+			logger.Error("singleton_check", nil, fmt.Errorf("another instance is already running"))
+			os.Exit(1)
+		} else {
+			// socket 文件存在但无法连接，可能是上次异常退出，尝试删除
+			os.Remove(unixSock)
+		}
+	}
+	// 主进程启动时监听 unix socket，生命周期内保持 socket 文件存在
+	l, err := net.Listen("unix", unixSock)
+	if err != nil {
+		logger.Error("singleton_listen", nil, err)
+		os.Exit(errnoAlreadyRunning)
+	}
+	defer func() {
+		l.Close()
+		os.Remove(unixSock)
+	}()
 
 	configure, err := conf.Read()
 	if err != nil {

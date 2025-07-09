@@ -12,7 +12,7 @@ import (
 
 const allowedPidMax = 65535
 
-func checkPidMax() (shouldExit bool) {
+func DoCheckPidMax() (shouldExit bool) {
 	shouldExit = true
 	//读取proc/sys/kernel/pid_max
 	max, err := os.ReadFile("/proc/sys/kernel/pid_max")
@@ -37,9 +37,8 @@ func checkPidMax() (shouldExit bool) {
 	return false
 }
 
-func CheckPidMax() (shouldExit bool) {
+func StartCheckPidMaxWorker() {
 	go detectPidMaxTimingly()
-	return checkPidMax()
 }
 
 func detectPidMaxTimingly() {
@@ -54,7 +53,7 @@ func detectPidMaxTimingly() {
 	for {
 		select {
 		case <-ticker.C:
-			if checkPidMax() {
+			if DoCheckPidMax() {
 				logger.Error("pid_max_check", nil, errors.New("pid_max check failed"))
 				process_chan.SendUnexpected()
 			}
