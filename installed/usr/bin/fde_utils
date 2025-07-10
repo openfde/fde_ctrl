@@ -198,12 +198,13 @@ case $1 in
 		else
 			fde_ctrl -m shell -a $app_package_name 1>/dev/null 2>&1
 		fi
-		if [ $? -eq $return_code_great_than_65535 ];then
+		retcode=$?
+		if [ $retcode -eq $return_code_great_than_65535 ];then
 			if [ -e /usr/bin/zenity ];then
 				zenity --error --text="FDE is exited due to the pid maximum was set to great than 65535" --width=350 2>/dev/null &
 			fi
-			exit $return_code_great_than_65535
 		fi
+		exit $retcode
 	fi
     ;;
     "status"|"android_status")
