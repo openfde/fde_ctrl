@@ -33,12 +33,15 @@ func (impl *AndroidAppCtrl) notify() {
 	impl.Started = true
 }
 
+func (impl *AndroidAppCtrl) Init() {
+	userEventNotifier.Register(impl.notify)
+}
+
 var fdeAppIconBaseDir = ".local/share/openfde/icons"
 
 type AndroidApps []AndroidApp
 
 func (impl *AndroidAppCtrl) Setup(r *gin.RouterGroup) {
-	userEventNotifier.Register(impl.notify)
 	v1 := r.Group("/v1")
 	v1.GET("/android/apps", impl.AppsHandler)
 	v1.GET("/android/status", impl.StatusHandler)
