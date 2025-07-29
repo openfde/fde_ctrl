@@ -11,6 +11,7 @@ return_code_stopped=13
 return_code_not_stopped=14
 return_code_not_running=15
 return_code_not_start_completely=16
+return_code_not_installed=18
 
 if [ $# -lt 1 ];then
     exit 
@@ -114,23 +115,25 @@ function status_process(){
 #$2=apk file path or app package name
 function apk_process() {
 	waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
-    if [ $? = 0 ];then
+	if [ $? = 0 ];then
             exit $return_code_not_running
 	fi
+	if [ "$1" != "android_status" -a  "$1" != "list" ];then
+		if [ -z "$2" ];then
+			echo "Error: the second args is required." >&2
+			exit $return_code_invalid_args
+		fi
+	fi	
 	case $1 in 
 		"android_status")
-		code=`curl -s  -w "%{http_code}" http://127.0.0.1:18080/api/v1/android/status -X GET 2>/dev/null`
-		if [ "$code" != "200" ];then
-			echo "Error: fde is not started completely"
-			exit $return_code_not_start_completely
-		fi
-		exit $status_code_android_start_completely
+			code=`curl -s  -w "%{http_code}" http://127.0.0.1:18080/api/v1/android/status -X GET 2>/dev/null`
+			if [ "$code" != "200" ];then
+				echo "Error: fde is not started completely"
+				exit $return_code_not_start_completely
+			fi
+			exit $status_code_android_start_completely
 		;;
 		"install")
-			if [ -z "$2" ];then
-				echo "Error: APK file path is required." >&2
-				exit $return_code_invalid_args
-			fi
 			if [ ! -f "$2" ];then
 				echo "Error: File '$2' does not exist." >&2
 				exit $return_code_invalid_args
@@ -139,9 +142,10 @@ function apk_process() {
 			return $?
 		;;
 		"remove")
-			if [ -z "$2" ];then
-				echo "Error: App package name is required." >&2
-				exit $return_code_invalid_args
+			waydroid app list |grep -w $2 1>/dev/null 2>&1
+			if [ $? != 0 ];then
+				echo "The app $2 is not installed"
+				exit  $return_code_not_installed
 			fi
 			waydroid app remove "$2" 1>/dev/null 2>&1
 			return $?
@@ -157,6 +161,11 @@ function apk_process() {
 			exit 0
 		;;
 		"app_stop")
+			waydroid app list |grep -w $2 1>/dev/null 2>&1
+			if [ $? != 0 ];then
+				echo "The app $2 is not installed"
+				exit  $return_code_not_installed
+			fi
 			waydroid app stop $2 >&2
 			exit $?
 		;;

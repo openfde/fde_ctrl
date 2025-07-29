@@ -30,6 +30,13 @@ else
 			fi
 		fi
 	else
-		zenity --error --text="The app \"$app_package_name\" is not installed" --width=350 2>/dev/null &
+		if [ -e /etc/fde.d/fde.conf ];then
+			. /etc/fde.d/fde.conf
+		fi
+		if [ "$share_shortcut" = "false" ];then
+			exit 18
+		else
+			zenity --error --text="The app \"$app_package_name\" is not installed" --width=350 2>/dev/null &
+		fi
 	fi
 fi
