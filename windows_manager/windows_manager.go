@@ -38,22 +38,34 @@ func Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, mode F
 	//todo the wayland display could be wayland-1 or n not only just wayland-0
 	path := "/run/user/" + fmt.Sprint(userID)
 	socket = SocketDefaultName
-	if mode == DESKTOP_MODE_SHELL {
-		wm = new(WestonWM)
-		socket = SocketCustomName
-	} else if mode == DESKTOP_MODE_ENVIRONMENT {
-		wm = new(Mutter)
-	}
+
 	path = filepath.Join(path, socket)
-	if mode == DESKTOP_MODE_SHARED { // shared mode: shared the wayland server with the host
-		//no need to start windows manager
-	} else {
-		os.Remove(path) //do not rm socket when in shared mode
-		os.Remove(path + ".lock")
-		cmdWinMan, err = wm.Start(mainCtx, mainCtxCancelFunc, socket)
+
+	if mode == DESKTOP_MODE_SHELL {
+		updateProtocolCmd := exec.CommandContext(mainCtx, "fde_fs", "-prop_protocol=x11")
+		err = updateProtocolCmd.Run()
 		if err != nil {
-			return
+			logger.Error("update_protocol_x11", nil, err)
+			return nil, "", err
 		}
+	} else {
+		if mode == DESKTOP_MODE_SHARED { // shared mode: shared the wayland server with the host widnows manager
+			updateProtocolCmd := exec.CommandContext(mainCtx, "fde_fs", "-prop_protocol=wayland")
+			err = updateProtocolCmd.Run()
+			if err != nil {
+				logger.Error("update_protocol_wayland", nil, err)
+				return nil, "", err
+			}
+		} else if mode == DESKTOP_MODE_ENVIRONMENT {
+			wm = new(Mutter)
+			os.Remove(path) //do not rm socket when in shared mode
+			os.Remove(path + ".lock")
+			cmdWinMan, err = wm.Start(mainCtx, mainCtxCancelFunc, socket)
+			if err != nil {
+				return
+			}
+		}
+
 		waitCnt := 0
 		//wait for the wayland-0
 		for {
