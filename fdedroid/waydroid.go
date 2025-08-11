@@ -5,6 +5,7 @@ import (
 	"fde_ctrl/conf"
 	"fde_ctrl/logger"
 	"fde_ctrl/tools"
+	"fde_ctrl/windows_manager"
 	"fmt"
 	"os"
 	"os/exec"
@@ -19,7 +20,7 @@ const Desttop AppMode = "desktop"
 type Waydroid struct {
 }
 
-func (fdedroid *Waydroid) Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, conf conf.Configure, socket string) (cmdWaydroid *exec.Cmd, err error) {
+func (fdedroid *Waydroid) Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, conf conf.Configure, socket string, windows_manager.FDEMode mode) (cmdWaydroid *exec.Cmd, err error) {
 	uid := os.Getuid()
 	nativeFile := "/run/user/" + fmt.Sprint(uid) + "/pulse/native"
 	if _, err := os.Stat(nativeFile); err != nil {
@@ -35,7 +36,7 @@ func (fdedroid *Waydroid) Start(mainCtx context.Context, mainCtxCancelFunc conte
 	exec.Command("waydroid", "session", "stop").Run()
 	// logger.Error("before waydroid_start", nil, nil)
 	os.Environ()
-	mode := ""
+	app_mode := ""
 	confPath := "/etc/fde.d/fde.conf"
 	if _, err := os.Stat(confPath); err == nil {
 		content, err := os.ReadFile(confPath)
@@ -48,13 +49,13 @@ func (fdedroid *Waydroid) Start(mainCtx context.Context, mainCtxCancelFunc conte
 				}
 				parts := strings.SplitN(line, "=", 2)
 				if len(parts) == 2 && strings.TrimSpace(parts[0]) == "mode" {
-					mode = strings.TrimSpace(parts[1])
+					app_mode = strings.TrimSpace(parts[1])
 					break
 				}
 			}
 		}
 	}
-	if mode == string(APP_Fusing) {
+	if app_mode == string(APP_Fusing) && mode != windows_manager.DESKTOP_MODE_ENVIRONMENT {
 		cmdWaydroid = exec.CommandContext(mainCtx, "waydroid", "session", "start")
 	} else {
 		cmdWaydroid = exec.CommandContext(mainCtx, "waydroid", "show-full-ui")

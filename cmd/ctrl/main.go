@@ -164,7 +164,7 @@ func main() {
 	}
 	var droid fdedroid.Fdedroid
 	droid = new(fdedroid.Waydroid)
-	cmdSession, err := droid.Start(mainCtx, mainCtxCancelFunc, configure, socketName)
+	cmdSession, err := droid.Start(mainCtx, mainCtxCancelFunc, configure, socketName, windows_manager.FDEMode(mode))
 	if err != nil {
 		logger.Error("fdedroid_start", mode, err)
 		killSonProcess(cmds)
