@@ -41,22 +41,8 @@ func Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, mode F
 
 	path = filepath.Join(path, socket)
 
-	if mode == DESKTOP_MODE_SHELL {
-		updateProtocolCmd := exec.CommandContext(mainCtx, "fde_fs", "-prop_protocol=x11")
-		err = updateProtocolCmd.Run()
-		if err != nil {
-			logger.Error("update_protocol_x11", nil, err)
-			return nil, "", err
-		}
-	} else {
-		if mode == DESKTOP_MODE_SHARED { // shared mode: shared the wayland server with the host widnows manager
-			updateProtocolCmd := exec.CommandContext(mainCtx, "fde_fs", "-prop_protocol=wayland")
-			err = updateProtocolCmd.Run()
-			if err != nil {
-				logger.Error("update_protocol_wayland", nil, err)
-				return nil, "", err
-			}
-		} else if mode == DESKTOP_MODE_ENVIRONMENT {
+	if mode != DESKTOP_MODE_SHELL {
+		if mode == DESKTOP_MODE_ENVIRONMENT {
 			wm = new(Mutter)
 			os.Remove(path) //do not rm socket when in shared mode
 			os.Remove(path + ".lock")
