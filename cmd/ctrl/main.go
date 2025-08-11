@@ -68,6 +68,18 @@ func main() {
 		return
 	}
 
+	// Check log file size and rotate if necessary
+	logFile := "/var/log/fde.log"
+	if stat, err := os.Stat(logFile); err == nil {
+		// 300MB = 300 * 1024 * 1024 bytes
+		if stat.Size() > 300*1024*1024 {
+			err := exec.Command("fde_fs", "-lograte").Run()
+			if err != nil {
+				logger.Error("lograte_in_main", nil, err)
+			}
+		}
+	}
+
 	if len(msg) != 0 {
 		err := tools.SendDbusMessage(msg)
 		if err != nil {
