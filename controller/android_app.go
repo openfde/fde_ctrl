@@ -20,9 +20,10 @@ type AndroidAppCtrl struct {
 type AndroidApp struct {
 	Name        string `json:"name"`
 	PackageName string `json:"packageName"` // package name of the app, like com.android.app
-	IconPath    string `json:"icon"`        // path to the icon file
-	Path        string `json:"path"`        // how to launch the app fde_launch com.android.app
-	Uninstll    string `json:"uninst"`      // how to uninstall the app fde_uninstall com.android.app
+	Version     string `json:"version"` //version of the app like 1.0.0
+	IconPath    string `json:"icon"`   // path to the icon file
+	Path        string `json:"path"`   // how to launch the app fde_launch com.android.app
+	Uninstll    string `json:"uninst"` // how to uninstall the app fde_uninstall com.android.app
 }
 
 type AndroidAppsResponse struct {
@@ -56,6 +57,10 @@ func scanAppInfo(lines []string, home string) AndroidApps {
 			app.Name = strings.TrimPrefix(line, "Name: ")
 		} else if strings.HasPrefix(line, "packageName: ") {
 			app.PackageName = strings.TrimPrefix(line, "packageName: ")
+
+		} else if strings.HasPrefix(line, "version:") {
+			app.Version = strings.TrimPrefix(line, "version: ")
+			//check if the category is android.intent.category.LAUNCHER, drop the app if not
 			if index+2 <= len(lines) {
 				if strings.HasPrefix(lines[index+1], "categories:") {
 					category := strings.TrimSpace(lines[index+2])
