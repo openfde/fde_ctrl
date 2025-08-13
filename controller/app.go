@@ -352,11 +352,6 @@ func (impl *Apps) visitDesktopEntries(path string, info fs.FileInfo, err error) 
 	if onlyShowIn == "MATE" {
 		return nil
 	}
-	notShowIn := section.Key("NotShowIn").String()
-	if notShowIn == "OpenFDE" {
-		return nil
-	}
-
 	zhName := section.Key("Name[zh_CN]").String()
 	iconPath := section.Key("Icon").String()
 	execPath := section.Key("Exec").String()
