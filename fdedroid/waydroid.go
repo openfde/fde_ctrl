@@ -20,7 +20,7 @@ const Desttop AppMode = "desktop"
 type Waydroid struct {
 }
 
-func (fdedroid *Waydroid) Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, conf conf.Configure, socket string, windows_manager.FDEMode mode) (cmdWaydroid *exec.Cmd, err error) {
+func (fdedroid *Waydroid) Start(mainCtx context.Context, mainCtxCancelFunc context.CancelFunc, conf conf.Configure, socket string, mode windows_manager.FDEMode) (cmdWaydroid *exec.Cmd, err error) {
 	uid := os.Getuid()
 	nativeFile := "/run/user/" + fmt.Sprint(uid) + "/pulse/native"
 	if _, err := os.Stat(nativeFile); err != nil {
@@ -55,9 +55,9 @@ func (fdedroid *Waydroid) Start(mainCtx context.Context, mainCtxCancelFunc conte
 			}
 		}
 	}
-	if app_mode == string(APP_Fusing)  {
-		if  mode == windows_manager.DESKTOP_MODE_ENVIRONMENT {
-			return nil. errors.New("app fusing mode is not supported in environment mode")
+	if app_mode == string(APP_Fusing) {
+		if mode == windows_manager.DESKTOP_MODE_ENVIRONMENT {
+			return nil.errors.New("app fusing mode is not supported in environment mode")
 		}
 		cmdWaydroid = exec.CommandContext(mainCtx, "waydroid", "session", "start")
 	} else {
