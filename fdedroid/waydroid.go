@@ -2,6 +2,7 @@ package fdedroid
 
 import (
 	"context"
+	"errors"
 	"fde_ctrl/conf"
 	"fde_ctrl/logger"
 	"fde_ctrl/tools"
@@ -57,7 +58,7 @@ func (fdedroid *Waydroid) Start(mainCtx context.Context, mainCtxCancelFunc conte
 	}
 	if app_mode == string(APP_Fusing) {
 		if mode == windows_manager.DESKTOP_MODE_ENVIRONMENT {
-			return nil.errors.New("app fusing mode is not supported in environment mode")
+			return nil, errors.New("app fusing mode is not supported in environment mode")
 		}
 		cmdWaydroid = exec.CommandContext(mainCtx, "waydroid", "session", "start")
 	} else {
