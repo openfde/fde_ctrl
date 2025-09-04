@@ -14,7 +14,8 @@ import (
 )
 
 type AndroidAppCtrl struct {
-	Started bool
+	Started           bool
+	PidSurfaceFlinger string
 }
 
 type AndroidApp struct {
@@ -32,6 +33,8 @@ type AndroidAppsResponse struct {
 }
 
 func (impl *AndroidAppCtrl) notify() {
+	impl.PidSurfaceFlinger, _ = impl.getSurfaceFlingerPid()
+	logger.Info("android_system_started", impl.PidSurfaceFlinger)
 	impl.Started = true
 }
 
@@ -87,10 +90,47 @@ func scanAppInfo(lines []string, home string) AndroidApps {
 	return appsList
 }
 
+func (impl *AndroidAppCtrl) getSurfaceFlingerPid() (string, error) {
+	cmd := exec.Command("ps", "-ef")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	lines := strings.Split(string(output), "\n")
+	var pid string
+	for _, line := range lines {
+		if strings.Contains(line, "/system/bin/surfaceflinger") && !strings.Contains(line, "grep") {
+			fields := strings.Fields(line)
+			if len(fields) >= 4 {
+				pid = fields[1]
+				break
+			}
+		}
+	}
+
+	if pid == "" {
+		return "", errors.New("surfaceflinger process not found")
+	}
+
+	return pid, nil
+}
+
 func (impl *AndroidAppCtrl) StatusHandler(c *gin.Context) {
 	if !impl.Started {
 		response.ResponseError(c, http.StatusServiceUnavailable, errors.New("android system not started completely"))
 	} else {
+		pid, err := impl.getSurfaceFlingerPid()
+		if err != nil {
+			logger.Error("get_surfaceflinger_pid", nil, err)
+			response.ResponseError(c, http.StatusServiceUnavailable, errors.New("android system not started completely"))
+			return
+		}
+		if pid != impl.PidSurfaceFlinger {
+			//if the pid changed, it means the android system restarted
+			response.ResponseError(c, http.StatusServiceUnavailable, errors.New("android system not started completely"))
+			return
+		}
 		response.Response(c, nil)
 	}
 	return
@@ -98,6 +138,18 @@ func (impl *AndroidAppCtrl) StatusHandler(c *gin.Context) {
 
 func (impl *AndroidAppCtrl) AppsHandler(c *gin.Context) {
 	if !impl.Started {
+		c.JSON(http.StatusPreconditionRequired, nil)
+		return
+	}
+	pid, err := impl.getSurfaceFlingerPid()
+	if err != nil {
+		logger.Error("get_surfaceflinger_pid", nil, err)
+		c.JSON(http.StatusPreconditionRequired, nil)
+		return
+	}
+	if pid != impl.PidSurfaceFlinger {
+		//if the pid changed, it means the android system restarted
+		logger.Info("surfaceflinger_pid_changed", nil)
 		c.JSON(http.StatusPreconditionRequired, nil)
 		return
 	}
