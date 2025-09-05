@@ -11,10 +11,16 @@ case "$1" in
 	waydroid status |grep Session -w |grep RUNNING  1>/dev/null
 	if [ $? = 0 ];then
 		d=`date "+%F %T"`
-		density=`waydroid shell wm density |awk -F ":" '{print $NF}' |tr -d " "`
-		if [ -z "$density" ];then
+		override_density=`waydroid shell wm density |grep "Override density" |awk -F ":" '{print $NF}' |tr -d " "`
+		physical_density=`waydroid shell wm density |grep "Physical density" |awk -F ":" '{print $NF}' |tr -d " "`
+		if [ -z "$physical_density"  ];then
 			echo "$d density of openfde could not found" >> /var/log/fde.log
 			exit 254
+		fi
+		if [ -z "$override_density" ];then
+			density=$physical_density
+		else
+			density=$override_density
 		fi
 		newDensity=`expr $density + 1`
 		echo "$d resume from sleep to wakeup openfde by $newDensity $density" >> /var/log/fde.log
