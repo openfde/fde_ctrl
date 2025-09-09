@@ -35,23 +35,27 @@ type AndroidAppsResponse struct {
 }
 
 func (impl *AndroidAppCtrl) notify() {
+	if !impl.Started {
+		//set navigation_mode accdording to the mode of desktop or app_fusing
+		if impl.Mode.Mode == "desktop" {
+			logger.Info("set_navi","2")
+			cmd := exec.Command("fde_fs", "-navmode", "2", "-setnav")
+			err := cmd.Run()
+			if err != nil {
+				logger.Error("set_navigation_mode", "2", err)
+			}
+		} else {
+			logger.Info("set_navi","0")
+			cmd := exec.Command("fde_fs", "-navmode", "0", "-setnav")
+			err := cmd.Run()
+			if err != nil {
+				logger.Error("set_navigation_mode", "0", err)
+			}
+		}
+	}
 	impl.PidSurfaceFlinger, _ = impl.getSurfaceFlingerPid()
 	logger.Info("android_system_started", impl.PidSurfaceFlinger)
 	impl.Started = true
-	//set navigation_mode accdording to the mode of desktop or app_fusing
-	if impl.Mode.Mode == "desktop" {
-		cmd := exec.Command("fde_fs", "-navmode", "2", "-setnavi")
-		err := cmd.Run()
-		if err != nil {
-			logger.Error("set_navigation_mode", "2", err)
-		}
-	} else {
-		cmd := exec.Command("fde_fs", "-navmode", "0", "-setnavi")
-		err := cmd.Run()
-		if err != nil {
-			logger.Error("set_navigation_mode", "0", err)
-		}
-	}
 }
 
 func (impl *AndroidAppCtrl) Init() {
