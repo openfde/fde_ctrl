@@ -2,6 +2,7 @@ package controller
 
 import (
 	"errors"
+	"fde_ctrl/conf"
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 type AndroidAppCtrl struct {
 	Started           bool
 	PidSurfaceFlinger string
+	Mode              conf.ModeConf
 }
 
 type AndroidApp struct {
@@ -36,9 +38,24 @@ func (impl *AndroidAppCtrl) notify() {
 	impl.PidSurfaceFlinger, _ = impl.getSurfaceFlingerPid()
 	logger.Info("android_system_started", impl.PidSurfaceFlinger)
 	impl.Started = true
+	//set navigation_mode accdording to the mode of desktop or app_fusing
+	if impl.Mode.Mode == "desktop" {
+		cmd := exec.Command("fde_fs", "-navmode", "2", "-setnavi")
+		err := cmd.Run()
+		if err != nil {
+			logger.Error("set_navigation_mode", "2", err)
+		}
+	} else {
+		cmd := exec.Command("fde_fs", "-navmode", "0", "-setnavi")
+		err := cmd.Run()
+		if err != nil {
+			logger.Error("set_navigation_mode", "0", err)
+		}
+	}
 }
 
 func (impl *AndroidAppCtrl) Init() {
+	impl.Mode, _ = conf.ReadModeConf()
 	userEventNotifier.Register(impl.notify)
 }
 
@@ -48,7 +65,7 @@ type AndroidApps []AndroidApp
 
 func (impl *AndroidAppCtrl) Setup(r *gin.RouterGroup) {
 	v1 := r.Group("/v1")
-	v1.GET("/android/apps", impl.AppsHandler)
+	v1.GET("/android/apps", impl.ListAppsHandler)
 	v1.GET("/android/status", impl.StatusHandler)
 }
 
@@ -136,7 +153,7 @@ func (impl *AndroidAppCtrl) StatusHandler(c *gin.Context) {
 	return
 }
 
-func (impl *AndroidAppCtrl) AppsHandler(c *gin.Context) {
+func (impl *AndroidAppCtrl) ListAppsHandler(c *gin.Context) {
 	if !impl.Started {
 		c.JSON(http.StatusPreconditionRequired, nil)
 		return
