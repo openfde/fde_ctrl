@@ -38,14 +38,14 @@ func (impl *AndroidAppCtrl) notify() {
 	if !impl.Started {
 		//set navigation_mode accdording to the mode of desktop or app_fusing
 		if conf.NaviModeIsHidden(impl.Conf.NaviMode) {
-			logger.Info("set_navi", "2")
+			logger.Info("set_navi", "hidden_gesture_2") //gesture hidden 2
 			cmd := exec.Command("fde_fs", "-navmode", "2", "-setnav")
 			err := cmd.Run()
 			if err != nil {
 				logger.Error("set_navigation_mode", "2", err)
 			}
 		} else {
-			logger.Info("set_navi", "0")
+			logger.Info("set_navi", "normal_three_button_0") // three buttons 0
 			cmd := exec.Command("fde_fs", "-navmode", "0", "-setnav")
 			err := cmd.Run()
 			if err != nil {
