@@ -254,8 +254,20 @@ case $1 in
 	"write_mode"|"read_mode")
 		mode_process "$1" "$2"
 	;;
+	"set_navi")
+		if [ -z "$2" ];then
+			echo "Error: Navigation mode value is required." >&2
+			exit $return_code_invalid_args
+		fi
+		if [ "$2" != "hidden" -a "$2" != "normal" ];then
+			echo "Error: Invalid navigation mode value. Use 'hidden' or 'normal'." >&2
+			exit $return_code_invalid_args
+		fi
+		sed -i '/^navi_mode=/d' /etc/fde.d/fde.conf 2>/dev/null
+		echo "navi_mode=$2" >> /etc/fde.d/fde.conf
+	;;
 	*)
-		echo "Usage: $0 [start|status|screenshot|stop|write_mode|read_mode|list|remove|install|app_stop]"
+		echo "Usage: $0 [start|status|screenshot|stop|write_mode|read_mode|list|remove|install|app_stop|set_navi]"
 		exit 0
 	;;
 esac 
