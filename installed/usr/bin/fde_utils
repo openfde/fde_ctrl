@@ -42,7 +42,7 @@ function mode_process() {
 		exit $return_code_not_root
 	fi
 	waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
-    if [ $? != 0 ];then
+	if [ $? != 0 ];then
             exit $return_code_not_stopped
 	fi
 	if [ ! -d "/etc/fde.d" ];then
@@ -255,9 +255,20 @@ case $1 in
 		mode_process "$1" "$2"
 	;;
 	"set_navi")
+		if [ "$(id -u)" -ne 0 ]; then
+			echo "Error: This operation must be run as root." >&2
+			exit $return_code_not_root
+		fi
 		if [ -z "$2" ];then
 			echo "Error: Navigation mode value is required." >&2
 			exit $return_code_invalid_args
+		fi
+		if [ ! -d "/etc/fde.d" ];then
+			rm -rf /etc/fde.d
+			mkdir /etc/fde.d -p 2>/dev/null
+		fi
+		if [ ! -e "/etc/fde.d/fde.conf" ] ;then
+			touch /etc/fde.d/fde.conf 2>/dev/null
 		fi
 		if [ "$2" != "hidden" -a "$2" != "normal" ];then
 			echo "Error: Invalid navigation mode value. Use 'hidden' or 'normal'." >&2
