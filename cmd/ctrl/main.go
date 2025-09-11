@@ -74,15 +74,10 @@ func main() {
 	if err == nil {
 		// 300MB = 300 * 1024 * 1024 bytes
 		if stat.Size() > 300*1024*1024 {
-			err := exec.Command("fde_fs", "-lograte").Run()
+			err := exec.Command("fde_fs", "-logrotate").Run()
 			if err != nil {
-				logger.Error("lograte_in_main", nil, err)
+				logger.Error("logrotate_in_main", nil, err)
 			}
-		}
-	} else if os.IsNotExist(err) { //create the log file if not exist also by lograting
-		err := exec.Command("fde_fs", "-lograte").Run()
-		if err != nil {
-			logger.Error("lograte_in_main", nil, err)
 		}
 	}
 
