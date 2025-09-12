@@ -6,15 +6,15 @@ import (
 	"github.com/go-ini/ini"
 )
 
-type NaviMode string
+type FusingMode string
 
 const (
-	NaviModeHidden NaviMode = "hidden"
-	NaviModeNormal NaviMode = "normal"
+	FusingModeDesktop   FusingMode = "desktop"
+	FusingModeAppFusing FusingMode = "app_fusing"
 )
 
 type ModeConf struct {
-	NaviMode NaviMode //hidden or normal ； defalut is normal
+	Mode FusingMode //； defalut is desktop
 }
 
 func ReadModeConf() (modeConf ModeConf, err error) {
@@ -27,10 +27,10 @@ func ReadModeConf() (modeConf ModeConf, err error) {
 	// 无section的键值对会被自动归到默认的""（空字符串）section中。
 	defaultSection := cfg.Section("")
 
-	modeConf.NaviMode = NaviMode(defaultSection.Key("navi_mode").String())
+	modeConf.Mode = FusingMode(defaultSection.Key("mode").String())
 	return modeConf, nil
 }
 
-func NaviModeIsHidden(mode NaviMode) bool {
-	return mode == NaviModeHidden
+func IsFusingMode(mode FusingMode) bool {
+	return mode == FusingModeAppFusing
 }

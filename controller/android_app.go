@@ -37,7 +37,7 @@ type AndroidAppsResponse struct {
 func (impl *AndroidAppCtrl) notify() {
 	if !impl.Started {
 		//set navigation_mode accdording to the mode of desktop or app_fusing
-		if conf.NaviModeIsHidden(impl.Conf.NaviMode) {
+		if conf.IsFusingMode(impl.Conf.Mode) {
 			logger.Info("set_navi", "hidden_gesture_2") //gesture hidden 2
 			cmd := exec.Command("fde_fs", "-navmode", "2", "-setnav")
 			err := cmd.Run()
