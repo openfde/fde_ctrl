@@ -10,6 +10,7 @@ import (
 	"fde_ctrl/controller"
 	"fde_ctrl/controller/middleware"
 	navi "fde_ctrl/desktop_navi"
+	"fde_ctrl/emugl"
 	"fde_ctrl/fdedroid"
 	"fde_ctrl/gpu"
 	"fde_ctrl/logger"
@@ -130,6 +131,13 @@ func main() {
 	if err != nil {
 		logger.Error("read_conf", nil, err)
 		return
+	}
+	if emugl.IsEmugl() {
+		//fde-render is the proxyof emugl on the host side
+		err = emugl.StartFDERender()
+		if err != nil {
+			return
+		}
 	}
 	ready, err := gpu.IsReady(windows_manager.FDEMode(mode))
 	if err != nil {
