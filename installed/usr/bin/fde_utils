@@ -175,7 +175,15 @@ function apk_process() {
 case $1 in
     "-h")
         echo "Usage: $0 [status|screenshot|stop|write_mode|read_mode|list|remove|install|app_stop]"
-		exit 0
+	exit 0
+    ;;
+    "set-emugl")
+	if [ "$(id -u)" -ne 0 ]; then
+		echo "Error: This operation must be run as root." >&2
+		exit $return_code_not_root
+	fi
+	sed -i "/ro.hardware.gralloc/s/=.*/=ranchu/" /var/lib/waydroid/waydroid_base.prop
+	sed -i "/ro.hardware.egl/s/=.*/=emugl/" /var/lib/waydroid/waydroid_base.prop
     ;;
     "umount")
 	curl http://127.0.0.1:18080/api/v1/fs_fusing/exit -X POST
