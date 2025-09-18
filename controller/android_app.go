@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"fde_ctrl/logo"
 
 	"github.com/gin-gonic/gin"
 )
@@ -52,6 +53,7 @@ func (impl *AndroidAppCtrl) notify() {
 				logger.Error("set_navigation_mode", "0", err)
 			}
 		}
+		logo.Disappear()
 	}
 	impl.PidSurfaceFlinger, _ = impl.getSurfaceFlingerPid()
 	logger.Info("android_system_started", impl.PidSurfaceFlinger)

@@ -14,6 +14,7 @@ import (
 	"fde_ctrl/fdedroid"
 	"fde_ctrl/gpu"
 	"fde_ctrl/logger"
+	"fde_ctrl/logo"
 	"fde_ctrl/process_chan"
 	"fde_ctrl/tools"
 	"fde_ctrl/windows_manager"
@@ -147,6 +148,10 @@ func main() {
 	if !ready {
 		logger.Warn("gpu_is_not_ready", nil)
 		return
+	}
+	m, _ := conf.ReadModeConf()
+	if !conf.IsFusingMode(m.Mode) {
+		go logo.Show()
 	}
 
 	if snavi {
