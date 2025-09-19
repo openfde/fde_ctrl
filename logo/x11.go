@@ -70,6 +70,17 @@ var formats = map[byte]struct {
 }
 
 func Show() {
+	// 检查当前环境是否为 X11
+	sessionType := os.Getenv("XDG_SESSION_TYPE")
+	if sessionType != "x11" {
+		logger.Error("unsupported_session", nil, errors.New("XDG_SESSION_TYPE is not x11"))
+		return
+	}
+	// 检查是否存在 DISPLAY 变量
+	display := os.Getenv("DISPLAY")
+	if display == "" {
+		return
+	}
 
 	// Load a picture from the command line.
 	f, err := os.Open("/usr/share/backgrounds/openfde.png")
@@ -130,7 +141,7 @@ Depths:
 
 	format, ok := formats[depth]
 	if !ok {
-		logger.Error()("unsupported_depth", nil, nil)
+		logger.Error("unsupported_depth", nil, nil)
 		return
 
 	}
@@ -171,14 +182,27 @@ Depths:
 
 	// 设置窗口类型为桌面，去掉标题栏和任务栏
 	wmWindowType := xproto.InternAtom(X, false, uint16(len("_NET_WM_WINDOW_TYPE")), "_NET_WM_WINDOW_TYPE")
-	wmWindowTypeDesktop := xproto.InternAtom(X, false, uint16(len("_NET_WM_WINDOW_TYPE_DESKTOP")), "_NET_WM_WINDOW_TYPE_DESKTOP")
+	// wmWindowTypeDesktop := xproto.InternAtom(X, false, uint16(len("_NET_WM_WINDOW_TYPE_DESKTOP")), "_NET_WM_WINDOW_TYPE_DESKTOP")
+	wmWindowTypeNormal := xproto.InternAtom(X, false, uint16(len("_NET_WM_WINDOW_TYPE_NORMAL")), "_NET_WM_WINDOW_TYPE_NORMAL")
 
 	wmWindowTypeReply, _ := wmWindowType.Reply()
-	wmWindowTypeDesktopReply, _ := wmWindowTypeDesktop.Reply()
+	wmWindowTypeNormalReply, _ := wmWindowTypeNormal.Reply()
 
-	if wmWindowTypeReply != nil && wmWindowTypeDesktopReply != nil {
+	if wmWindowTypeReply != nil && wmWindowTypeNormalReply != nil {
 		_ = xproto.ChangeProperty(X, xproto.PropModeReplace, wid, wmWindowTypeReply.Atom,
-			xproto.AtomAtom, 32, 1, (*[4]byte)(unsafe.Pointer(&wmWindowTypeDesktopReply.Atom))[:])
+			xproto.AtomAtom, 32, 1, (*[4]byte)(unsafe.Pointer(&wmWindowTypeNormalReply.Atom))[:])
+	}
+
+	// 设置窗口显示在最上层
+	wmState := xproto.InternAtom(X, false, uint16(len("_NET_WM_STATE")), "_NET_WM_STATE")
+	wmStateAbove := xproto.InternAtom(X, false, uint16(len("_NET_WM_STATE_ABOVE")), "_NET_WM_STATE_ABOVE")
+
+	wmStateReply, _ := wmState.Reply()
+	wmStateAboveReply, _ := wmStateAbove.Reply()
+
+	if wmStateReply != nil && wmStateAboveReply != nil {
+		_ = xproto.ChangeProperty(X, xproto.PropModeReplace, wid, wmStateReply.Atom,
+			xproto.AtomAtom, 32, 1, (*[4]byte)(unsafe.Pointer(&wmStateAboveReply.Atom))[:])
 	}
 
 	pformats, err := render.QueryPictFormats(X).Reply()
@@ -237,7 +261,7 @@ Depths:
 		}
 	}
 	if bgraFormat == 0 {
-		logger.Error()("pictformat_not_found", nil, nil)
+		logger.Error("pictformat_not_found", nil, nil)
 		return
 	}
 
@@ -293,7 +317,7 @@ Depths:
 		}
 		if rep.PixmapFormat != xproto.ImageFormatZPixmap ||
 			!rep.SharedPixmaps {
-			logger.Error()("mit_shm_unfit_failed", nil, nil)
+			logger.Error("mit_shm_unfit_failed", nil, nil)
 			return
 		}
 
@@ -405,8 +429,20 @@ Depths:
 }
 
 var done = make(chan struct{})
+var x11Created = false
 
 func Disappear() {
+	// 检查当前环境是否为 X11
+	sessionType := os.Getenv("XDG_SESSION_TYPE")
+	if sessionType != "x11" {
+		return
+	}
+
+	// 检查是否存在 DISPLAY 变量
+	display := os.Getenv("DISPLAY")
+	if display == "" {
+		return
+	}
 	// 发送关闭信号
 	done <- struct{}{}
 }
