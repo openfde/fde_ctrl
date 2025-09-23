@@ -6,7 +6,6 @@ import (
 	"fde_ctrl/logger"
 	"os"
 	"reflect"
-	"time"
 	"unsafe"
 
 	"github.com/BurntSushi/xgb"
@@ -90,7 +89,7 @@ func Show() {
 	}
 	defer f.Close()
 
-	img, name, err := image.Decode(f)
+	img,_, err := image.Decode(f)
 	if err != nil {
 		logger.Error("decode_image", nil, err)
 		return
@@ -178,11 +177,8 @@ Depths:
 			xproto.EventMaskStructureNotify | xproto.EventMaskExposure,
 			uint32(mid)})
 
-	_ = xproto.MapWindow(X, wid)
-
-	// 设置窗口类型为桌面，去掉标题栏和任务栏
+	// 设置窗口类型为普通窗口
 	wmWindowType := xproto.InternAtom(X, false, uint16(len("_NET_WM_WINDOW_TYPE")), "_NET_WM_WINDOW_TYPE")
-	// wmWindowTypeDesktop := xproto.InternAtom(X, false, uint16(len("_NET_WM_WINDOW_TYPE_DESKTOP")), "_NET_WM_WINDOW_TYPE_DESKTOP")
 	wmWindowTypeNormal := xproto.InternAtom(X, false, uint16(len("_NET_WM_WINDOW_TYPE_NORMAL")), "_NET_WM_WINDOW_TYPE_NORMAL")
 
 	wmWindowTypeReply, _ := wmWindowType.Reply()
@@ -193,23 +189,63 @@ Depths:
 			xproto.AtomAtom, 32, 1, (*[4]byte)(unsafe.Pointer(&wmWindowTypeNormalReply.Atom))[:])
 	}
 
-	// 设置窗口显示在最上层
+	// 设置窗口跳过任务栏
 	wmState := xproto.InternAtom(X, false, uint16(len("_NET_WM_STATE")), "_NET_WM_STATE")
+	wmStateSkipTaskbar := xproto.InternAtom(X, false, uint16(len("_NET_WM_STATE_SKIP_TASKBAR")), "_NET_WM_STATE_SKIP_TASKBAR")
 	wmStateAbove := xproto.InternAtom(X, false, uint16(len("_NET_WM_STATE_ABOVE")), "_NET_WM_STATE_ABOVE")
 
 	wmStateReply, _ := wmState.Reply()
+	wmStateSkipTaskbarReply, _ := wmStateSkipTaskbar.Reply()
 	wmStateAboveReply, _ := wmStateAbove.Reply()
 
-	if wmStateReply != nil && wmStateAboveReply != nil {
-		_ = xproto.ChangeProperty(X, xproto.PropModeReplace, wid, wmStateReply.Atom,
-			xproto.AtomAtom, 32, 1, (*[4]byte)(unsafe.Pointer(&wmStateAboveReply.Atom))[:])
+	var stateAtoms []uint32
+	if wmStateSkipTaskbarReply != nil {
+		stateAtoms = append(stateAtoms, uint32(wmStateSkipTaskbarReply.Atom))
 	}
+	if wmStateAboveReply != nil {
+		stateAtoms = append(stateAtoms, uint32(wmStateAboveReply.Atom))
+	}
+	if wmStateReply != nil && len(stateAtoms) > 0 {
+		// Convert []uint32 to []byte for ChangeProperty
+		buf := make([]byte, 4*len(stateAtoms))
+		for i, atom := range stateAtoms {
+			xgb.Put32(buf[i*4:], atom)
+		}
+		_ = xproto.ChangeProperty(X, xproto.PropModeReplace, wid, wmStateReply.Atom,
+			xproto.AtomAtom, 32, uint32(len(stateAtoms)), buf)
+	}
+
+	// 去除窗口标题栏（_MOTIF_WM_HINTS）
+	motifHintsAtom := xproto.InternAtom(X, false, uint16(len("_MOTIF_WM_HINTS")), "_MOTIF_WM_HINTS")
+	motifHintsReply, _ := motifHintsAtom.Reply()
+	if motifHintsReply != nil {
+		// 结构体定义见 https://specifications.freedesktop.org/wm-spec/wm-spec-latest.html#idm45841325324160
+		// flags=2, functions=0, decorations=0, input_mode=0, status=0
+		motifHints := []uint32{2, 0, 0, 0, 0}
+		buf := make([]byte, 4*len(motifHints))
+		for i, v := range motifHints {
+			binary.LittleEndian.PutUint32(buf[i*4:], v)
+		}
+		_ = xproto.ChangeProperty(X, xproto.PropModeReplace, wid, motifHintsReply.Atom,
+			xproto.AtomCardinal, 32, uint32(len(motifHints)), buf)
+	}
+
+	// 设置窗口全屏
+	wmStateFullscreen := xproto.InternAtom(X, false, uint16(len("_NET_WM_STATE_FULLSCREEN")), "_NET_WM_STATE_FULLSCREEN")
+	wmStateFullscreenReply, _ := wmStateFullscreen.Reply()
+	if wmStateReply != nil && wmStateFullscreenReply != nil {
+		_ = xproto.ChangeProperty(X, xproto.PropModeAppend, wid, wmStateReply.Atom,
+			xproto.AtomAtom, 32, 1, (*[4]byte)(unsafe.Pointer(&wmStateFullscreenReply.Atom))[:])
+	}
+	
 
 	pformats, err := render.QueryPictFormats(X).Reply()
 	if err != nil {
 		logger.Error("query_pict_formats", nil, err)
 		return
 	}
+
+	_ = xproto.MapWindow(X, wid)
 
 	// Similar to XRenderFindVisualFormat.
 	// The DefaultScreen is almost certain to be zero.
@@ -291,7 +327,6 @@ Depths:
 		xproto.GcGraphicsExposures, []uint32{0})
 
 	bounds := img.Bounds()
-	Lstart := time.Now()
 
 	if err := shm.Init(X); err != nil {
 		logger.Error("init_mit_shm", nil, err)
