@@ -89,7 +89,7 @@ func Show() {
 	}
 	defer f.Close()
 
-	img,_, err := image.Decode(f)
+	img, _, err := image.Decode(f)
 	if err != nil {
 		logger.Error("decode_image", nil, err)
 		return
@@ -237,7 +237,6 @@ Depths:
 		_ = xproto.ChangeProperty(X, xproto.PropModeAppend, wid, wmStateReply.Atom,
 			xproto.AtomAtom, 32, 1, (*[4]byte)(unsafe.Pointer(&wmStateFullscreenReply.Atom))[:])
 	}
-	
 
 	pformats, err := render.QueryPictFormats(X).Reply()
 	if err != nil {
@@ -405,6 +404,7 @@ Depths:
 	var scale float64 = 1
 
 	go func() {
+		logoShowedx11 = true
 		defer close(done)
 		select {
 		case <-done:
@@ -464,9 +464,12 @@ Depths:
 }
 
 var done = make(chan struct{})
-var x11Created = false
+var logoShowedx11 = false
 
 func Disappear() {
+	if logoShowedx11 == false {
+		return
+	}
 	// 检查当前环境是否为 X11
 	sessionType := os.Getenv("XDG_SESSION_TYPE")
 	if sessionType != "x11" {
