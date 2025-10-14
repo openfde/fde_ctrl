@@ -193,18 +193,13 @@ Depths:
 	// 设置窗口跳过任务栏
 	wmState := xproto.InternAtom(X, false, uint16(len("_NET_WM_STATE")), "_NET_WM_STATE")
 	wmStateSkipTaskbar := xproto.InternAtom(X, false, uint16(len("_NET_WM_STATE_SKIP_TASKBAR")), "_NET_WM_STATE_SKIP_TASKBAR")
-	wmStateAbove := xproto.InternAtom(X, false, uint16(len("_NET_WM_STATE_ABOVE")), "_NET_WM_STATE_ABOVE")
 
 	wmStateReply, _ := wmState.Reply()
 	wmStateSkipTaskbarReply, _ := wmStateSkipTaskbar.Reply()
-	wmStateAboveReply, _ := wmStateAbove.Reply()
 
 	var stateAtoms []uint32
 	if wmStateSkipTaskbarReply != nil {
 		stateAtoms = append(stateAtoms, uint32(wmStateSkipTaskbarReply.Atom))
-	}
-	if wmStateAboveReply != nil {
-		stateAtoms = append(stateAtoms, uint32(wmStateAboveReply.Atom))
 	}
 	if wmStateReply != nil && len(stateAtoms) > 0 {
 		// Convert []uint32 to []byte for ChangeProperty
