@@ -94,7 +94,6 @@ func Show() {
 		logger.Error("decode_image", nil, err)
 		return
 	}
-	bounds1 := img.Bounds()
 
 	// Miscellaneous X11 initialization.
 	X, err := xgb.NewConn()
@@ -110,6 +109,11 @@ func Show() {
 
 	setup := xproto.Setup(X)
 	screen := setup.DefaultScreen(X)
+
+	screenWidth := screen.WidthInPixels
+	screenHeight := screen.HeightInPixels
+	img = CenterTileImage(img, int(screenWidth), int(screenHeight))
+	bounds1 := img.Bounds()
 
 	visual, depth := screen.RootVisual, screen.RootDepth
 
@@ -159,9 +163,6 @@ Depths:
 		logger.Error("new_window_id", nil, err)
 		return
 	}
-
-	screenWidth := screen.WidthInPixels
-	screenHeight := screen.HeightInPixels
 
 	// 计算居中位置
 	windowWidth := uint16(bounds1.Dx())
@@ -483,4 +484,34 @@ func Disappear() {
 	}
 	// 发送关闭信号
 	done <- struct{}{}
+}
+
+// Center and tile a 1920x1080 image on a 2560x1600 display
+func CenterTileImage(img image.Image, screenWidth, screenHeight int) image.Image {
+	imgWidth := img.Bounds().Dx()
+	imgHeight := img.Bounds().Dy()
+
+	// Create a new RGBA image with the size of the screen
+	result := image.NewRGBA(image.Rect(0, 0, screenWidth, screenHeight))
+
+	// Calculate the top-left position to center the image
+	offsetX := (screenWidth - imgWidth) / 2
+	offsetY := (screenHeight - imgHeight) / 2
+
+	// Fill the background with black (optional)
+	for y := 0; y < screenHeight; y++ {
+		for x := 0; x < screenWidth; x++ {
+			result.Set(x, y, color.Black)
+		}
+	}
+
+	// Draw the image at the center
+	for y := 0; y < imgHeight; y++ {
+		for x := 0; x < imgWidth; x++ {
+			c := img.At(x+img.Bounds().Min.X, y+img.Bounds().Min.Y)
+			result.Set(x+offsetX, y+offsetY, c)
+		}
+	}
+
+	return result
 }
