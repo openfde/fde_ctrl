@@ -240,6 +240,25 @@ Depths:
 		return
 	}
 
+	// Set legacy WM_NAME and _NET_WM_NAME to "openfde.background".
+	wmNameAtom := xproto.InternAtom(X, false, uint16(len("WM_NAME")), "WM_NAME")
+	netWmNameAtom := xproto.InternAtom(X, false, uint16(len("_NET_WM_NAME")), "_NET_WM_NAME")
+	utf8Atom := xproto.InternAtom(X, false, uint16(len("UTF8_STRING")), "UTF8_STRING")
+
+	wmNameReply, _ := wmNameAtom.Reply()
+	netWmNameReply, _ := netWmNameAtom.Reply()
+	utf8Reply, _ := utf8Atom.Reply()
+
+	title := []byte("openfde.background")
+	if wmNameReply != nil && utf8Reply != nil {
+		_ = xproto.ChangeProperty(X, xproto.PropModeReplace, wid, wmNameReply.Atom,
+			utf8Reply.Atom, 8, uint32(len(title)), title)
+	}
+	if netWmNameReply != nil && utf8Reply != nil {
+		_ = xproto.ChangeProperty(X, xproto.PropModeReplace, wid, netWmNameReply.Atom,
+			utf8Reply.Atom, 8, uint32(len(title)), title)
+	}
+
 	_ = xproto.MapWindow(X, wid)
 
 	// Similar to XRenderFindVisualFormat.
