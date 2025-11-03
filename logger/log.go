@@ -15,6 +15,8 @@ type StandardLogger struct {
 
 var (
 	Logger = NewLogger() //Logger New logger by loggerSentry and loggerLine
+)
+
 func Init() *StandardLogger {
 	var baseLogger = logrus.New()
 	var standard = &StandardLogger{baseLogger}
