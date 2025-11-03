@@ -332,7 +332,7 @@ func (impl *Apps) visitDesktopEntries(path string, info fs.FileInfo, err error) 
 		logger.Error("visit_lstat_desktop_file", path, err)
 		return nil
 	}
-	if !strings.Contains(path, ".desktop") {
+	if filepath.Ext(path) != ".desktop" {
 		return nil
 	}
 
