@@ -5,31 +5,43 @@
 
 
 case "$1" in
-    true|false) # powersaving on/off
-        ;;
-    thaw|resume)
-	waydroid status |grep Session -w |grep RUNNING  1>/dev/null
-	if [ $? = 0 ];then
-		d=`date "+%F %T"`
-		override_density=`waydroid shell wm density |grep "Override density" |awk -F ":" '{print $NF}' |tr -d " "`
-		physical_density=`waydroid shell wm density |grep "Physical density" |awk -F ":" '{print $NF}' |tr -d " "`
-		if [ -z "$physical_density"  ];then
-			echo "$d density of openfde could not found" >> /var/log/fde.log
-			exit 254
+	true|false) # powersaving on/off
+			;;
+	thaw|resume)
+		lspci |grep X100 |grep GPU_DMA 1>/dev/null 2>&1
+		if [ $? != 0 ];then
+			exit 0
 		fi
-		if [ -z "$override_density" ];then
-			density=$physical_density
-		else
-			density=$override_density
+		waydroid status |grep Session -w |grep RUNNING  1>/dev/null
+		if [ $? = 0 ];then
+			d=`date "+%F %T"`
+			grep 'openfde.host.user' /usr/lib/waydroid/tolls/helpers/images.py 1>/dev/null 2>&1
+			if [ $? = 0 ];then
+				openfde14_systemui_pid=`ps -ef |grep "com.android.systemui" |grep -v grep | awk -F " " '{print $2}'`
+				if [ -n "$openfde14_systemui_pid" ];then
+					kill -15 "$openfde14_systemui_pid"
+					echo "$d resume from sleep to wakeup openfde by killing systemui pid " >> /var/log/fde.log
+			else
+				override_density=`waydroid shell wm density |grep "Override density" |awk -F ":" '{print $NF}' |tr -d " "`
+				physical_density=`waydroid shell wm density |grep "Physical density" |awk -F ":" '{print $NF}' |tr -d " "`
+				if [ -z "$physical_density"  ];then
+					echo "$d density of openfde could not found" >> /var/log/fde.log
+					exit 254
+				fi
+				if [ -z "$override_density" ];then
+					density=$physical_density
+				else
+					density=$override_density
+				fi
+				newDensity=`expr $density + 1`
+				echo "$d resume from sleep to wakeup openfde by $newDensity $density" >> /var/log/fde.log
+				curl -X POST http://localhost:18080/api/v1/power/lock
+				waydroid shell input keyevent KEYCODE_HOME
+				waydroid shell wm density $newDensity
+				sleep 1
+				waydroid shell wm density $density
+			fi
 		fi
-		newDensity=`expr $density + 1`
-		echo "$d resume from sleep to wakeup openfde by $newDensity $density" >> /var/log/fde.log
-		curl -X POST http://localhost:18080/api/v1/power/lock
-		waydroid shell input keyevent KEYCODE_HOME
-		waydroid shell wm density $newDensity
-		sleep 1
-		waydroid shell wm density $density
-	fi
         ;;
     *)
         exit 254

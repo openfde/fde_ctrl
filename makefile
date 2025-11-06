@@ -18,7 +18,6 @@ install:
 	sudo install -d /lib/pm-utils/power.d -m 755
 	sudo install installed/lib/pm-utils/power.d/99openfde /lib/pm-utils/power.d/99openfde -m 755 
 	sudo install installed/lib/systemd/system-sleep/openfde /lib/systemd/system-sleep/openfde -m 755
-	sudo install installed/usr/bin/fde-set-ime-engine /usr/bin/fde-set-ime-engine -m 755
 	if [ -e  /usr/share/lightdm/lightdm.conf.d ]; then 	sudo install installed/usr/share/lightdm/lightdm.conf.d/96-disable-autologin-lock.conf /usr/share/lightdm/lightdm.conf.d/96-disable-autologin-lock.conf -m 644 ;fi
 	sudo install installed/sysctl.conf /etc/sysctl.conf -m 644
 	sudo install installed/usr/bin/fde_utils /usr/bin/fde_utils -m 755
