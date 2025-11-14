@@ -34,17 +34,27 @@ func parseOSRelese() string {
 	return ""
 }
 
+const (
+	IDKylin  = "kylin"
+	IDUos    = "uos"
+	IDUbuntu = "ubuntu"
+)
+
 func GetTerminalProgram() (string, string) {
 	var ter Terminal
 	osName := parseOSRelese()
 	switch osName {
-	case "kylin":
+	case IDKylin:
 		{
 			ter = KylinTerminalImpl{}
 		}
-	case "uos":
+	case IDUos:
 		{
 			ter = UosTerminalImpl{}
+		}
+	case IDUbuntu:
+		{
+			ter = UbuntuTerminalImpl{}
 		}
 	default:
 		{
