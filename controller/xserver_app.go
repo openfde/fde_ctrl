@@ -159,7 +159,7 @@ func (impl XserverAppImpl) startApp(app, path, display, pwd string, withoutTheme
 	logger.Info("start_app", app+" "+display)
 	serverName := impl.isClientServerMode(path)
 
-	filePath, err := constructXServerstartup(app, path, display, pwd, serverName)
+	filePath, err := constructXServerstartup(app, path, display, serverName, pwd)
 	if err != nil {
 		return
 	}
