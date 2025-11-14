@@ -4,13 +4,13 @@ import (
 	"errors"
 	"fde_ctrl/conf"
 	"fde_ctrl/logger"
+	"fde_ctrl/logo"
 	"fde_ctrl/response"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"fde_ctrl/logo"
 
 	"github.com/gin-gonic/gin"
 )
@@ -66,6 +66,7 @@ func (impl *AndroidAppCtrl) Init() {
 }
 
 var fdeAppIconBaseDir = ".local/share/openfde/icons"
+var fde14AppIconBaseDir = ".local/share/openfde14/icons"
 
 type AndroidApps []AndroidApp
 
@@ -102,9 +103,12 @@ func scanAppInfo(lines []string, home string) AndroidApps {
 			logger.Info("scan_android", app.PackageName)
 			_, err := os.Stat(app.IconPath) // check if the icon file exists
 			if err != nil && os.IsNotExist(err) {
-				logger.Error("stat_android_icon", app.PackageName, err)
-				app = AndroidApp{}
-				continue
+				app.IconPath = filepath.Join(home, fde14AppIconBaseDir, app.PackageName+".png")
+				if err != nil && os.IsNotExist(err) {
+					logger.Error("stat_android_icon", app.PackageName, err)
+					app = AndroidApp{}
+					continue
+				}
 			}
 			appsList = append(appsList, app)
 			app = AndroidApp{}
