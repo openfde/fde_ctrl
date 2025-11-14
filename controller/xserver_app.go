@@ -5,10 +5,12 @@ import (
 	"fde_ctrl/conf"
 	"fde_ctrl/logger"
 	"fde_ctrl/response"
+	"fde_ctrl/terminal"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -23,9 +25,10 @@ type XserverAppImpl struct {
 func (impl XserverAppImpl) Setup(r *gin.RouterGroup) {
 	v1 := r.Group("/v1")
 	v1.POST("/xserver", impl.startAppHandle)
+	v1.GET("/xserver/terminal", impl.startTerminalHandle)
 }
 
-func (impl XserverAppImpl) isClientServer(app string) string {
+func (impl XserverAppImpl) isClientServerMode(app string) string {
 	for _, v := range impl.Conf.FusionApp.CServerList {
 		if v.ClientName == app {
 			return v.ServerName
@@ -38,7 +41,7 @@ const LOCAL_SERVER = ":0"
 const FDE_DISPLAY = ":1001"
 const FDE_SERVER = "com.fde.x11.xserver"
 
-func constructXServerstartup(name, path, display, serverName string) (bashFile string, err error) {
+func constructXServerstartup(name, path, display, serverName, pwd string) (bashFile string, err error) {
 	path = removeDesktopArgs(path)
 	data := []byte("#!/bin/bash\n" +
 		"export GDK_BACKEND=x11\n" +
@@ -48,6 +51,9 @@ func constructXServerstartup(name, path, display, serverName string) (bashFile s
 		data = append(data, []byte("export DISPLAY="+display+"\n")...)
 	} else {
 		data = append(data, []byte("export DISPLAY="+os.Getenv("DISPLAY")+"\n")...)
+	}
+	if pwd != "" {
+		data = append(data, []byte("cd "+pwd+"\n")...)
 	}
 	if serverName != "" {
 		data = append(data, []byte(serverName+" & \n")...)
@@ -73,6 +79,44 @@ func constructXServerstartup(name, path, display, serverName string) (bashFile s
 	return
 }
 
+func (impl XserverAppImpl) startTerminalHandle(c *gin.Context) {
+	var request startAppRequest
+	err := c.ShouldBind(&request)
+	if err != nil {
+		response.ResponseParamterError(c, err)
+		return
+	}
+	if request.Display == FDE_DISPLAY {
+		// Check if xserver process is already running
+		cmd := exec.Command("pgrep", "-f", FDE_SERVER)
+		cmd.Run()
+		logger.Info("pgrep_x11_exit_code", cmd.ProcessState.ExitCode())
+		if cmd.ProcessState.ExitCode() == 1 {
+			response.ResponseError(c, http.StatusPreconditionRequired, errors.New("xserver service is not running"))
+			return
+		}
+	}
+	app, terminalProgram := terminal.GetTerminalProgram()
+	if terminalProgram == "" {
+		response.ResponseError(c, http.StatusInternalServerError, errors.New("get terminal program failed"))
+		logger.Error("get_terminal_program_failed", nil, errors.New("get terminal program failed"))
+		return
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		response.ResponseError(c, http.StatusInternalServerError, err)
+		return
+	}
+	impl.startApp(app, terminalProgram, request.Display, filepath.Join(home, "openfde"), false)
+	if err != nil {
+		response.ResponseError(c, http.StatusInternalServerError, err)
+		return
+	}
+	response.Response(c, startAppResponse{
+		Port: request.Display,
+	})
+}
+
 func (impl XserverAppImpl) startAppHandle(c *gin.Context) {
 	var request startAppRequest
 	err := c.ShouldBind(&request)
@@ -91,7 +135,7 @@ func (impl XserverAppImpl) startAppHandle(c *gin.Context) {
 		}
 	}
 
-	err = impl.startApp(request.App, request.Path, request.Display, request.WithOutTheme)
+	err = impl.startApp(request.App, request.Path, request.Display, "", request.WithOutTheme)
 	if err != nil {
 		response.ResponseError(c, http.StatusInternalServerError, err)
 		return
@@ -111,11 +155,11 @@ func (impl XserverAppImpl) isWitoutTheme(app string) bool {
 }
 
 // start a app ,return the port or error
-func (impl XserverAppImpl) startApp(app, path, display string, withoutTheme bool) (err error) {
+func (impl XserverAppImpl) startApp(app, path, display, pwd string, withoutTheme bool) (err error) {
 	logger.Info("start_app", app+" "+display)
-	serverName := impl.isClientServer(path)
+	serverName := impl.isClientServerMode(path)
 
-	filePath, err := constructXServerstartup(app, path, display, serverName)
+	filePath, err := constructXServerstartup(app, path, display, pwd, serverName)
 	if err != nil {
 		return
 	}
