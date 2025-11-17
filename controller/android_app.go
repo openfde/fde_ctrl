@@ -104,6 +104,7 @@ func scanAppInfo(lines []string, home string) AndroidApps {
 			_, err := os.Stat(app.IconPath) // check if the icon file exists
 			if err != nil && os.IsNotExist(err) {
 				app.IconPath = filepath.Join(home, fde14AppIconBaseDir, app.PackageName+".png")
+				_, err = os.Stat(app.IconPath)
 				if err != nil && os.IsNotExist(err) {
 					logger.Error("stat_android_icon", app.PackageName, err)
 					app = AndroidApp{}
