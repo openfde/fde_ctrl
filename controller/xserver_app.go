@@ -7,6 +7,7 @@ import (
 	"fde_ctrl/response"
 	"fde_ctrl/terminal"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -25,7 +26,7 @@ type XserverAppImpl struct {
 func (impl XserverAppImpl) Setup(r *gin.RouterGroup) {
 	v1 := r.Group("/v1")
 	v1.POST("/xserver", impl.startAppHandle)
-	v1.GET("/xserver/terminal", impl.startTerminalHandle)
+	v1.POST("/xserver/terminal", impl.startTerminalHandle)
 }
 
 func (impl XserverAppImpl) isClientServerMode(app string) string {
@@ -79,6 +80,69 @@ func constructXServerstartup(name, path, display, serverName, pwd string) (bashF
 	return
 }
 
+type startAppResponse struct {
+	Port string
+}
+
+func checkDistribID(distrib Distrib) bool {
+	filePath := "/etc/lsb-release"
+	distribID := ""
+	content, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		logger.Error("Error reading file:", filePath, err)
+		return false
+	}
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "DISTRIB_ID") {
+			fields := strings.Split(line, "=")
+			if len(fields) == 2 {
+				distribID = strings.Trim(fields[1], `"`)
+				break
+			}
+		}
+	}
+	return distribID == string(distrib)
+}
+
+func removeDesktopArgs(path string) (filteredPath string) {
+	if len(path) > 2 {
+		if string(path[len(path)-2]) == "%" {
+
+		}
+	}
+	fields := strings.Fields(path)
+	var validLength = len(fields)
+	if len(fields) > 1 {
+		//linux do not support a path which contains white space
+		newfield := fields[len(fields)-1]
+		if string(newfield[0]) == "%" || (len(newfield) > 2 && string(newfield[len(newfield)-2]) == "%") {
+			validLength = len(fields) - 1
+		}
+	}
+	for i := 0; i < validLength; i++ {
+		filteredPath += fields[i]
+		if i < validLength-1 {
+			filteredPath += " "
+		}
+	}
+	return
+}
+
+type Distrib string
+
+const Kylin Distrib = "Kylin"
+
+type startAppRequest struct {
+	App          string
+	Path         string
+	SysOnly      bool
+	Display      string
+	WithOutTheme bool
+	WorkingPath  string
+	IsAndroidFS  bool
+}
+
 func (impl XserverAppImpl) startTerminalHandle(c *gin.Context) {
 	var request startAppRequest
 	err := c.ShouldBind(&request)
@@ -107,7 +171,11 @@ func (impl XserverAppImpl) startTerminalHandle(c *gin.Context) {
 		response.ResponseError(c, http.StatusInternalServerError, err)
 		return
 	}
-	impl.startApp(app, terminalProgram, request.Display, filepath.Join(home, "openfde"), false)
+	workingPath := request.WorkingPath
+	if request.IsAndroidFS {
+		workingPath = filepath.Join(home, "openfde", request.WorkingPath)
+	}
+	impl.startApp(app, terminalProgram, request.Display, workingPath, false)
 	if err != nil {
 		response.ResponseError(c, http.StatusInternalServerError, err)
 		return
@@ -155,11 +223,11 @@ func (impl XserverAppImpl) isWitoutTheme(app string) bool {
 }
 
 // start a app ,return the port or error
-func (impl XserverAppImpl) startApp(app, path, display, pwd string, withoutTheme bool) (err error) {
+func (impl XserverAppImpl) startApp(app, path, display, workingDir string, withoutTheme bool) (err error) {
 	logger.Info("start_app", app+" "+display)
 	serverName := impl.isClientServerMode(path)
 
-	filePath, err := constructXServerstartup(app, path, display, serverName, pwd)
+	filePath, err := constructXServerstartup(app, path, display, serverName, workingDir)
 	if err != nil {
 		return
 	}
@@ -208,11 +276,7 @@ func (impl XserverAppImpl) startApp(app, path, display, pwd string, withoutTheme
 		err = errors.New("start xserver " + app + " failed")
 		return
 	}
-	// var wstatus syscall.WaitStatus
-	// _, err = syscall.Wait4(cmdVnc.Process.Pid, &wstatus, 0, nil)
-	// if err != nil {
-	// 	logger.Error("wait vnc server failed", nil, err)
-	// }
+
 	if debugMode == "debug" {
 		output, err := io.ReadAll(io.MultiReader(stdout, stderr))
 		if err != nil {
@@ -232,7 +296,6 @@ func (impl XserverAppImpl) startApp(app, path, display, pwd string, withoutTheme
 	select {
 	case <-chWait:
 		{
-			//i3 failed
 			return errors.New("wait xserver " + app + " failed")
 		}
 	case <-timer.C:
