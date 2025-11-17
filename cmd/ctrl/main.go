@@ -235,8 +235,6 @@ func main() {
 				case process_chan.Logout, process_chan.Unexpected:
 					{
 						// logout
-						var vnc controller.VncAppImpl
-						vnc.StopAll()
 						if action == process_chan.Unexpected {
 							logger.Info("unexpected_exit", "pid max is out of limit 65535")
 							os.Exit(10)

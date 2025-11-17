@@ -9,8 +9,6 @@ import (
 
 func Setup(r *gin.Engine, app string, configure conf.Configure) {
 
-	var vnc VncAppImpl
-	vnc.Conf = configure
 	var linuxApps LinuxApps
 	var pm PowerManager
 	var xserver XserverAppImpl
@@ -29,7 +27,7 @@ func Setup(r *gin.Engine, app string, configure conf.Configure) {
 	userManager := UserManager{}
 	userManager.Init(app)
 	var controllers []Controller
-	controllers = append(controllers, pm, linuxApps, vnc, xserver, brightness, fsfusing, fdeModeCtrl, userManager, &AndroidAppCtrl, appNotify)
+	controllers = append(controllers, pm, linuxApps, xserver, brightness, fsfusing, fdeModeCtrl, userManager, &AndroidAppCtrl, appNotify)
 	for _, value := range controllers {
 		value.Setup(group)
 	}
