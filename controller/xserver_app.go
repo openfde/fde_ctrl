@@ -175,6 +175,10 @@ func (impl XserverAppImpl) startTerminalHandle(c *gin.Context) {
 	if request.IsAndroidFS {
 		workingPath = filepath.Join(home, "openfde", request.WorkingPath)
 	}
+	_, err = os.Stat(workingPath)
+	if err != nil && os.IsNotExist(err) {
+		workingPath = filepath.Join(home, "openfde")
+	}
 	impl.startApp(app, terminalProgram, request.Display, workingPath, false)
 	if err != nil {
 		response.ResponseError(c, http.StatusInternalServerError, err)
