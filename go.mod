@@ -1,6 +1,8 @@
 module fde_ctrl
 
-go 1.19
+go 1.23.0
+
+toolchain go1.24.10
 
 require (
 	github.com/BurntSushi/xgb v0.0.0-20210121224620-deaf085860bc
