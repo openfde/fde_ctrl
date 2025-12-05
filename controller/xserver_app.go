@@ -178,6 +178,7 @@ func (impl XserverAppImpl) startTerminalHandle(c *gin.Context) {
 	_, err = os.Stat(workingPath)
 	if err != nil && os.IsNotExist(err) {
 		workingPath = filepath.Join(home, "openfde")
+		err = nil
 	}
 	impl.startApp(app, terminalProgram, request.Display, workingPath, false)
 	if err != nil {
