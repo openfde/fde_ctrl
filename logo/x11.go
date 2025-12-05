@@ -113,7 +113,8 @@ func Show() {
 
 	screenWidth := screen.WidthInPixels
 	screenHeight := screen.HeightInPixels
-	img = CenterTileImage(img, int(screenWidth), int(screenHeight), color.RGBA{62, 60, 54, 255})
+	var sRGBBackgroundOfLogo color.RGBA = color.RGBA{61, 60, 54, 255}
+	img = CenterTileImage(img, int(screenWidth), int(screenHeight), sRGBBackgroundOfLogo)
 	bounds1 := img.Bounds()
 
 	visual, depth := screen.RootVisual, screen.RootDepth
