@@ -15,6 +15,7 @@ import (
 
 	"image"
 	"image/color"
+	"image/draw"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
@@ -112,7 +113,8 @@ func Show() {
 
 	screenWidth := screen.WidthInPixels
 	screenHeight := screen.HeightInPixels
-	img = CenterTileImage(img, int(screenWidth), int(screenHeight))
+	var sRGBBackgroundOfLogo color.RGBA = color.RGBA{61, 60, 54, 255}
+	img = CenterTileImage(img, int(screenWidth), int(screenHeight), sRGBBackgroundOfLogo)
 	bounds1 := img.Bounds()
 
 	visual, depth := screen.RootVisual, screen.RootDepth
@@ -500,32 +502,24 @@ func Disappear() {
 	done <- struct{}{}
 }
 
-// Center and tile a 1920x1080 image on a 2560x1600 display
-func CenterTileImage(img image.Image, screenWidth, screenHeight int) image.Image {
+// 改为接受背景色并使用 alpha 混合（draw.Over）
+func CenterTileImage(img image.Image, screenWidth, screenHeight int, bg color.Color) image.Image {
 	imgWidth := img.Bounds().Dx()
 	imgHeight := img.Bounds().Dy()
 
 	// Create a new RGBA image with the size of the screen
 	result := image.NewRGBA(image.Rect(0, 0, screenWidth, screenHeight))
 
+	// Fill the background with bg color (opaque or with its own alpha)
+	draw.Draw(result, result.Bounds(), &image.Uniform{bg}, image.Point{}, draw.Src)
+
 	// Calculate the top-left position to center the image
 	offsetX := (screenWidth - imgWidth) / 2
 	offsetY := (screenHeight - imgHeight) / 2
 
-	// Fill the background with black (optional)
-	for y := 0; y < screenHeight; y++ {
-		for x := 0; x < screenWidth; x++ {
-			result.Set(x, y, color.Black)
-		}
-	}
-
-	// Draw the image at the center
-	for y := 0; y < imgHeight; y++ {
-		for x := 0; x < imgWidth; x++ {
-			c := img.At(x+img.Bounds().Min.X, y+img.Bounds().Min.Y)
-			result.Set(x+offsetX, y+offsetY, c)
-		}
-	}
+	// Draw the image at the center using Over to respect the source alpha
+	dstRect := image.Rect(offsetX, offsetY, offsetX+imgWidth, offsetY+imgHeight)
+	draw.Draw(result, dstRect, img, img.Bounds().Min, draw.Over)
 
 	return result
 }
