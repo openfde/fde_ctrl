@@ -27,8 +27,8 @@ type VersionRequest struct {
 func (impl VersionController) Setup(rg *gin.RouterGroup) {
 	v1 := rg.Group("/v1")
 	v1.POST("/version/check", impl.versionHandler)
+	v1.POST("/version/update", impl.updateRecordHandler)
 }
-
 
 // parseDebianPackages parses RFC822-like "Packages" blocks into a slice of field maps.
 func parseDebianPackages(content string) []map[string]string {
@@ -191,25 +191,41 @@ func LatestForPackage(entries []map[string]string, pkg string) (map[string]strin
 }
 
 type versionResponse struct {
-	Version string
-	IsNewer int
+	Version     string
+	IsNewer     int
 	DownloadURL string
-	Size string
-	MD5 string
+	Size        string
+	MD5         string
 }
 
 const FDE_APT_FILE = "/etc/apt/sources.list.d/openfde.list"
+
+type versionUpdateRequest struct {
+	CurrentVersion string
+	Path           string
+}
+
+func (impl VersionController) updateRecordHandler(c *gin.Context) {
+	var request versionUpdateRequest
+	err := c.ShouldBind(&request)
+	if err != nil {
+		logger.Error("version_update_request_parse", err, nil)
+		response.ResponseParamterError(c, err)
+		return
+	}
+	response.Response(c, request)
+}
 
 func (impl VersionController) versionHandler(c *gin.Context) {
 	arch, repoURL, release := "", "", ""
 	var request VersionRequest
 	err := c.ShouldBind(&request)
 	if err != nil {
-		logger.Error("version_request_parse",err,nil)
+		logger.Error("version_request_parse", err, nil)
 		response.ResponseParamterError(c, err)
 		return
 	}
-	logger.Info("parse_version_request",request)
+	logger.Info("parse_version_request", request)
 	f, err := os.Open(FDE_APT_FILE)
 	if err == nil {
 		defer f.Close()
@@ -269,15 +285,14 @@ func (impl VersionController) versionHandler(c *gin.Context) {
 			if v := strings.TrimSpace(request.Version); v != "" {
 				cmp := compareVersions(v, best["Version"])
 				response.Response(c, versionResponse{
-					Version: best["Version"], 
-					IsNewer: cmp, 
+					Version:     best["Version"],
+					IsNewer:     cmp,
 					DownloadURL: repoURL + best["Filename"],
-					MD5: best["MD5sum"],
-					Size: best["Size"],
+					MD5:         best["MD5sum"],
+					Size:        best["Size"],
 				})
 				return
 			}
 		}
 	}
 }
-
