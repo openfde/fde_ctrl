@@ -89,6 +89,7 @@ func (fdedroid *Waydroid) Start(mainCtx context.Context, mainCtxCancelFunc conte
 	go func() {
 		err = cmdWaydroid.Wait()
 		if err != nil {
+		        exec.Command("waydroid", "session", "stop").Run()
 			logger.Error("waydroid_wait", nil, err)
 		}
 		mainCtxCancelFunc()
