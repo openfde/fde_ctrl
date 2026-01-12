@@ -151,13 +151,13 @@ function apk_process() {
 			return $?
 		;;
 		"list")
-			code=`curl -s -o /tmp/fde_app_list  -w "%{http_code}" http://127.0.0.1:18080/api/v1/android/apps?raw=1 -X GET 2>/dev/null`
+			code=`curl -s -o /tmp/$(id -u)_fde_app_list  -w "%{http_code}" http://127.0.0.1:18080/api/v1/android/apps?raw=1 -X GET 2>/dev/null`
 			if [ "$code" != "200" ];then
 				echo "Error: fde is not started completely"
 				exit $return_code_not_start_completely
 			fi
-			cat /tmp/fde_app_list
-			rm /tmp/fde_app_list 2>/dev/null
+			cat /tmp/$(id -u)_fde_app_list
+			rm /tmp/$(id -u)_fde_app_list 2>/dev/null
 			exit 0
 		;;
 		"app_stop")
