@@ -63,6 +63,17 @@ const errnoPidMaxOutOfLimit = 10
 const errnoAlreadyRunning = 17
 
 func main() {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	go func() {
+		<-sigCh
+		logger.Info("sigterm_received", "rm fde_ctrl.sock")
+		if err := exec.Command("rm", "-rf", "/tmp/fde_ctrl.sock").Run(); err != nil {
+			logger.Error("sig_handler_rm_fde_sock_failed", nil, err)
+		}
+		os.Exit(0)
+	}()
+
 	var mode, app, msg string
 	var snavi bool
 	var return_directly bool
