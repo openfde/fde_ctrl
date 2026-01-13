@@ -6,6 +6,8 @@ package main
 
 import (
 	"context"
+	"os/signal"
+	"syscall"
 	"fde_ctrl/conf"
 	"fde_ctrl/controller"
 	"fde_ctrl/controller/middleware"
