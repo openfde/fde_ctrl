@@ -6,8 +6,9 @@ package main
 
 import (
 	"context"
-	"os/signal"
+	"path/filepath"
 	"syscall"
+	"os/signal"
 	"fde_ctrl/conf"
 	"fde_ctrl/controller"
 	"fde_ctrl/controller/middleware"
@@ -65,17 +66,6 @@ const errnoPidMaxOutOfLimit = 10
 const errnoAlreadyRunning = 17
 
 func main() {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-	go func() {
-		<-sigCh
-		logger.Info("sigterm_received", "rm fde_ctrl.sock")
-		if err := exec.Command("rm", "-rf", "/tmp/fde_ctrl.sock").Run(); err != nil {
-			logger.Error("sig_handler_rm_fde_sock_failed", nil, err)
-		}
-		os.Exit(0)
-	}()
-
 	var mode, app, msg string
 	var snavi bool
 	var return_directly bool
@@ -116,7 +106,24 @@ func main() {
 		StartCheckPidMaxWorker()
 	}
 	// 单例检测：通过尝试连接本地 unix socket 判断服务是否已运行
-	unixSock := "/tmp/fde_ctrl.sock"
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		logger.Error("get_home_dir_failed", homeDir, err)
+		os.Exit(1)
+	}
+	unixSock := filepath.Join(homeDir,".local/fde_ctrl.sock")
+       sigCh := make(chan os.Signal, 1)
+       signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+       go func() {
+               <-sigCh
+               logger.Info("sigterm_received", "rm fde_ctrl.sock")
+               if err := os.Remove(unixSock); err != nil {
+		       if !os.IsNotExist(err) {  // 文件不存在不算错误
+			    logger.Error("sig_handler_rm_fde_sock_failed", nil, err)
+			}
+               }
+               os.Exit(0)
+       }()
 	if _, err := os.Stat(unixSock); err == nil {
 		// socket 文件存在，尝试连接
 		conn, err := net.Dial("unix", unixSock)
@@ -127,7 +134,10 @@ func main() {
 			os.Exit(1)
 		} else {
 			// socket 文件存在但无法连接，可能是上次异常退出，尝试删除
-			os.Remove(unixSock)
+			err = os.Remove(unixSock)
+			if err != nil {
+				logger.Error("sock_remove_failed",nil ,err)
+			}
 		}
 	}
 	// 主进程启动时监听 unix socket，生命周期内保持 socket 文件存在

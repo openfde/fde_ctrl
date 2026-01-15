@@ -20,7 +20,7 @@ type ModeConf struct {
 func ReadModeConf() (modeConf ModeConf, err error) {
 	cfg, err := ini.Load("/etc/fde.d/fde.conf")
 	if err != nil {
-		logger.Error("fded_conf_error", nil, err)
+		//logger.Error("fded_conf_error", nil, err)
 		return modeConf, err
 	}
 
