@@ -1,8 +1,6 @@
 package conf
 
 import (
-	"fde_ctrl/logger"
-
 	"github.com/go-ini/ini"
 )
 
