@@ -26,7 +26,6 @@ install:
 	sudo install installed/usr/bin/fde_switch_next_desktop /usr/bin/fde_switch_next_desktop -m 755
 	sudo install installed/usr/share/icons/hicolor/96x96/apps/openfde.png /usr/share/icons/hicolor/96x96/apps/openfde.png -m 644 
 	sudo install installed/usr/share/applications/openfde.desktop /usr/share/applications/openfde.desktop
-	sudo install installed/usr/bin/fde_display_geo.py /usr/bin/fde_display_geo.py -m 755
 	sudo install -d /usr/share/backgrounds -m 755
 	sudo install installed/usr/share/backgrounds/openfde.png /usr/share/backgrounds/openfde.png -m 644
 	sudo sysctl -p
