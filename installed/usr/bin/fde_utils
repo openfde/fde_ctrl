@@ -241,7 +241,7 @@ case $1 in
         waydroid session stop 1>/dev/null 2>&1
     ;;
     "get_window")
-		window=`wmctrl -l 2>/dev/null |grep "FDE Weston Compositor" |awk -F " " '{print $1}' |tr -d " "`
+		window=`wmctrl -l 2>/dev/null |grep "Openfde" |awk -F " " '{print $1}' |tr -d " "`
 		if [ $? != 0 ];then
 			exit $return_code_stopped
 		fi
@@ -249,7 +249,7 @@ case $1 in
 		exit 0
     ;;
 	"get_desktop")
-		nofDesktop=`wmctrl -l 2>/dev/null |grep "FDE Weston Compositor" |awk -F " " '{print $2}' |tr -d " "`
+		nofDesktop=`wmctrl -l 2>/dev/null |grep "Openfde" |awk -F " " '{print $2}' |tr -d " "`
 		if [ $? != 0 ];then
 			exit $return_code_stopped
 		fi
