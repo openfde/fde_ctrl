@@ -22,7 +22,7 @@ else
 	if [ $? = 0 ];then
 		waydroid app launch $app_package_name
 		nofDesktop=`fde_utils get_desktop`
-		if [ $? -eq 0 -a  -n "$nofDekstop" ];then
+		if [ $? -eq 0 -a  -n "$nofDesktop" ];then
 			wmctrl -s $nofDesktop
 			window=`fde_utils get_window`
 			if [ $? -eq 0 -a -n "$window" ];then
