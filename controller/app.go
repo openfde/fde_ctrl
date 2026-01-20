@@ -357,6 +357,9 @@ func (impl *Apps) visitDesktopEntries(path string, info fs.FileInfo, err error) 
 	execPath := section.Key("Exec").String()
 	entryType := section.Key("Type").String()
 	noDisplay := section.Key("NoDisplay").String()
+	if strings.Contains(execPath, "run-phyfusion") {
+		return nil
+	}
 	if strings.Contains(noDisplay, "true") {
 		return nil
 	}
