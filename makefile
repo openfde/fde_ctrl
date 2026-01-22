@@ -28,5 +28,4 @@ install:
 	sudo install installed/usr/share/applications/openfde.desktop /usr/share/applications/openfde.desktop
 	sudo install -d /usr/share/backgrounds -m 755
 	sudo install installed/usr/share/backgrounds/openfde.png /usr/share/backgrounds/openfde.png -m 644
-	sudo sysctl -p
-
+	if grep -q 'sysfs /sys .* rw[,]' /proc/mounts ; then  sudo sysctl -p ; fi
