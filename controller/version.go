@@ -301,7 +301,6 @@ func (impl VersionController) updateRecordHandler(c *gin.Context) {
 		cmdApp.SysProcAttr = &syscall.SysProcAttr{
 			Setsid: true,
 		}
-		debugMode := os.Getenv("fde_debug")
 		var stdout, stderr io.ReadCloser
 		stdout, err = cmdApp.StdoutPipe()
 		if err != nil {
@@ -320,11 +319,12 @@ func (impl VersionController) updateRecordHandler(c *gin.Context) {
 			response.ResponseCodeError(c, http.StatusInternalServerError, InstallError, err)
 			return
 		}
+		logger.Error("update_version_stdout", stdout, nil)
+		logger.Error("update_version_stderr", stderr, nil)
 		response.Response(c, request)
 		return
 	}
-	logger.Error("update_version_stdout", stdout, nil)
-	logger.Error("update_version_stderr", stderr, nil)
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		logger.Error("get_home_dir_failed", err, nil)
