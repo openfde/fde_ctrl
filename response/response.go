@@ -28,6 +28,14 @@ func Response(c *gin.Context, data interface{}) {
 	})
 }
 
+func ResponseCodeError(c *gin.Context, httpStatusCode, businiesCode int, err error) {
+	parameterResponse := InfraResponse{
+		Code:    businiesCode,
+		Message: err.Error(),
+	}
+	c.JSON(httpStatusCode, parameterResponse)
+}
+
 func ResponseError(c *gin.Context, statusCode int, err error) {
 	parameterResponse := InfraResponse{
 		Code:    statusCode,
