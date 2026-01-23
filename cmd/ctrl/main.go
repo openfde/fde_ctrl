@@ -151,6 +151,30 @@ func main() {
 		os.Remove(unixSock)
 	}()
 
+	currentVersion, path, err := controller.VersionConfRead()
+	if err != nil {
+		logger.Error("read_version_conf_failed", nil, err)
+	} else {
+		logger.Info("conf_version_path", fmt.Sprintf("version: %s, path: %s", currentVersion, path))
+		current, err := controller.VersionCurrentRead()
+		if err != nil {
+			logger.Error("read_current_version_failed", nil, err)
+		} else {
+			if currentVersion != current {
+				logger.Warn("curent_mismatch", currentVersion+" "+current)
+				controller.VersionConfRemove()
+			}
+			if _, err := os.Stat(path); err == nil {
+				err := exec.Command("fde_fs", "-install", "-path", path).Run()
+				if err != nil {
+					logger.Error("fde_fs_install_failed", nil, err)
+				}else {
+					controller.VersionConfRemove()
+				}
+			}
+		}
+	}
+
 	configure, err := conf.Read()
 	if err != nil {
 		logger.Error("read_conf", nil, err)

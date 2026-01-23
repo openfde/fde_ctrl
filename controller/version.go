@@ -15,7 +15,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-ini/ini"
 )
+
+const FDE_VERSION_CONFIG = "/.config/fde_ver.conf"
 
 type VersionController struct {
 }
@@ -28,6 +31,51 @@ func (impl VersionController) Setup(rg *gin.RouterGroup) {
 	v1 := rg.Group("/v1")
 	v1.POST("/version/check", impl.versionHandler)
 	v1.POST("/version/update", impl.updateRecordHandler)
+}
+
+func VersionConfRemove() error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		logger.Error("get_home_dir_failed", err, nil)
+	}
+	os.Remove(home + FDE_VERSION_CONFIG)
+	return nil
+}
+
+func VersionCurrentRead() (currentVersion string, err error) {
+	propFile := "/var/lib/waydroid/waydroid.prop"
+	data, err := os.ReadFile(propFile)
+	if err != nil {
+		logger.Warn("read_waydroid_prop_failed", err)
+	} else {
+		lines := string(data)
+		for _, line := range strings.Split(lines, "\n") {
+			if strings.HasPrefix(line, "ro.openfde.version=") {
+				currentVersion = strings.TrimPrefix(line, "ro.openfde.version=")
+				currentVersion = strings.TrimSpace(currentVersion)
+				logger.Info("waydroid_openfde_version", currentVersion)
+				break
+			}
+		}
+	}
+	return
+}
+
+func VersionConfRead() (currentVersion string, path string, err error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		logger.Error("get_home_dir_failed", err, nil)
+		return
+	}
+	confPath := home + "/.config/fde_ver.conf"
+	cfg, err := ini.Load(confPath)
+	if err != nil {
+		logger.Error("load_version_config_failed", err, nil)
+		return
+	}
+	currentVersion = cfg.Section("").Key("CurrentVersion").String()
+	path = cfg.Section("").Key("Path").String()
+	return
 }
 
 // parseDebianPackages parses RFC822-like "Packages" blocks into a slice of field maps.
@@ -211,6 +259,35 @@ func (impl VersionController) updateRecordHandler(c *gin.Context) {
 	if err != nil {
 		logger.Error("version_update_request_parse", err, nil)
 		response.ResponseParamterError(c, err)
+		return
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		logger.Error("get_home_dir_failed", err, nil)
+		response.ResponseError(c, http.StatusInternalServerError, errors.New("failed to get home directory"))
+		return
+	}
+	confPath := home + "/.config/fde_ver.conf"
+	err = os.MkdirAll(home+"/.config", 0700)
+	if err != nil {
+		logger.Error("mkdir_config_failed", err, nil)
+		response.ResponseError(c, http.StatusInternalServerError, errors.New("failed to create config directory"))
+		return
+	}
+	f, err := os.OpenFile(confPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	if err != nil {
+		logger.Error("open_config_failed", err, nil)
+		response.ResponseError(c, http.StatusInternalServerError, errors.New("failed to open config file"))
+		return
+	}
+	defer f.Close()
+	cfg := ini.Empty()
+	cfg.Section("").Key("CurrentVersion").SetValue(request.CurrentVersion)
+	cfg.Section("").Key("Path").SetValue(request.Path)
+	err = cfg.SaveTo(confPath)
+	if err != nil {
+		logger.Error("ini_save_failed", err, nil)
+		response.ResponseError(c, http.StatusInternalServerError, errors.New("failed to save config file"))
 		return
 	}
 	response.Response(c, request)
