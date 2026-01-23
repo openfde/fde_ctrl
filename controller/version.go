@@ -256,7 +256,7 @@ type versionUpdateRequest struct {
 	Policy         string
 }
 
-const PolicyImmediate = "Immediate"
+const PolicyImmediate = "Immediately"
 const PolicyPreStart = "PreStart"
 
 const NetworkError = 5003
