@@ -251,6 +251,34 @@ const FDE_APT_FILE = "/etc/apt/sources.list.d/openfde.list"
 type versionUpdateRequest struct {
 	CurrentVersion string
 	Path           string
+	Policy         string
+}
+
+const PolicyImmediate = "Immediate"
+const PolicyPreStart = "PreStart"
+
+const NetworkError = 5003
+const InstallError = 5001
+const RepoNotFoundError = 5002
+
+func constructVersionUpdateScript(path string) (string, error) {
+	data := []byte("#!/bin/bash\n" +
+		"fde_fs -install -path " + path + " & \n")
+	uid := os.Getuid()
+	bashFile = "/tmp/fde_" + fmt.Sprint(uid) + "install.sh"
+	file, err := os.OpenFile(bashFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+	if err != nil {
+		logger.Error("Error creating file:", name, err)
+		return "", err
+	}
+	defer file.Close()
+
+	_, err = file.Write(data)
+	if err != nil {
+		logger.Error("Error writing to file:", name, err)
+		return "", err
+	}
+	return bashFile, nil
 }
 
 func (impl VersionController) updateRecordHandler(c *gin.Context) {
@@ -259,6 +287,40 @@ func (impl VersionController) updateRecordHandler(c *gin.Context) {
 	if err != nil {
 		logger.Error("version_update_request_parse", err, nil)
 		response.ResponseParamterError(c, err)
+		return
+	}
+	if request.Policy == PolicyImmediate {
+		filePath, err := constructVersionUpdateScript(request.Path)
+		if err != nil {
+			response.ResponseCodeError(c, http.StatusInternalServerError, InstallError, errors.New("Failed to construct update script"))
+			return
+		}
+		cmdApp := exec.Command(filePath)
+		cmdApp.SysProcAttr = &syscall.SysProcAttr{
+			Setsid: true,
+		}
+		debugMode := os.Getenv("fde_debug")
+		var stdout, stderr io.ReadCloser
+		if debugMode == "debug" {
+			stdout, err = cmdApp.StdoutPipe()
+			if err != nil {
+				logger.Error("stdout pipe for xserver", nil, err)
+				return
+			}
+			stderr, err = cmdApp.StderrPipe()
+			if err != nil {
+				logger.Error("stdout pipe for xserver", nil, err)
+				return
+			}
+		}
+		err = cmdApp.Start()
+		if err != nil {
+			logger.Error("start_installing_deb_failed", app, err)
+			err = errors.New("start installing deb  failed")
+			response.ResponseCodeError(c, http.StatusInternalServerError, InstallError, err)
+			return
+		}
+		response.Response(c, request)
 		return
 	}
 	home, err := os.UserHomeDir()
@@ -329,7 +391,7 @@ func (impl VersionController) versionHandler(c *gin.Context) {
 		}
 	}
 	if repoURL == "" {
-		response.ResponseError(c, http.StatusPreconditionRequired, errors.New("repo files not found"))
+		response.ResponseCodeError(c, http.StatusPreconditionRequired, RepoNotFoundError, errors.New("repo files not found"))
 		return
 	}
 	targetURL := repoURL + "/dists/" + release + "/main/binary-" + arch + "/Packages"
@@ -338,25 +400,25 @@ func (impl VersionController) versionHandler(c *gin.Context) {
 	}
 	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, targetURL, nil)
 	if err != nil {
-		response.ResponseError(c, http.StatusPreconditionRequired, errors.New("create http client failed"))
+		response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("create http client failed"))
 		return
 	} else {
 		resp, err := client.Do(req)
 		if err != nil {
 			logger.Error("request_failed", targetURL, err)
-			response.ResponseError(c, http.StatusPreconditionRequired, errors.New("do http request failed failed"))
+			response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("do http request failed failed"))
 			return
 		} else {
 			defer resp.Body.Close()
 			bodyBytes, err := io.ReadAll(resp.Body)
 			if err != nil {
-				response.ResponseError(c, http.StatusPreconditionRequired, errors.New("read http client failed"))
+				response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("read http client failed"))
 				return
 			}
 			entries := parseDebianPackages(string(bodyBytes))
 			best, err := LatestForPackage(entries, "openfde14")
 			if err != nil {
-				response.ResponseError(c, http.StatusPreconditionRequired, errors.New("failed to find openfde14 package"))
+				response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("failed to find openfde14 package"))
 				return
 			}
 			if v := strings.TrimSpace(request.Version); v != "" {
