@@ -9,9 +9,11 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -265,17 +267,17 @@ func constructVersionUpdateScript(path string) (string, error) {
 	data := []byte("#!/bin/bash\n" +
 		"fde_fs -install -path " + path + " & \n")
 	uid := os.Getuid()
-	bashFile = "/tmp/fde_" + fmt.Sprint(uid) + "install.sh"
+	bashFile := "/tmp/fde_" + fmt.Sprint(uid) + "install.sh"
 	file, err := os.OpenFile(bashFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
-		logger.Error("Error creating file:", name, err)
+		logger.Error("Error creating file:", bashFile, err)
 		return "", err
 	}
 	defer file.Close()
 
 	_, err = file.Write(data)
 	if err != nil {
-		logger.Error("Error writing to file:", name, err)
+		logger.Error("Error writing to file:", bashFile, err)
 		return "", err
 	}
 	return bashFile, nil
@@ -301,21 +303,19 @@ func (impl VersionController) updateRecordHandler(c *gin.Context) {
 		}
 		debugMode := os.Getenv("fde_debug")
 		var stdout, stderr io.ReadCloser
-		if debugMode == "debug" {
-			stdout, err = cmdApp.StdoutPipe()
-			if err != nil {
-				logger.Error("stdout pipe for xserver", nil, err)
-				return
-			}
-			stderr, err = cmdApp.StderrPipe()
-			if err != nil {
-				logger.Error("stdout pipe for xserver", nil, err)
-				return
-			}
+		stdout, err = cmdApp.StdoutPipe()
+		if err != nil {
+			logger.Error("stdout pipe for xserver", nil, err)
+			return
+		}
+		stderr, err = cmdApp.StderrPipe()
+		if err != nil {
+			logger.Error("stdout pipe for xserver", nil, err)
+			return
 		}
 		err = cmdApp.Start()
 		if err != nil {
-			logger.Error("start_installing_deb_failed", app, err)
+			logger.Error("start_installing_deb_failed", "deb", err)
 			err = errors.New("start installing deb  failed")
 			response.ResponseCodeError(c, http.StatusInternalServerError, InstallError, err)
 			return
@@ -323,6 +323,8 @@ func (impl VersionController) updateRecordHandler(c *gin.Context) {
 		response.Response(c, request)
 		return
 	}
+	logger.Error("update_version_stdout", stdout, nil)
+	logger.Error("update_version_stderr", stderr, nil)
 	home, err := os.UserHomeDir()
 	if err != nil {
 		logger.Error("get_home_dir_failed", err, nil)
