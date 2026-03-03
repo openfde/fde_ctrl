@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fde_ctrl/logger"
 	"os"
+	"os/exec"
+	"strconv"
 	"reflect"
 	"unsafe"
+	"fmt"
 
 	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/randr"
@@ -29,6 +32,19 @@ import "C"
 
 func F64ToFixed(f float64) render.Fixed { return render.Fixed(f * 65536) }
 func FixedToF64(f render.Fixed) float64 { return float64(f) / 65536 }
+
+func setDensity(density int){
+	cmd := exec.Command("fde_fs", "-density", strconv.Itoa(density))
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		logger.Error("set density failed", map[string]interface{}{
+			"density": density,
+			"output":  string(output),
+		}, err)
+	} else {
+	    logger.Warn("set density %d success\n", density)
+	}
+}
 
 var formats = map[byte]struct {
 	format    render.Directformat
@@ -188,6 +204,7 @@ func Show() {
 
 	// 如果仍然没有有效尺寸，保留根窗口尺寸（已在上面设置）
 	// 此时 screenX, screenY 均为 0
+	screenWidthGlobal, screenHeightGlobal = screenWidth, screenHeight
 
 	var sRGBBackgroundOfLogo color.RGBA = color.RGBA{61, 60, 54, 255}
 	img = CenterTileImage(img, int(screenWidth), int(screenHeight), sRGBBackgroundOfLogo)
@@ -570,8 +587,18 @@ Depths:
 
 var done = make(chan struct{})
 var logoShowedx11 = false
+var screenWidthGlobal   uint16
+var screenHeightGlobal  uint16
 
 func Disappear() {
+	if logoShowedx11 {
+	    logger.Warn(fmt.Sprintf("screen size: %dx%d", screenWidthGlobal, screenHeightGlobal), nil)
+	    if screenWidthGlobal <= 1920 {
+	        setDensity(160)
+	    } else {
+	        setDensity(256)
+	    }
+	}
 	if logoShowedx11 == false {
 		return
 	}
