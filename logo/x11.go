@@ -591,16 +591,14 @@ var screenWidthGlobal   uint16
 var screenHeightGlobal  uint16
 
 func Disappear() {
-	if logoShowedx11 {
-	    logger.Warn(fmt.Sprintf("screen size: %dx%d", screenWidthGlobal, screenHeightGlobal), nil)
-	    if screenWidthGlobal <= 1920 {
-	        setDensity(160)
-	    } else {
-	        setDensity(256)
-	    }
-	}
 	if logoShowedx11 == false {
 		return
+	}
+	logger.Warn(fmt.Sprintf("screen size: %dx%d", screenWidthGlobal, screenHeightGlobal), nil)
+	if screenWidthGlobal <= 1920 {
+		setDensity(160)
+	} else {
+		setDensity(256)
 	}
 	// 检查当前环境是否为 X11
 	sessionType := os.Getenv("XDG_SESSION_TYPE")
