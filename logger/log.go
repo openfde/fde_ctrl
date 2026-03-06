@@ -25,7 +25,7 @@ func Logrotate() {
 		if stat.Size() > 300*1024*1024 {
 			err := exec.Command("fde_fs", "-logrotate").Run()
 			if err != nil {
-				logger.Error("logrotate_in_main", nil, err)
+				fmt.Println("logrotate_failed")
 			}
 		}
 	} else if os.IsNotExist(err) {
