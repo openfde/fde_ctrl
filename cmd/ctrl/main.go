@@ -6,9 +6,6 @@ package main
 
 import (
 	"context"
-	"path/filepath"
-	"syscall"
-	"os/signal"
 	"fde_ctrl/conf"
 	"fde_ctrl/controller"
 	"fde_ctrl/controller/middleware"
@@ -25,6 +22,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
 
 	"os/exec"
 
@@ -73,18 +73,7 @@ func main() {
 		return
 	}
 
-	// Check log file size and rotate if necessary
-	logFile := "/var/log/fde.log"
-	stat, err := os.Stat(logFile)
-	if err == nil {
-		// 300MB = 300 * 1024 * 1024 bytes
-		if stat.Size() > 300*1024*1024 {
-			err := exec.Command("fde_fs", "-logrotate").Run()
-			if err != nil {
-				logger.Error("logrotate_in_main", nil, err)
-			}
-		}
-	}
+	logger.Logrotate()
 
 	if len(msg) != 0 {
 		err := tools.SendDbusMessage(msg)
@@ -111,19 +100,19 @@ func main() {
 		logger.Error("get_home_dir_failed", homeDir, err)
 		os.Exit(1)
 	}
-	unixSock := filepath.Join(homeDir,".local/fde_ctrl.sock")
-       sigCh := make(chan os.Signal, 1)
-       signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-       go func() {
-               <-sigCh
-               logger.Info("sigterm_received", "rm fde_ctrl.sock")
-               if err := os.Remove(unixSock); err != nil {
-		       if !os.IsNotExist(err) {  // 文件不存在不算错误
-			    logger.Error("sig_handler_rm_fde_sock_failed", nil, err)
+	unixSock := filepath.Join(homeDir, ".local/fde_ctrl.sock")
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	go func() {
+		<-sigCh
+		logger.Info("sigterm_received", "rm fde_ctrl.sock")
+		if err := os.Remove(unixSock); err != nil {
+			if !os.IsNotExist(err) { // 文件不存在不算错误
+				logger.Error("sig_handler_rm_fde_sock_failed", nil, err)
 			}
-               }
-               os.Exit(0)
-       }()
+		}
+		os.Exit(0)
+	}()
 	if _, err := os.Stat(unixSock); err == nil {
 		// socket 文件存在，尝试连接
 		conn, err := net.Dial("unix", unixSock)
@@ -136,7 +125,7 @@ func main() {
 			// socket 文件存在但无法连接，可能是上次异常退出，尝试删除
 			err = os.Remove(unixSock)
 			if err != nil {
-				logger.Error("sock_remove_failed",nil ,err)
+				logger.Error("sock_remove_failed", nil, err)
 			}
 		}
 	}
