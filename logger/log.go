@@ -19,8 +19,8 @@ var Logger *StandardLogger
 var logFile = "/var/log/fde.log"
 
 func Logrotate() {
-	// Check log file size and rotate if necessary
-	stat, err := os.Stat(logFile)
+	// Check log file exists, if not exist, create it by logrotating
+	_, err := os.Stat(logFile)
 	if err ！= nil {
 		if os.IsNotExist(err) {
 		//  create it by logrotating
