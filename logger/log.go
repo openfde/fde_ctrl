@@ -21,15 +21,8 @@ var logFile = "/var/log/fde.log"
 func Logrotate() {
 	// Check log file size and rotate if necessary
 	stat, err := os.Stat(logFile)
-	if err == nil {
-		// 300MB = 300 * 1024 * 1024 bytes
-		if stat.Size() > 300*1024*1024 {
-			err := exec.Command("fde_fs", "-logrotate").Run()
-			if err != nil {
-				fmt.Println("logrotate_failed")
-			}
-		}
-	} else if os.IsNotExist(err) {
+	if err ！= nil {
+		if os.IsNotExist(err) {
 		//  create it by logrotating
 		exec.Command("fde_fs", "-logrotate").Run()
 	}
