@@ -1,10 +1,10 @@
 package logger
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
-	"fmt"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -21,10 +21,11 @@ var logFile = "/var/log/fde.log"
 func Logrotate() {
 	// Check log file exists, if not exist, create it by logrotating
 	_, err := os.Stat(logFile)
-	if err ！= nil {
+	if err != nil {
 		if os.IsNotExist(err) {
-		//  create it by logrotating
-		exec.Command("fde_fs", "-logrotate").Run()
+			//  create it by logrotating
+			exec.Command("fde_fs", "-logrotate").Run()
+		}
 	}
 	Logger = NewLogger() //Logger New logger by loggerSentry and loggerLine
 }
