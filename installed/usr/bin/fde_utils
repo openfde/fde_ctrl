@@ -176,11 +176,11 @@ case $1 in
 	"-h")
 		echo "Usage: $0 [status|screenshot|stop|write_mode|read_mode|list|remove|install|app_stop]"
 		exit 0
-    ;;
+	;;
 	"restart")
 		fde_utils stop 
 		fde_utils start &
-		;;
+	;;
 	"set-emugl")
 		if [ "$(id -u)" -ne 0 ]; then
 			echo "Error: This operation must be run as root." >&2
@@ -188,13 +188,13 @@ case $1 in
 		fi
 		sed -i "/ro.hardware.gralloc/s/=.*/=ranchu/" /var/lib/waydroid/waydroid_base.prop
 		sed -i "/ro.hardware.egl/s/=.*/=emugl/" /var/lib/waydroid/waydroid_base.prop
-    ;;
+	;;
 	"umount")
 		curl http://127.0.0.1:18080/api/v1/fs_fusing/exit -X POST
-    ;;
+	;;
 	"mount")
 		curl http://127.0.0.1:18080/api/v1/fs_fusing -X POST
-    ;;
+	;;
 	"start")
 		unset LD_LIBRARY_PATH
 		app_package_name=$2
@@ -224,17 +224,17 @@ case $1 in
 			fi
 			exit $retcode
 		fi
-    ;;
+	;;
 	"status"|"android_status")
 		status_process "$1"
-    ;;
+	;;
 	"screenshot")
 		waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
 		if [ $? = 0 ];then
 				exit $return_code_stopped
 		fi
 		echo "screencap -j " |waydroid shell  2>/dev/null
-    ;;
+	;;
 	"stop")
 		waydroid session stop 1>/dev/null 2>&1
 		fde_fs -u 1>/dev/null 2>&1
@@ -243,7 +243,7 @@ case $1 in
 		if [ -n "$pid" ];then
 			kill -15 $pid
 		fi
-    ;;
+	;;
 	"get_window")
 		window=`wmctrl -l 2>/dev/null |grep "Openfde" |awk -F " " '{print $1}' |tr -d " "`
 		if [ $? != 0 ];then
@@ -251,7 +251,7 @@ case $1 in
 		fi
 		echo $window
 		exit 0
-		;;
+	;;
 	"get_desktop")
 		nofDesktop=`wmctrl -l 2>/dev/null |grep "Openfde" |awk -F " " '{print $2}' |tr -d " "`
 		if [ $? != 0 ];then
@@ -259,16 +259,16 @@ case $1 in
 		fi
 		echo $nofDesktop
 		exit 0
-    ;;
+	;;
 	"notify")
 		notify_process $@
-		;;
+	;;
 	"list"|"remove"|"install"|"app_stop")
 		apk_process "$1" "$2"
-		;;
+	;;
 	"write_mode"|"read_mode")
 		mode_process "$1" "$2"
-		;;
+	;;
 	*)
 		echo "Usage: $0 [start|status|screenshot|stop|write_mode|read_mode|list|remove|install|app_stop]"
 		exit 0
