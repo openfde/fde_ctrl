@@ -234,13 +234,20 @@ func main() {
 						logger.Info("restart", "exit due to some one send restart signal")
 						var cmd *exec.Cmd
 						if mode != string(windows_manager.DESKTOP_MODE_ENVIRONMENT) {
-							cmd = exec.Command("fde_utils restart &")
+							cmdApp := exec.Command("/usr/bin/fde_utils", "restart")
+							cmdApp.SysProcAttr = &syscall.SysProcAttr{
+								Setsid: true,
+							}
+							cmdApp.Start()
+							go func() {
+								cmdApp.Wait()
+							}()
 						} else {
 							cmd = exec.Command("reboot")
-						}
-						err = cmd.Run()
-						if err != nil {
-							logger.Error("restart_failed", nil, err)
+							err = cmd.Run()
+							if err != nil {
+								logger.Error("restart_failed", nil, err)
+							}
 						}
 						return
 					}
