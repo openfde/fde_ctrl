@@ -70,9 +70,9 @@ type mountInfo struct {
 }
 
 func (impl FsFuseManager) notify() {
-	if get() {
-		return
-	}
+	//notify handle is surely called when android started,
+	// so we must umount it whenever, and then mount it.
+	umountFdePtfs()
 	go func() {
 		mountFdePtfs()
 	}()
