@@ -197,6 +197,17 @@ case $1 in
 	;;
 	"start")
 		unset LD_LIBRARY_PATH
+		status=`waydroid status |grep Session: |awk -F " " '{print $2}' |tr -d " " 2>/dev/null`
+		if [ "$status" = "RUNNING" ];then
+			ps -ef |grep fde_ctrl |grep -v grep 1>/dev/null 2>&1
+			if [ $? != 0 ];then
+				fde_utils stop 1>/dev/null 2>&1
+			else
+				exit $status_code_running
+			fi
+		else
+			fde_utils stop 1>/dev/null 2>&1
+		fi
 		app_package_name=$2
 		if [ "$2" = "shortcut" ];then	#start by the app shortcut
 			app_package_name=$3
