@@ -173,81 +173,96 @@ function apk_process() {
 }
 
 case $1 in
-    "-h")
-        echo "Usage: $0 [status|screenshot|stop|write_mode|read_mode|list|remove|install|app_stop]"
-	exit 0
-    ;;
-    "set-emugl")
-	if [ "$(id -u)" -ne 0 ]; then
-		echo "Error: This operation must be run as root." >&2
-		exit $return_code_not_root
-	fi
-	sed -i "/ro.hardware.gralloc/s/=.*/=ranchu/" /var/lib/waydroid/waydroid_base.prop
-	sed -i "/ro.hardware.egl/s/=.*/=emugl/" /var/lib/waydroid/waydroid_base.prop
-    ;;
-    "umount")
-	curl http://127.0.0.1:18080/api/v1/fs_fusing/exit -X POST
-    ;;
-    "mount")
-	curl http://127.0.0.1:18080/api/v1/fs_fusing -X POST
-    ;;
-    "start")
-	unset LD_LIBRARY_PATH
-	. /etc/os-release
-	app_package_name=$2
-	if [ "$2" = "shortcut" ];then	#start by the app shortcut
-		app_package_name=$3
-	fi
-	if [ -z "$app_package_name" ];then
-		app_package_name="openfde"
-	fi
-	if [ ! -e /var/log/fde.log ];then
-		fde_fs -logrotate
-	fi
-	if [ "$ID" = "ubuntu" -o "$ID" = "debian" ];then
+	"-h")
+		echo "Usage: $0 [status|screenshot|stop|write_mode|read_mode|list|remove|install|app_stop]"
+		exit 0
+	;;
+	"restart")
+		fde_utils stop 
+		fde_utils start &
+	;;
+	"set-emugl")
+		if [ "$(id -u)" -ne 0 ]; then
+			echo "Error: This operation must be run as root." >&2
+			exit $return_code_not_root
+		fi
+		sed -i "/ro.hardware.gralloc/s/=.*/=ranchu/" /var/lib/waydroid/waydroid_base.prop
+		sed -i "/ro.hardware.egl/s/=.*/=emugl/" /var/lib/waydroid/waydroid_base.prop
+	;;
+	"umount")
+		curl http://127.0.0.1:18080/api/v1/fs_fusing/exit -X POST
+	;;
+	"mount")
+		curl http://127.0.0.1:18080/api/v1/fs_fusing -X POST
+	;;
+	"start")
+		unset LD_LIBRARY_PATH
+		status=`waydroid status |grep Session: |awk -F " " '{print $2}' |tr -d " " 2>/dev/null`
+		if [ "$status" = "RUNNING" ];then
+			ps -ef |grep fde_ctrl |grep -v grep 1>/dev/null 2>&1
+			if [ $? != 0 ];then
+				fde_utils stop 1>/dev/null 2>&1
+			else
+				exit $status_code_running
+			fi
+		else
+			fde_utils stop 1>/dev/null 2>&1
+		fi
+		app_package_name=$2
+		if [ "$2" = "shortcut" ];then	#start by the app shortcut
+			app_package_name=$3
+		fi
+		if [ -z "$app_package_name" ];then
+			app_package_name="openfde"
+		fi
+		if [ ! -e /var/log/fde.log ];then
+			fde_fs -logrotate
+		fi
 		if [ "$XDG_SESSION_TYPE" = "wayland" ];then
 			fde_ctrl -m shared  -a $app_package_name 1>/dev/null 2>&1
 		else
-			zenity --error --text="FDE is not supported by X11 on $ID , only wayland supported" --width=350 2>/dev/null &
-			exit 1
-		fi
-	else
-		export FDE_USE_X11="yes"
-		if [ "$2" = "shortcut" ];then	#start by the app shortcut
-			fde_ctrl -m shell -n  -a $app_package_name 1>/dev/null 2>&1
-		else
-			fde_ctrl -m shell -a $app_package_name 1>/dev/null 2>&1
-		fi
-		retcode=$?
-		if [ $retcode -eq $return_code_great_than_65535 ];then
-			if [ -e /usr/bin/zenity ];then
-				zenity --error --text="FDE is exited due to the pid maximum was set to great than 65535" --width=350 2>/dev/null &
+			export FDE_USE_X11="yes"
+			if [ "$2" = "shortcut" ];then	#start by the app shortcut
+				fde_ctrl -m shell -n  -a $app_package_name 1>/dev/null 2>&1
+			else
+				fde_ctrl -m shell -a $app_package_name 1>/dev/null 2>&1
 			fi
+			retcode=$?
+			if [ $retcode -eq $return_code_great_than_65535 ];then
+				if [ -e /usr/bin/zenity ];then
+					zenity --error --text="FDE is exited due to the pid maximum was set to great than 65535" --width=350 2>/dev/null &
+				fi
+			fi
+			exit $retcode
 		fi
-		exit $retcode
-	fi
-    ;;
-    "status"|"android_status")
+	;;
+	"status"|"android_status")
 		status_process "$1"
-    ;;
-    "screenshot")
-        waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
-        if [ $? = 0 ];then
-            exit $return_code_stopped
-        fi
-        echo "screencap -j " |waydroid shell  2>/dev/null
-    ;;
-    "stop")
-        waydroid session stop 1>/dev/null 2>&1
-    ;;
-    "get_window")
+	;;
+	"screenshot")
+		waydroid status |grep Session -w |grep -w "STOPPED" 1>/dev/null 2>&1
+		if [ $? = 0 ];then
+				exit $return_code_stopped
+		fi
+		echo "screencap -j " |waydroid shell  2>/dev/null
+	;;
+	"stop")
+		waydroid session stop 1>/dev/null 2>&1
+		fde_fs -u 1>/dev/null 2>&1
+		fde_fs -pu 1>/dev/null 2>&1
+		pid=`ps -ef |grep fde_ctrl |grep -v grep |awk -F " " '{print $2}' |tr  -d ' ' `
+		if [ -n "$pid" ];then
+			kill -15 $pid
+		fi
+	;;
+	"get_window")
 		window=`wmctrl -l 2>/dev/null |grep "Openfde" |awk -F " " '{print $1}' |tr -d " "`
 		if [ $? != 0 ];then
 			exit $return_code_stopped
 		fi
 		echo $window
 		exit 0
-    ;;
+	;;
 	"get_desktop")
 		nofDesktop=`wmctrl -l 2>/dev/null |grep "Openfde" |awk -F " " '{print $2}' |tr -d " "`
 		if [ $? != 0 ];then
@@ -255,8 +270,8 @@ case $1 in
 		fi
 		echo $nofDesktop
 		exit 0
-    ;;
-    	"notify")
+	;;
+	"notify")
 		notify_process $@
 	;;
 	"list"|"remove"|"install"|"app_stop")

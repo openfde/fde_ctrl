@@ -5,12 +5,17 @@ import (
 	"errors"
 	"fde_ctrl/logger"
 	"os"
+	"os/exec"
+	"strconv"
 	"reflect"
 	"unsafe"
+	"fmt"
 
 	"github.com/BurntSushi/xgb"
+	"github.com/BurntSushi/xgb/randr"
 	"github.com/BurntSushi/xgb/render"
 	"github.com/BurntSushi/xgb/shm"
+	"github.com/BurntSushi/xgb/xinerama"
 	"github.com/BurntSushi/xgb/xproto"
 
 	"image"
@@ -27,6 +32,19 @@ import "C"
 
 func F64ToFixed(f float64) render.Fixed { return render.Fixed(f * 65536) }
 func FixedToF64(f render.Fixed) float64 { return float64(f) / 65536 }
+
+func setDensity(density int){
+	cmd := exec.Command("fde_fs", "-density", strconv.Itoa(density))
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		logger.Error("set density failed", map[string]interface{}{
+			"density": density,
+			"output":  string(output),
+		}, err)
+	} else {
+	    logger.Warn("set density %d success\n", density)
+	}
+}
 
 var formats = map[byte]struct {
 	format    render.Directformat
@@ -108,14 +126,88 @@ func Show() {
 		return
 	}
 
+	// 初始化 RandR（用于获取主显示器）
+	randrSupported := false
+	if err := randr.Init(X); err == nil {
+		randrSupported = true
+	} else {
+		logger.Warn("randr_init_failed", err)
+	}
+
+	// 初始化 Xinerama（后备方案）
+	xineramaSupported := false
+	if err := xinerama.Init(X); err == nil {
+		xineramaSupported = true
+	} else {
+		logger.Warn("xinerama_init_failed", err)
+	}
+
 	setup := xproto.Setup(X)
 	screen := setup.DefaultScreen(X)
 
+	// 默认使用根窗口尺寸（单屏或降级）
 	screenWidth := screen.WidthInPixels
 	screenHeight := screen.HeightInPixels
+	var screenX, screenY int16 = 0, 0
+
+	// --- 优先使用 RandR 获取主显示器 ---
+	if randrSupported {
+		root := screen.Root
+		resources, err := randr.GetScreenResources(X, root).Reply()
+		if err != nil {
+			logger.Warn("randr_get_screen_resources_failed", err)
+		} else {
+			primary, err := randr.GetOutputPrimary(X, root).Reply()
+			if err != nil {
+				logger.Warn("randr_get_output_primary_failed", err)
+			} else {
+				for _, output := range resources.Outputs {
+					if output == primary.Output {
+						oinfo, err := randr.GetOutputInfo(X, output, 0).Reply()
+						if err != nil || oinfo.Crtc == 0 {
+							continue
+						}
+						cinfo, err := randr.GetCrtcInfo(X, oinfo.Crtc, 0).Reply()
+						if err != nil {
+							continue
+						}
+						screenX = int16(cinfo.X)
+						screenY = int16(cinfo.Y)
+						screenWidth = uint16(cinfo.Width)
+						screenHeight = uint16(cinfo.Height)
+						logger.Info("using_primary_screen_from_randr", map[string]interface{}{
+							"x": screenX, "y": screenY, "w": screenWidth, "h": screenHeight,
+						})
+						break
+					}
+				}
+			}
+		}
+	}
+
+	// --- 如果 RandR 未能获取主显示器，则回退到 Xinerama 的第一个屏幕 ---
+	if (screenWidth == 0 || screenHeight == 0) && xineramaSupported {
+		reply, err := xinerama.QueryScreens(X).Reply()
+		if err == nil && len(reply.ScreenInfo) >= 1 {
+			target := reply.ScreenInfo[0] // 第一个屏幕
+			screenWidth = target.Width
+			screenHeight = target.Height
+			screenX = target.XOrg
+			screenY = target.YOrg
+			logger.Info("using_first_screen_from_xinerama", map[string]interface{}{
+				"x": screenX, "y": screenY, "w": screenWidth, "h": screenHeight,
+			})
+		} else {
+			logger.Warn("xinerama_query_failed", err)
+		}
+	}
+
+	// 如果仍然没有有效尺寸，保留根窗口尺寸（已在上面设置）
+	// 此时 screenX, screenY 均为 0
+	screenWidthGlobal, screenHeightGlobal = screenWidth, screenHeight
+
 	var sRGBBackgroundOfLogo color.RGBA = color.RGBA{61, 60, 54, 255}
 	img = CenterTileImage(img, int(screenWidth), int(screenHeight), sRGBBackgroundOfLogo)
-	bounds1 := img.Bounds()
 
 	visual, depth := screen.RootVisual, screen.RootDepth
 
@@ -135,7 +227,7 @@ Depths:
 			if v.Class != xproto.VisualClassTrueColor {
 				continue
 			}
-			if i.Depth == 32 || i.Depth == 30 && prefer30 {
+			if i.Depth == 32 || (i.Depth == 30 && prefer30) {
 				visual, depth = v.VisualId, i.Depth
 				if !prefer30 || i.Depth == 30 {
 					break Depths
@@ -166,17 +258,19 @@ Depths:
 		return
 	}
 
-	// 计算居中位置
-	windowWidth := uint16(bounds1.Dx())
-	windowHeight := uint16(bounds1.Dy())
-	centerX := int16((screenWidth - windowWidth) / 2)
-	centerY := int16((screenHeight - windowHeight) / 2)
+	windowWidth := uint16(screenWidth)
+	windowHeight := uint16(screenHeight)
+	windowX := screenX
+	windowY := screenY
 
-	// Border pixel and colormap are required when depth differs from parent.
+	// 背景色改为不透明黑色
+	backPixel := format.transform(color.RGBA{0, 0, 0, 255})
+
 	_ = xproto.CreateWindow(X, depth, wid, screen.Root,
-		centerX, centerY, windowWidth, windowHeight, 0, xproto.WindowClassInputOutput,
-		visual, xproto.CwBackPixel|xproto.CwBorderPixel|xproto.CwEventMask|
-			xproto.CwColormap, []uint32{format.transform(color.Alpha{0x80}), 0,
+		windowX, windowY, windowWidth, windowHeight, 0,
+		xproto.WindowClassInputOutput, visual,
+		xproto.CwBackPixel|xproto.CwBorderPixel|xproto.CwEventMask|xproto.CwColormap,
+		[]uint32{backPixel, 0,
 			xproto.EventMaskStructureNotify | xproto.EventMaskExposure,
 			uint32(mid)})
 
@@ -192,17 +286,26 @@ Depths:
 			xproto.AtomAtom, 32, 1, (*[4]byte)(unsafe.Pointer(&wmWindowTypeNormalReply.Atom))[:])
 	}
 
-	// 设置窗口跳过任务栏
+	// 准备窗口状态原子列表（用于 _NET_WM_STATE）
 	wmState := xproto.InternAtom(X, false, uint16(len("_NET_WM_STATE")), "_NET_WM_STATE")
-	wmStateSkipTaskbar := xproto.InternAtom(X, false, uint16(len("_NET_WM_STATE_SKIP_TASKBAR")), "_NET_WM_STATE_SKIP_TASKBAR")
-
 	wmStateReply, _ := wmState.Reply()
-	wmStateSkipTaskbarReply, _ := wmStateSkipTaskbar.Reply()
 
 	var stateAtoms []uint32
+
+	// 设置跳过任务栏
+	wmStateSkipTaskbar := xproto.InternAtom(X, false, uint16(len("_NET_WM_STATE_SKIP_TASKBAR")), "_NET_WM_STATE_SKIP_TASKBAR")
+	wmStateSkipTaskbarReply, _ := wmStateSkipTaskbar.Reply()
 	if wmStateSkipTaskbarReply != nil {
 		stateAtoms = append(stateAtoms, uint32(wmStateSkipTaskbarReply.Atom))
 	}
+
+	// 设置全屏
+	wmStateFullscreen := xproto.InternAtom(X, false, uint16(len("_NET_WM_STATE_FULLSCREEN")), "_NET_WM_STATE_FULLSCREEN")
+	wmStateFullscreenReply, _ := wmStateFullscreen.Reply()
+	if wmStateFullscreenReply != nil {
+		stateAtoms = append(stateAtoms, uint32(wmStateFullscreenReply.Atom))
+	}
+
 	if wmStateReply != nil && len(stateAtoms) > 0 {
 		// Convert []uint32 to []byte for ChangeProperty
 		buf := make([]byte, 4*len(stateAtoms))
@@ -228,21 +331,7 @@ Depths:
 			xproto.AtomCardinal, 32, uint32(len(motifHints)), buf)
 	}
 
-	// 设置窗口全屏
-	wmStateFullscreen := xproto.InternAtom(X, false, uint16(len("_NET_WM_STATE_FULLSCREEN")), "_NET_WM_STATE_FULLSCREEN")
-	wmStateFullscreenReply, _ := wmStateFullscreen.Reply()
-	if wmStateReply != nil && wmStateFullscreenReply != nil {
-		_ = xproto.ChangeProperty(X, xproto.PropModeAppend, wid, wmStateReply.Atom,
-			xproto.AtomAtom, 32, 1, (*[4]byte)(unsafe.Pointer(&wmStateFullscreenReply.Atom))[:])
-	}
-
-	pformats, err := render.QueryPictFormats(X).Reply()
-	if err != nil {
-		logger.Error("query_pict_formats", nil, err)
-		return
-	}
-
-	// Set legacy WM_NAME and _NET_WM_NAME to "openfde.background".
+	// 设置窗口名称
 	wmNameAtom := xproto.InternAtom(X, false, uint16(len("WM_NAME")), "WM_NAME")
 	netWmNameAtom := xproto.InternAtom(X, false, uint16(len("_NET_WM_NAME")), "_NET_WM_NAME")
 	utf8Atom := xproto.InternAtom(X, false, uint16(len("UTF8_STRING")), "UTF8_STRING")
@@ -263,8 +352,13 @@ Depths:
 
 	_ = xproto.MapWindow(X, wid)
 
-	// Similar to XRenderFindVisualFormat.
-	// The DefaultScreen is almost certain to be zero.
+	pformats, err := render.QueryPictFormats(X).Reply()
+	if err != nil {
+		logger.Error("query_pict_formats", nil, err)
+		return
+	}
+
+	// 查找与 visual 匹配的 PictFormat
 	var pformat render.Pictformat
 	for _, pd := range pformats.Screens[X.DefaultScreen].Depths {
 		// This check seems to be slightly extraneous.
@@ -418,7 +512,8 @@ Depths:
 			0 /* SendEvent */, segid, 0 /* Offset */)
 	}
 
-	var scale float64 = 1
+	// 用于存储窗口当前尺寸（缓存，在 Expose 中也会实时获取）
+	var winWidth, winHeight uint16 = windowWidth, windowHeight
 
 	go func() {
 		logoShowedx11 = true
@@ -452,11 +547,13 @@ Depths:
 			return
 
 		case xproto.ConfigureNotifyEvent:
-			w, h := e.Width, e.Height
+			// 更新窗口尺寸
+			winWidth, winHeight = e.Width, e.Height
 
-			scaleX := float64(bounds.Dx()) / float64(w)
-			scaleY := float64(bounds.Dy()) / float64(h)
-
+			// 计算缩放比例，使图片等比例适应窗口（可能裁剪）
+			scaleX := float64(bounds.Dx()) / float64(winWidth)
+			scaleY := float64(bounds.Dy()) / float64(winHeight)
+			var scale float64
 			if scaleX < scaleY {
 				scale = scaleY
 			} else {
@@ -464,28 +561,44 @@ Depths:
 			}
 
 			_ = render.SetPictureTransform(X, pixpicid, render.Transform{
-				F64ToFixed(scale), F64ToFixed(0), F64ToFixed(0),
-				F64ToFixed(0), F64ToFixed(scale), F64ToFixed(0),
-				F64ToFixed(0), F64ToFixed(0), F64ToFixed(1),
+				F64ToFixed(scale), 0, 0,
+				0, F64ToFixed(scale), 0,
+				0, 0, F64ToFixed(1),
 			})
 			_ = render.SetPictureFilter(X, pixpicid, 8, "bilinear", nil)
 
 		case xproto.ExposeEvent:
+			// 实时获取窗口当前尺寸（确保绘制覆盖全窗口）
+			geom, err := xproto.GetGeometry(X, xproto.Drawable(wid)).Reply()
+			if err != nil {
+				logger.Warn("get_geometry_failed", err)
+				// 失败时回退到缓存的尺寸
+			} else {
+				winWidth, winHeight = geom.Width, geom.Height
+			}
+
 			_ = render.Composite(X, render.PictOpSrc,
 				pixpicid, render.PictureNone, pid,
-				0, 0, 0, 0, 0 /* dst-x */, 0, /* dst-y */
-				uint16(float64(img.Bounds().Dx())/scale),
-				uint16(float64(img.Bounds().Dy())/scale))
+				0, 0, 0, 0, 0, 0,
+				winWidth, winHeight)
 		}
 	}
 }
 
 var done = make(chan struct{})
 var logoShowedx11 = false
+var screenWidthGlobal   uint16
+var screenHeightGlobal  uint16
 
 func Disappear() {
 	if logoShowedx11 == false {
 		return
+	}
+	logger.Warn(fmt.Sprintf("screen size: %dx%d", screenWidthGlobal, screenHeightGlobal), nil)
+	if screenWidthGlobal <= 1920 {
+		setDensity(160)
+	} else {
+		setDensity(256)
 	}
 	// 检查当前环境是否为 X11
 	sessionType := os.Getenv("XDG_SESSION_TYPE")

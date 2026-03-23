@@ -2,6 +2,7 @@ package logger
 
 import (
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -13,9 +14,20 @@ type StandardLogger struct {
 	*logrus.Logger
 }
 
-var (
+var Logger *StandardLogger
+var logFile = "/var/log/fde.log"
+
+func Logrotate() {
+	// Check log file exists, if not exist, create it by logrotating
+	_, err := os.Stat(logFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			//  create it by logrotating
+			exec.Command("fde_fs", "-logrotate").Run()
+		}
+	}
 	Logger = NewLogger() //Logger New logger by loggerSentry and loggerLine
-)
+}
 
 func Init() *StandardLogger {
 	var baseLogger = logrus.New()
@@ -44,7 +56,7 @@ func Init() *StandardLogger {
 // NewLogger New logger by  loggerLine
 func NewLogger() *StandardLogger {
 	standard := Init()
-	logName := os.Getenv("LOG_FILE")
+	logName := logFile
 	if len(logName) != 0 {
 		file, err := os.OpenFile(logName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {

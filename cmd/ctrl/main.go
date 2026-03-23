@@ -6,9 +6,6 @@ package main
 
 import (
 	"context"
-	"path/filepath"
-	"syscall"
-	"os/signal"
 	"fde_ctrl/conf"
 	"fde_ctrl/controller"
 	"fde_ctrl/controller/middleware"
@@ -25,6 +22,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
 
 	"os/exec"
 
@@ -65,6 +65,22 @@ func parseArgs() (mode, app, msg string, snavi, return_directly bool) {
 const errnoPidMaxOutOfLimit = 10
 const errnoAlreadyRunning = 17
 
+type StatusNotify struct {
+	*controller.AppNotify
+}
+
+func (impl *StatusNotify) Init() {
+	impl.AppNotify = &controller.AppNotify{}
+	impl.AppNotify.Init()
+}
+
+func (impl StatusNotify) NotifyFDEStatus(status string) {
+	impl.SendDbusMessage(controller.AppNotifyRequestSimple{
+		PackageName: "openfde",
+		OpCode:      status,
+	})
+}
+
 func main() {
 	var mode, app, msg string
 	var snavi bool
@@ -73,19 +89,8 @@ func main() {
 		return
 	}
 
-	// Check log file size and rotate if necessary
-	logFile := "/var/log/fde.log"
-	stat, err := os.Stat(logFile)
-	if err == nil {
-		// 300MB = 300 * 1024 * 1024 bytes
-		if stat.Size() > 300*1024*1024 {
-			err := exec.Command("fde_fs", "-logrotate").Run()
-			if err != nil {
-				logger.Error("logrotate_in_main", nil, err)
-			}
-		}
-	}
-
+	logger.Logrotate()
+	exec.Command("fde_fs", "-s").Run()
 	if len(msg) != 0 {
 		err := tools.SendDbusMessage(msg)
 		if err != nil {
@@ -111,45 +116,10 @@ func main() {
 		logger.Error("get_home_dir_failed", homeDir, err)
 		os.Exit(1)
 	}
-	unixSock := filepath.Join(homeDir,".local/fde_ctrl.sock")
-       sigCh := make(chan os.Signal, 1)
-       signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-       go func() {
-               <-sigCh
-               logger.Info("sigterm_received", "rm fde_ctrl.sock")
-               if err := os.Remove(unixSock); err != nil {
-		       if !os.IsNotExist(err) {  // 文件不存在不算错误
-			    logger.Error("sig_handler_rm_fde_sock_failed", nil, err)
-			}
-               }
-               os.Exit(0)
-       }()
-	if _, err := os.Stat(unixSock); err == nil {
-		// socket 文件存在，尝试连接
-		conn, err := net.Dial("unix", unixSock)
-		if err == nil {
-			// 能连通，说明已有进程在运行
-			conn.Close()
-			logger.Error("singleton_check", nil, fmt.Errorf("another instance is already running"))
-			os.Exit(1)
-		} else {
-			// socket 文件存在但无法连接，可能是上次异常退出，尝试删除
-			err = os.Remove(unixSock)
-			if err != nil {
-				logger.Error("sock_remove_failed",nil ,err)
-			}
-		}
-	}
-	// 主进程启动时监听 unix socket，生命周期内保持 socket 文件存在
-	l, err := net.Listen("unix", unixSock)
-	if err != nil {
-		logger.Error("singleton_listen", nil, err)
-		os.Exit(errnoAlreadyRunning)
-	}
-	defer func() {
-		l.Close()
-		os.Remove(unixSock)
-	}()
+	var statusNotify StatusNotify
+	statusNotify.Init()
+	statusNotify.NotifyFDEStatus("start")
+	defer statusNotify.NotifyFDEStatus("stop")
 
 	currentVersion, path, err := controller.VersionConfRead()
 	if err != nil {
@@ -257,25 +227,32 @@ func main() {
 		case <-mainCtx.Done():
 			{
 				logger.Info("context_done", "exit due to unexpected canceled context")
-				exitFde(configure, cmds)
+				exitFde(configure, cmds, statusNotify.AppNotify)
 				return
 			}
 		case action := <-process_chan.ProcessChan:
 			{
-				exitFde(configure, cmds)
+				exitFde(configure, cmds, statusNotify.AppNotify)
 				switch action {
 				case process_chan.Restart:
 					{
 						logger.Info("restart", "exit due to some one send restart signal")
 						var cmd *exec.Cmd
 						if mode != string(windows_manager.DESKTOP_MODE_ENVIRONMENT) {
-							cmd = exec.Command("fde_utils restart &")
+							cmdApp := exec.Command("/usr/bin/fde_utils", "restart")
+							cmdApp.SysProcAttr = &syscall.SysProcAttr{
+								Setsid: true,
+							}
+							cmdApp.Start()
+							go func() {
+								cmdApp.Wait()
+							}()
 						} else {
 							cmd = exec.Command("reboot")
-						}
-						err = cmd.Run()
-						if err != nil {
-							logger.Error("restart_failed", nil, err)
+							err = cmd.Run()
+							if err != nil {
+								logger.Error("restart_failed", nil, err)
+							}
 						}
 						return
 					}
@@ -313,7 +290,14 @@ func main() {
 		logger.Error("main_ctx_error", nil, mainCtx.Err())
 	}
 }
-func exitFde(configure conf.Configure, cmds []*exec.Cmd) {
+func exitFde(configure conf.Configure, cmds []*exec.Cmd, appNotify *controller.AppNotify) {
+	if appNotify != nil {
+		simpleRequest := controller.AppNotifyRequestSimple{
+			PackageName: "openfde",
+			OpCode:      "stop",
+		}
+		appNotify.SendDbusMessage(simpleRequest)
+	}
 	controller.FsFusingExit()
 	err := exec.Command("fde_fs", "-u").Run()
 	if err != nil {
