@@ -6,6 +6,7 @@ import (
 	"fde_ctrl/logger"
 	"fde_ctrl/process_chan"
 	"fde_ctrl/response"
+	"fde_ctrl/conf"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,7 +19,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-ini/ini"
 )
 
 type VersionController struct {
@@ -235,7 +235,7 @@ func IsFdeInstallRunning() (bool, error) {
 }
 
 func ExecuteVersionUpdateScript(debFile string) error {
-	if st, err := os.Stat(debFile); err == nil {
+	if _, err := os.Stat(debFile); err == nil {
 		logger.Info("deb_file_exist", fmt.Sprintf("deb file: %s exist, start to update", debFile))
 		bashfile, err := constructVersionUpdateScript(debFile)
 		if err != nil {
@@ -298,6 +298,7 @@ func ExecuteVersionUpdateScript(debFile string) error {
 			// the update process will do the rest of work, including install and restart.
 		}
 	}
+	return  nil
 }
 
 func constructVersionUpdateScript(path string) (string, error) {
