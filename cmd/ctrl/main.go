@@ -35,25 +35,15 @@ var _version_ = "v0.1"
 var _tag_ = "v0.1"
 var _date_ = "20230101"
 
-func parseArgs() (mode, app, msg string, snavi, return_directly bool) {
+func parseArgs() (mode, app, msg string, snavi, return_directly, showlogo bool) {
 	var version, help bool
 	flag.BoolVar(&version, "v", false, "-v")
-	flag.BoolVar(&help, "h", false, "-h")
+	flag.BoolVar(&showlogo, "show", false, "-showlogo")
 	flag.BoolVar(&snavi, "n", false, "-n")
 	flag.StringVar(&mode, "m", string(windows_manager.DESKTOP_MODE_ENVIRONMENT), "-m")
 	flag.StringVar(&app, "a", string("openfde"), "-a")
 	flag.StringVar(&msg, "msg", "", "-msg {json string}")
 	flag.Parse()
-	if help {
-		fmt.Println("fde_ctrl:")
-		fmt.Println("\t-v: print versions and tags")
-		fmt.Println("\t-h: print help")
-		fmt.Println("\t-n: start navi")
-		fmt.Println("\t-m: input the running mode[shell|environment|shared]")
-		fmt.Println("\t -msg: input a json string to notify by use dbus ")
-		return_directly = true
-		return
-	}
 	if version {
 		fmt.Printf("Version: %s, tag: %s , date: %s \n", _version_, _tag_, _date_)
 		return_directly = true
@@ -84,8 +74,14 @@ func (impl StatusNotify) NotifyFDEStatus(status string) {
 func main() {
 	var mode, app, msg string
 	var snavi bool
-	var return_directly bool
-	if mode, app, msg, snavi, return_directly = parseArgs(); return_directly {
+	var return_directly, showlogo bool
+	if mode, app, msg, snavi, return_directly, showlogo = parseArgs(); return_directly {
+		return
+	}
+	if showlogo {
+		os.Setenv("OPENFDE_INSTALL_TEST", "1")
+		logo.Show()
+		//读取安装是否完成的标志文件
 		return
 	}
 
@@ -114,6 +110,14 @@ func main() {
 			if err != nil {
 				logger.Error("execute_update_script_failed", "should start fde directly", err)
 			} else {
+				if err := exec.Command("cp", "/usr/bin/fde_ctrl", "/tmp/fde_ctrl").Run(); err != nil {
+					logger.Error("copy_fde_ctrl_to_tmp_failed", nil, err)
+				} else if err := os.Chmod("/tmp/fde_ctrl", 0755); err != nil {
+					logger.Error("chmod_tmp_fde_ctrl_failed", nil, err)
+				}
+				if err := exec.Command("/usr/bin/fde_ctrl", "-showlogo").Run(); err != nil {
+					logger.Error("showlogo_failed", nil, err)
+				}
 				os.Exit(20) //2 means updating process has been started
 			}
 		} else {
