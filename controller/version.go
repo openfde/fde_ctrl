@@ -21,7 +21,6 @@ import (
 	"github.com/go-ini/ini"
 )
 
-
 type VersionController struct {
 }
 
@@ -33,26 +32,6 @@ func (impl VersionController) Setup(rg *gin.RouterGroup) {
 	v1 := rg.Group("/v1")
 	v1.POST("/version/check", impl.versionHandler)
 	v1.POST("/version/update", impl.updateRecordHandler)
-}
-
-
-func VersionCurrentRead() (currentVersion string, err error) {
-	propFile := "/var/lib/waydroid/waydroid.prop"
-	data, err := os.ReadFile(propFile)
-	if err != nil {
-		logger.Warn("read_waydroid_prop_failed", err)
-	} else {
-		lines := string(data)
-		for _, line := range strings.Split(lines, "\n") {
-			if strings.HasPrefix(line, "ro.openfde.version=") {
-				currentVersion = strings.TrimPrefix(line, "ro.openfde.version=")
-				currentVersion = strings.TrimSpace(currentVersion)
-				logger.Info("waydroid_openfde_version", currentVersion)
-				break
-			}
-		}
-	}
-	return
 }
 
 // parseDebianPackages parses RFC822-like "Packages" blocks into a slice of field maps.
@@ -238,7 +217,90 @@ const NetworkError = 5003
 const InstallError = 5001
 const RepoNotFoundError = 5002
 
-func ConstructVersionUpdateScript(path string) (string, error) {
+func IsFdeInstallRunning() (bool, error) {
+	// 匹配命令行里包含 "fde_fs -install" 的进程
+	cmd := exec.Command("pgrep", "-f", "fde_fs -install")
+	out, err := cmd.Output()
+	if err == nil {
+		return strings.TrimSpace(string(out)) != "", nil
+	}
+
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
+		// pgrep 退出码 1 表示未找到进程
+		return false, nil
+	}
+
+	return false, err
+}
+
+func ExecuteVersionUpdateScript(debFile string) error {
+	if st, err := os.Stat(debFile); err == nil {
+		logger.Info("deb_file_exist", fmt.Sprintf("deb file: %s exist, start to update", debFile))
+		bashfile, err := constructVersionUpdateScript(debFile)
+		if err != nil {
+			logger.Error("construct_version_update_script_failed", nil, err)
+			return err
+		} else {
+			cmd := exec.Command(bashfile)
+			cmd.SysProcAttr = &syscall.SysProcAttr{
+				Setsid: true,
+			}
+			debugMode := os.Getenv("fde_debug")
+			var stdout, stderr io.ReadCloser
+			if debugMode == "debug" {
+				stdout, err = cmd.StdoutPipe()
+				if err != nil {
+					logger.Error("stdout pipe for xserver", nil, err)
+					return err
+				}
+				stderr, err = cmd.StderrPipe()
+				if err != nil {
+					logger.Error("stderr pipe for xserver", nil, err)
+					return err
+				}
+			}
+
+			err = cmd.Start()
+			if err != nil {
+				logger.Error("start updating fde failed", nil, err)
+				err = errors.New("start updating fde  failed")
+				return err
+			}
+			if debugMode == "debug" {
+				output, err := io.ReadAll(io.MultiReader(stdout, stderr))
+				if err != nil {
+					logger.Error("read start updating fde failed", nil, err)
+				}
+				logger.Info("debug_updating_fde", output)
+			}
+			timer := time.NewTimer(500 * time.Millisecond)
+			var chWait = make(chan struct{}, 1)
+			go func() {
+				err := cmd.Wait()
+				if err != nil {
+					logger.Error("wait_updating_fde", nil, err)
+					chWait <- struct{}{}
+				}
+			}()
+			select {
+			case <-chWait:
+				{
+					return errors.New("wait updating fde failed")
+				}
+			case <-timer.C:
+				{
+					//after 500ms waitting
+				}
+			}
+			return nil //return nil means the update script has been started successfully,
+			// so the fde_ctrl should exit to let the update process take effect, and
+			// the update process will do the rest of work, including install and restart.
+		}
+	}
+}
+
+func constructVersionUpdateScript(path string) (string, error) {
 	data := []byte("#!/bin/bash\n" +
 		"fde_fs -install -path " + path + " & \n")
 	uid := os.Getuid()

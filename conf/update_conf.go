@@ -7,6 +7,11 @@ import (
 	"github.com/go-ini/ini"
 )
 
+const SectionUpdate = "Update"
+const KeyCurrentVersion = "CurrentVersion"
+const KeyDebFile = "DebFile"
+const KeyUpdatePolicy = "UpdatePolicy"
+
 func WriteUpdatePolicy(currentVersion, debFile, updatePolicy string) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -21,10 +26,10 @@ func WriteUpdatePolicy(currentVersion, debFile, updatePolicy string) error {
 	policyPath := filepath.Join(configDir, "fde_update.policy")
 
 	cfg := ini.Empty()
-	sec := cfg.Section("Update")
-	sec.Key("CurrentVersion").SetValue(currentVersion)
-	sec.Key("DebFile").SetValue(debFile)
-	sec.Key("UpdatePolicy").SetValue(updatePolicy)
+	sec := cfg.Section(SectionUpdate)
+	sec.Key(KeyCurrentVersion).SetValue(currentVersion)
+	sec.Key(KeyDebFile).SetValue(debFile)
+	sec.Key(KeyUpdatePolicy).SetValue(updatePolicy)
 
 	return cfg.SaveTo(policyPath)
 }
@@ -36,44 +41,44 @@ func ReadUpdatePolicy() (currentVersion, debFile, updatePolicy string, err error
 	}
 
 	policyPath := filepath.Join(home, ".config", "fde_update.policy")
+	if _, err := os.Stat(policyPath); os.IsNotExist(err) {
+		return "", "", "", err
+	}
 	cfg, err := ini.Load(policyPath)
 	if err != nil {
 		return "", "", "", err
 	}
 
-	sec := cfg.Section("Update")
-	currentVersion = sec.Key("CurrentVersion").String()
-	debFile = sec.Key("DebFile").String()
-	updatePolicy = sec.Key("UpdatePolicy").String()
+	sec := cfg.Section(SectionUpdate)
+	currentVersion = sec.Key(KeyCurrentVersion).String()
+	debFile = sec.Key(KeyDebFile).String()
+	updatePolicy = sec.Key(KeyUpdatePolicy).String()
 
 	return currentVersion, debFile, updatePolicy, nil
 }
 
-func ReadCurrentVersion() (currentVersion string, err error) {
-	const imagesPy = "/usr/lib/waydroid/tools/helpers/images.py"
-	_, err = os.Stat(imagesPy)
+const FDE_VERSION_UNINSTALLED = "uninstalled"
+
+func VersionCurrentRead() (currentVersion string, err error) {
+	propFile := "/var/lib/waydroid/waydroid.prop"
+	_, err = os.Stat(propFile)
 	if err != nil && os.IsNotExist(err) {
-		return "uninstalled", nil
+		return FDE_VERSION_UNINSTALLED, nil
 	}
-	f, err := os.Open(imagesPy)
+	data, err := os.ReadFile(propFile)
 	if err != nil {
+		logger.Warn("read_waydroid_prop_failed", err)
 		return "", err
-	}
-	defer f.Close()
-
-	// 匹配示例: ro.openfde.version=1.2.3-20260323
-	re := regexp.MustCompile(`ro\.openfde\.version=([0-9A-Za-z._-]+)`)
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
-		m := re.FindStringSubmatch(line)
-		if len(m) == 2 {
-			return m[1], nil
+	} else {
+		lines := string(data)
+		for _, line := range strings.Split(lines, "\n") {
+			if strings.HasPrefix(line, "ro.openfde.version=") {
+				currentVersion = strings.TrimPrefix(line, "ro.openfde.version=")
+				currentVersion = strings.TrimSpace(currentVersion)
+				logger.Info("read_openfde_curr_version", currentVersion)
+				break
+			}
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		return "", err
-	}
-	return "", errors.New("ro.openfde.version not found in images.py")
+	return
 }
