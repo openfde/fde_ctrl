@@ -33,7 +33,7 @@ var _tag_ = "v0.1"
 var _date_ = "20230101"
 
 func parseArgs() (mode, app, msg string, snavi, return_directly, showlogo bool) {
-	var version  bool
+	var version bool
 	flag.BoolVar(&version, "v", false, "-v")
 	flag.BoolVar(&showlogo, "show", false, "-showlogo")
 	flag.BoolVar(&snavi, "n", false, "-n")
@@ -78,7 +78,6 @@ func main() {
 	if showlogo {
 		os.Setenv("OPENFDE_INSTALL_TEST", "1")
 		logo.Show()
-		//读取安装是否完成的标志文件
 		return
 	}
 
@@ -107,11 +106,6 @@ func main() {
 			if err != nil {
 				logger.Error("execute_update_script_failed", "should start fde directly", err)
 			} else {
-				if err := exec.Command("cp", "/usr/bin/fde_ctrl", "/tmp/fde_ctrl").Run(); err != nil {
-					logger.Error("copy_fde_ctrl_to_tmp_failed", nil, err)
-				} else if err := os.Chmod("/tmp/fde_ctrl", 0755); err != nil {
-					logger.Error("chmod_tmp_fde_ctrl_failed", nil, err)
-				}
 				if err := exec.Command("/usr/bin/fde_ctrl", "-showlogo").Run(); err != nil {
 					logger.Error("showlogo_failed", nil, err)
 				}
