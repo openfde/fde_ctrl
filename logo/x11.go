@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"strconv"
 	"unsafe"
-	"time"
 
 	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/randr"
@@ -39,25 +38,6 @@ import "C"
 
 func F64ToFixed(f float64) render.Fixed { return render.Fixed(f * 65536) }
 func FixedToF64(f render.Fixed) float64 { return float64(f) / 65536 }
-
-func uploadImageByRows(X *xgb.Conn, pixid xproto.Pixmap, cid xproto.Gcontext, depth byte, img image.Image, transform func(color.Color) uint32, encoding binary.ByteOrder) {
-	b := img.Bounds()
-	row := make([]byte, b.Dx()*4)
-	for y := b.Min.Y; y < b.Max.Y; y++ {
-		for x := b.Min.X; x < b.Max.X; x++ {
-			encoding.PutUint32(row[(x-b.Min.X)*4:], transform(img.At(x, y)))
-		}
-		_ = xproto.PutImage(X, xproto.ImageFormatZPixmap,
-			xproto.Drawable(pixid), cid, uint16(b.Dx()), 1,
-			0, int16(y-b.Min.Y),
-			0, depth, row)
-	}
-}
-
-func currentInstallingText(start time.Time) string {
-	step := int(time.Since(start)/(500*time.Millisecond))%10 + 1
-	return fmt.Sprintf("installing %d%%", step*10)
-}
 
 func setDensity(density int) {
 	cmd := exec.Command("fde_fs", "-density", strconv.Itoa(density))
@@ -201,9 +181,6 @@ func Show() {
 						screenY = int16(cinfo.Y)
 						screenWidth = uint16(cinfo.Width)
 						screenHeight = uint16(cinfo.Height)
-						logger.Info("using_primary_screen_from_randr", map[string]interface{}{
-							"x": screenX, "y": screenY, "w": screenWidth, "h": screenHeight,
-						})
 						break
 					}
 				}
@@ -234,6 +211,13 @@ func Show() {
 
 	var sRGBBackgroundOfLogo color.RGBA = color.RGBA{61, 60, 54, 255}
 	img = CenterTileImage(img, int(screenWidth), int(screenHeight), sRGBBackgroundOfLogo)
+	if os.Getenv("OPENFDE_INSTALL_TEST") == "1" {
+		fontSize := float64(screenHeight) * 0.06
+		if fontSize < 56 {
+			fontSize = 56
+		}
+		img = drawInstallingText(img, "Upgrading", fontSize)
+	}
 
 	visual, depth := screen.RootVisual, screen.RootDepth
 
@@ -537,11 +521,6 @@ Depths:
 			depth, xproto.ImageFormatZPixmap,
 			0 /* SendEvent */, segid, 0 /* Offset */)
 	}
-	animationEnabled := os.Getenv("OPENFDE_INSTALL_TEST") == "1"
-	animationStart := time.Now()
-	lastFrameAt := time.Time{}
-	lastText := ""
-
 	// 用于存储窗口当前尺寸（缓存，在 Expose 中也会实时获取）
 	var winWidth, winHeight uint16 = windowWidth, windowHeight
 
@@ -560,29 +539,8 @@ Depths:
 			X.Close()
 		}
 	}()
-	var ev xgb.Event
-	var xerr xgb.Error
 	for {
-		if animationEnabled && time.Since(lastFrameAt) >= 500*time.Millisecond {
-			text := currentInstallingText(animationStart)
-			if text != lastText {
-				fontSize := float64(screenHeight) * 0.06
-				if fontSize < 56 {
-					fontSize = 56
-				}
-				frame := drawInstallingText(img, text, fontSize)
-				uploadImageByRows(X, pixid, cid, depth, frame, format.transform, encoding)
-				_ = render.Composite(X, render.PictOpSrc,
-					pixpicid, render.PictureNone, pid,
-					0, 0, 0, 0, 0, 0,
-					winWidth, winHeight)
-				lastText = text
-			}
-			lastFrameAt = time.Now()
-			ev, xerr = X.WaitForEvent()
-		} else {
-			ev, xerr = X.PollForEvent()
-		}
+		ev, xerr := X.WaitForEvent()
 		if xerr != nil {
 			logger.Error("x_event", nil, xerr)
 			return

@@ -78,7 +78,7 @@ func main() {
 	if showlogo {
 		os.Setenv("OPENFDE_INSTALL_TEST", "1")
 		logo.Show()
-		return
+		return 
 	}
 
 	logger.Logrotate()
@@ -91,7 +91,7 @@ func main() {
 		}
 		os.Exit(0)
 	}
-	currentVersionRequest, _, debFile, err := conf.ReadUpdatePolicy()
+	currentVersionRequest, debFile,_, err := conf.ReadUpdatePolicy()
 	if err == nil {
 		currentVersion, _ := conf.VersionCurrentRead()
 		if currentVersion == currentVersionRequest || currentVersion == conf.FDE_VERSION_UNINSTALLED {
