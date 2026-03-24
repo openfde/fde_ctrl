@@ -10,6 +10,7 @@ require (
 	github.com/go-ini/ini v1.67.0
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/sirupsen/logrus v1.9.3
+	golang.org/x/image v0.38.0
 )
 
 require (
@@ -36,7 +37,7 @@ require (
 	golang.org/x/crypto v0.35.0 // indirect
 	golang.org/x/net v0.36.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect

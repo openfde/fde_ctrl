@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strconv"
 	"unsafe"
+	"time"
 
 	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/randr"

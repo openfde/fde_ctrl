@@ -20,10 +20,7 @@ import (
 	"fde_ctrl/windows_manager"
 	"flag"
 	"fmt"
-	"net"
 	"os"
-	"os/signal"
-	"path/filepath"
 	"syscall"
 
 	"os/exec"
@@ -36,7 +33,7 @@ var _tag_ = "v0.1"
 var _date_ = "20230101"
 
 func parseArgs() (mode, app, msg string, snavi, return_directly, showlogo bool) {
-	var version, help bool
+	var version  bool
 	flag.BoolVar(&version, "v", false, "-v")
 	flag.BoolVar(&showlogo, "show", false, "-showlogo")
 	flag.BoolVar(&snavi, "n", false, "-n")
@@ -95,9 +92,9 @@ func main() {
 		}
 		os.Exit(0)
 	}
-	currentVersionRequest, dstVersion, debFile, err := conf.ReadUpdatePolicy()
+	currentVersionRequest, _, debFile, err := conf.ReadUpdatePolicy()
 	if err == nil {
-		currentVersion, err := conf.VersionCurrentRead()
+		currentVersion, _ := conf.VersionCurrentRead()
 		if currentVersion == currentVersionRequest || currentVersion == conf.FDE_VERSION_UNINSTALLED {
 			logger.Info("version_check_passed", fmt.Sprintf("current version: %s, policy version: %s", currentVersion, currentVersionRequest))
 			if status, err := controller.IsFdeInstallRunning(); err == nil {
@@ -147,30 +144,6 @@ func main() {
 	statusNotify.Init()
 	statusNotify.NotifyFDEStatus("start")
 	defer statusNotify.NotifyFDEStatus("stop")
-
-	currentVersion, path, err := controller.VersionConfRead()
-	if err != nil {
-		logger.Error("read_version_conf_failed", nil, err)
-	} else {
-		logger.Info("conf_version_path", fmt.Sprintf("version: %s, path: %s", currentVersion, path))
-		current, err := controller.VersionCurrentRead()
-		if err != nil {
-			logger.Error("read_current_version_failed", nil, err)
-		} else {
-			if currentVersion != current {
-				logger.Warn("curent_mismatch", currentVersion+" "+current)
-				controller.VersionConfRemove()
-			}
-			if _, err := os.Stat(path); err == nil {
-				err := exec.Command("fde_fs", "-install", "-path", path).Run()
-				if err != nil {
-					logger.Error("fde_fs_install_failed", nil, err)
-				} else {
-					controller.VersionConfRemove()
-				}
-			}
-		}
-	}
 
 	configure, err := conf.Read()
 	if err != nil {
