@@ -3,10 +3,10 @@ package controller
 import (
 	"bufio"
 	"errors"
+	"fde_ctrl/conf"
 	"fde_ctrl/logger"
 	"fde_ctrl/process_chan"
 	"fde_ctrl/response"
-	"fde_ctrl/conf"
 	"fmt"
 	"io"
 	"net/http"
@@ -298,7 +298,8 @@ func ExecuteVersionUpdateScript(debFile string) error {
 			// the update process will do the rest of work, including install and restart.
 		}
 	}
-	return  nil
+	logger.Error("deb_file_not_exist", fmt.Sprintf("deb file: %s not exist", debFile), nil)
+	return nil
 }
 
 func constructVersionUpdateScript(path string) (string, error) {
