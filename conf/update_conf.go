@@ -38,11 +38,12 @@ func WriteUpdatePolicy(currentVersion, debFile, updatePolicy string) error {
 func UpdateRemove() error {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", "", "", err
+		return err
 	}
 
 	policyPath := filepath.Join(home, ".config", "fde_update.policy")
 	os.Remove(policyPath)
+	return nil
 }
 
 func ReadUpdatePolicy() (currentVersion, debFile, updatePolicy string, err error) {
