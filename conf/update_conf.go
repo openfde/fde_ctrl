@@ -35,6 +35,15 @@ func WriteUpdatePolicy(currentVersion, debFile, updatePolicy string) error {
 
 	return cfg.SaveTo(policyPath)
 }
+func UpdateRemove() error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", "", "", err
+	}
+
+	policyPath := filepath.Join(home, ".config", "fde_update.policy")
+	os.Remove(policyPath)
+}
 
 func ReadUpdatePolicy() (currentVersion, debFile, updatePolicy string, err error) {
 	home, err := os.UserHomeDir()
