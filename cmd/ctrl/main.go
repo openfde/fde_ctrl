@@ -99,17 +99,28 @@ func main() {
 		}
 		os.Exit(0)
 	}
-	currentVersionf, dstVersion, debFile, updatePolicy := conf.ReadUpdatePolicy()
-	currentVersion, err := conf.ReadCurrentVersion()
-	if currentVersion == currentVersionf || currentVersion == "uninstalled" {
-		logger.Info("version_check_passed", fmt.Sprintf("current version: %s, policy version: %s", currentVersion, currentVersionf))
-		if os.Stat(debFile) == nil {
-			logger.Info("deb_file_exist", fmt.Sprintf("deb file: %s exist, start to update", debFile))
-			controller.ConstructVersionUpdateScript(debFile)
-			os.Exit(0)
+	currentVersionRequest, dstVersion, debFile, err := conf.ReadUpdatePolicy()
+	if err == nil {
+		currentVersion, err := conf.VersionCurrentRead()
+		if currentVersion == currentVersionRequest || currentVersion == conf.FDE_VERSION_UNINSTALLED {
+			logger.Info("version_check_passed", fmt.Sprintf("current version: %s, policy version: %s", currentVersion, currentVersionRequest))
+			if status, err := controller.IsFdeInstallRunning(); err == nil {
+				if status {
+					logger.Info("update_process_already_running", nil)
+					os.Exit(20) //2 means the update process is already running.
+				}
+			}
+			err := controller.ExecuteVersionUpdateScript(debFile)
+			if err != nil {
+				logger.Error("execute_update_script_failed", "should start fde directly", err)
+			} else {
+				os.Exit(20) //2 means updating process has been started
+			}
 		} else {
-			logger.Warn("deb_file_not_exist", fmt.Sprintf("deb file: %s not exist", debFile))
+			logger.Warn("current_version_mismatch", fmt.Sprintf("current version: %s, request version: %s", currentVersion, currentVersionRequest))
 		}
+	} else {
+		logger.Error("read_update_policy_failed", nil, err)
 	}
 
 	if DoCheckPidMax() {
