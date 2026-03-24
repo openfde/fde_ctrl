@@ -106,6 +106,7 @@ func main() {
 			if err != nil {
 				logger.Error("execute_update_script_failed", "should start fde directly", err)
 			} else {
+				conf.UpdateRemove()
 				if err := exec.Command("/usr/bin/fde_ctrl", "-show").Run(); err != nil {
 					logger.Error("showlogo_failed", nil, err)
 				}
