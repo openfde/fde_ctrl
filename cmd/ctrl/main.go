@@ -99,6 +99,18 @@ func main() {
 		}
 		os.Exit(0)
 	}
+	currentVersionf, dstVersion, debFile, updatePolicy := conf.ReadUpdatePolicy()
+	currentVersion, err := conf.ReadCurrentVersion()
+	if currentVersion == currentVersionf || currentVersion == "uninstalled" {
+		logger.Info("version_check_passed", fmt.Sprintf("current version: %s, policy version: %s", currentVersion, currentVersionf))
+		if os.Stat(debFile) == nil {
+			logger.Info("deb_file_exist", fmt.Sprintf("deb file: %s exist, start to update", debFile))
+			controller.ConstructVersionUpdateScript(debFile)
+			os.Exit(0)
+		} else {
+			logger.Warn("deb_file_not_exist", fmt.Sprintf("deb file: %s not exist", debFile))
+		}
+	}
 
 	if DoCheckPidMax() {
 		err := exec.Command("fde_fs", "-pwrite").Run()
@@ -138,7 +150,7 @@ func main() {
 				err := exec.Command("fde_fs", "-install", "-path", path).Run()
 				if err != nil {
 					logger.Error("fde_fs_install_failed", nil, err)
-				}else {
+				} else {
 					controller.VersionConfRemove()
 				}
 			}
