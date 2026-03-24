@@ -34,11 +34,11 @@ var _date_ = "20230101"
 
 func parseArgs() (mode, app, msg string, snavi, return_directly, showlogo bool) {
 	var version bool
-	flag.BoolVar(&version, "v", false, "-v")
-	flag.BoolVar(&showlogo, "show", false, "-showlogo")
-	flag.BoolVar(&snavi, "n", false, "-n")
+	flag.BoolVar(&version, "v", false, "version")
+	flag.BoolVar(&showlogo, "show", false, "show logo")
+	flag.BoolVar(&snavi, "n", false, "start navigation service")
 	flag.StringVar(&mode, "m", string(windows_manager.DESKTOP_MODE_ENVIRONMENT), "-m")
-	flag.StringVar(&app, "a", string("openfde"), "-a")
+	flag.StringVar(&app, "a", string("openfde"), "app name")
 	flag.StringVar(&msg, "msg", "", "-msg {json string}")
 	flag.Parse()
 	if version {
@@ -78,7 +78,7 @@ func main() {
 	if showlogo {
 		os.Setenv("OPENFDE_INSTALL_TEST", "1")
 		logo.Show()
-		return 
+		return
 	}
 
 	logger.Logrotate()
@@ -91,7 +91,7 @@ func main() {
 		}
 		os.Exit(0)
 	}
-	currentVersionRequest, debFile,_, err := conf.ReadUpdatePolicy()
+	currentVersionRequest, debFile, _, err := conf.ReadUpdatePolicy()
 	if err == nil {
 		currentVersion, _ := conf.VersionCurrentRead()
 		if currentVersion == currentVersionRequest || currentVersion == conf.FDE_VERSION_UNINSTALLED {
@@ -106,7 +106,7 @@ func main() {
 			if err != nil {
 				logger.Error("execute_update_script_failed", "should start fde directly", err)
 			} else {
-				if err := exec.Command("/usr/bin/fde_ctrl", "-showlogo").Run(); err != nil {
+				if err := exec.Command("/usr/bin/fde_ctrl", "-show").Run(); err != nil {
 					logger.Error("showlogo_failed", nil, err)
 				}
 				os.Exit(20) //2 means updating process has been started
