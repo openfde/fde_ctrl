@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fde_ctrl/logger"
+	"fde_ctrl/process_chan"
 	"fde_ctrl/response"
 	"fmt"
 	"io"
@@ -20,7 +21,6 @@ import (
 	"github.com/go-ini/ini"
 )
 
-const FDE_VERSION_CONFIG = "/.config/fde_ver.conf"
 
 type VersionController struct {
 }
@@ -35,14 +35,6 @@ func (impl VersionController) Setup(rg *gin.RouterGroup) {
 	v1.POST("/version/update", impl.updateRecordHandler)
 }
 
-func VersionConfRemove() error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		logger.Error("get_home_dir_failed", err, nil)
-	}
-	os.Remove(home + FDE_VERSION_CONFIG)
-	return nil
-}
 
 func VersionCurrentRead() (currentVersion string, err error) {
 	propFile := "/var/lib/waydroid/waydroid.prop"
@@ -60,23 +52,6 @@ func VersionCurrentRead() (currentVersion string, err error) {
 			}
 		}
 	}
-	return
-}
-
-func VersionConfRead() (currentVersion string, path string, err error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		logger.Error("get_home_dir_failed", err, nil)
-		return
-	}
-	confPath := home + "/.config/fde_ver.conf"
-	cfg, err := ini.Load(confPath)
-	if err != nil {
-		logger.Error("load_version_config_failed", err, nil)
-		return
-	}
-	currentVersion = cfg.Section("").Key("CurrentVersion").String()
-	path = cfg.Section("").Key("Path").String()
 	return
 }
 
@@ -263,7 +238,7 @@ const NetworkError = 5003
 const InstallError = 5001
 const RepoNotFoundError = 5002
 
-func constructVersionUpdateScript(path string) (string, error) {
+func ConstructVersionUpdateScript(path string) (string, error) {
 	data := []byte("#!/bin/bash\n" +
 		"fde_fs -install -path " + path + " & \n")
 	uid := os.Getuid()
@@ -291,68 +266,9 @@ func (impl VersionController) updateRecordHandler(c *gin.Context) {
 		response.ResponseParamterError(c, err)
 		return
 	}
+	conf.WriteUpdatePolicy(request.CurrentVersion, request.Path, request.Policy)
 	if request.Policy == PolicyImmediate {
-		filePath, err := constructVersionUpdateScript(request.Path)
-		if err != nil {
-			response.ResponseCodeError(c, http.StatusInternalServerError, InstallError, errors.New("Failed to construct update script"))
-			return
-		}
-		cmdApp := exec.Command(filePath)
-		cmdApp.SysProcAttr = &syscall.SysProcAttr{
-			Setsid: true,
-		}
-		var stdout, stderr io.ReadCloser
-		stdout, err = cmdApp.StdoutPipe()
-		if err != nil {
-			logger.Error("stdout pipe for xserver", nil, err)
-			return
-		}
-		stderr, err = cmdApp.StderrPipe()
-		if err != nil {
-			logger.Error("stdout pipe for xserver", nil, err)
-			return
-		}
-		err = cmdApp.Start()
-		if err != nil {
-			logger.Error("start_installing_deb_failed", "deb", err)
-			err = errors.New("start installing deb  failed")
-			response.ResponseCodeError(c, http.StatusInternalServerError, InstallError, err)
-			return
-		}
-		logger.Error("update_version_stdout", stdout, nil)
-		logger.Error("update_version_stderr", stderr, nil)
-		response.Response(c, request)
-		return
-	}
-
-	home, err := os.UserHomeDir()
-	if err != nil {
-		logger.Error("get_home_dir_failed", err, nil)
-		response.ResponseError(c, http.StatusInternalServerError, errors.New("failed to get home directory"))
-		return
-	}
-	confPath := home + "/.config/fde_ver.conf"
-	err = os.MkdirAll(home+"/.config", 0700)
-	if err != nil {
-		logger.Error("mkdir_config_failed", err, nil)
-		response.ResponseError(c, http.StatusInternalServerError, errors.New("failed to create config directory"))
-		return
-	}
-	f, err := os.OpenFile(confPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
-	if err != nil {
-		logger.Error("open_config_failed", err, nil)
-		response.ResponseError(c, http.StatusInternalServerError, errors.New("failed to open config file"))
-		return
-	}
-	defer f.Close()
-	cfg := ini.Empty()
-	cfg.Section("").Key("CurrentVersion").SetValue(request.CurrentVersion)
-	cfg.Section("").Key("Path").SetValue(request.Path)
-	err = cfg.SaveTo(confPath)
-	if err != nil {
-		logger.Error("ini_save_failed", err, nil)
-		response.ResponseError(c, http.StatusInternalServerError, errors.New("failed to save config file"))
-		return
+		process_chan.SendRestart()
 	}
 	response.Response(c, request)
 }
