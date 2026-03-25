@@ -93,6 +93,13 @@ var formats = map[byte]struct {
 	},
 }
 
+const ENV_OPENFDE_UPGRADING = "OPENFDE_UPGRADING"
+
+
+func SetUpgrading() {
+	os.Setenv(ENV_OPENFDE_UPGRADING, "1")
+}
+
 func Show() {
 	// 检查当前环境是否为 X11
 	sessionType := os.Getenv("XDG_SESSION_TYPE")
@@ -211,7 +218,7 @@ func Show() {
 
 	var sRGBBackgroundOfLogo color.RGBA = color.RGBA{61, 60, 54, 255}
 	img = CenterTileImage(img, int(screenWidth), int(screenHeight), sRGBBackgroundOfLogo)
-	if os.Getenv("OPENFDE_INSTALL_TEST") == "1" {
+	if os.Getenv(ENV_OPENFDE_UPGRADING) == "1" {
 		fontSize := float64(screenHeight) * 0.06
 		if fontSize < 56 {
 			fontSize = 56
