@@ -367,7 +367,6 @@ func (impl VersionController) versionHandler(c *gin.Context) {
 					arch = a[1]
 				}
 				repoURL = m[2]
-				if strings.Contain(repoURL, "") {
 				release = m[3]
 				break
 			}
