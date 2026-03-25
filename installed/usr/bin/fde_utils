@@ -208,6 +208,9 @@ case $1 in
 		else
 			fde_utils stop 1>/dev/null 2>&1
 		fi
+		#fde_utils start shortcut is used by fde_shortcut
+		#fde_utils start is used on terminal by manual 
+		#fde_utils start app_package_name is used by fde_launch
 		app_package_name=$2
 		if [ "$2" = "shortcut" ];then	#start by the app shortcut
 			app_package_name=$3
@@ -218,14 +221,15 @@ case $1 in
 		if [ ! -e /var/log/fde.log ];then
 			fde_fs -logrotate
 		fi
-		if [ "$XDG_SESSION_TYPE" = "wayland" ];then
+		if [ "$XDG_SESSION_TYPE" = "wayland" ];then 
+		#wayland mode ignores shortcut mode because wayland does not support global shortcut
 			fde_ctrl -m shared  -a $app_package_name 1>/dev/null 2>&1
 		else
 			export FDE_USE_X11="yes"
 			if [ "$2" = "shortcut" ];then	#start by the app shortcut
-				fde_ctrl -m shell -n  -a $app_package_name 1>/dev/null 2>&1
+				fde_ctrl -m shell -n  -a $app_package_name 1>/dev/null 2>&1  #shortcut mode need to start the navigation process 
 			else
-				fde_ctrl -m shell -a $app_package_name 1>/dev/null 2>&1
+				fde_ctrl -m shell  -a $app_package_name 1>/dev/null 2>&1 
 			fi
 			retcode=$?
 			if [ $retcode -eq $return_code_great_than_65535 ];then

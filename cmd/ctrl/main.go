@@ -70,13 +70,12 @@ func (impl StatusNotify) NotifyFDEStatus(status string) {
 
 func main() {
 	var mode, app, msg string
-	var snavi bool
-	var return_directly, showlogo bool
+	var snavi ,return_directly, showlogo bool
 	if mode, app, msg, snavi, return_directly, showlogo = parseArgs(); return_directly {
 		return
 	}
 	if showlogo {
-		os.Setenv("OPENFDE_INSTALL_TEST", "1")
+		logo.SetUpgrading()
 		logo.Show()
 		return
 	}
@@ -99,7 +98,7 @@ func main() {
 			if status, err := controller.IsFdeInstallRunning(); err == nil {
 				if status {
 					logger.Info("update_process_already_running", nil)
-					os.Exit(20) //2 means the update process is already running.
+					os.Exit(21) //21 means the update process is already running.
 				}
 			}
 			err := controller.ExecuteVersionUpdateScript(debFile)
@@ -110,7 +109,7 @@ func main() {
 				if err := exec.Command("/usr/bin/fde_ctrl", "-show").Run(); err != nil {
 					logger.Error("showlogo_failed", nil, err)
 				}
-				os.Exit(20) //2 means updating process has been started
+				os.Exit(20) //20 means updating process has been started
 			}
 		} else {
 			logger.Warn("current_version_mismatch", fmt.Sprintf("current version: %s, request version: %s", currentVersion, currentVersionRequest))
