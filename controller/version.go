@@ -367,6 +367,7 @@ func (impl VersionController) versionHandler(c *gin.Context) {
 					arch = a[1]
 				}
 				repoURL = m[2]
+				if strings.Contain(repoURL, "") {
 				release = m[3]
 				break
 			}
@@ -404,7 +405,15 @@ func (impl VersionController) versionHandler(c *gin.Context) {
 				return
 			}
 			if v := strings.TrimSpace(request.Version); v != "" {
-				cmp := compareVersions(v, best["Version"])
+				repoVersion := best["Version"]
+				repoVersion = regexp.MustCompile(`[a-zA-Z]+[0-9]*$`).ReplaceAllString(repoVersion, "")
+				cmp := compareVersions(v, repoVersion)
+				//cmp = 0 means the client version is the same as repo version, which means no update
+				if cmp == 1 {
+					cmp = 2 // 2 means the client version is newer than repo version, which is unexpected but we should handle it anyway
+				}else if cmp == -1 {
+					cmp = 1 // 1 means the repo version is newer than client version, which means there is an update
+				}
 				response.Response(c, versionResponse{
 					Version:     best["Version"],
 					IsNewer:     cmp,
