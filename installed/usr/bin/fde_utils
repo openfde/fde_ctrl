@@ -3,6 +3,7 @@
 status_code_stopped=0
 status_code_running=1
 status_code_android_start_completely=1
+status_code_upgrading=21
 
 return_code_invalid_args=6
 return_code_great_than_65535=10
@@ -12,6 +13,8 @@ return_code_not_stopped=14
 return_code_not_running=15
 return_code_not_start_completely=16
 return_code_not_installed=18
+return_code_just_upgrade=20
+return_code_already_upgrading=21
 
 if [ $# -lt 1 ];then
     exit 
@@ -83,6 +86,10 @@ function mode_process() {
 	esac
 }
 function status_process(){
+	pgrep -f "fde_fs -install" 1>/dev/null 2>&1
+	if [ $? = 0 ];then	
+		exit $status_code_upgrading
+	fi
 	waydroid status |grep ERROR  -w 1>/dev/null 2>&1
 	if [ $? = 0 ];then
 		exit $status_code_stopped
@@ -206,6 +213,10 @@ case $1 in
 				exit $status_code_running
 			fi
 		else
+			pgrep -f "fde_fs -install" 1>/dev/null 2>&1
+			if [ $? = 0 ];then	
+				exit $return_code_already_upgrading
+			fi
 			fde_utils stop 1>/dev/null 2>&1
 		fi
 		#fde_utils start shortcut is used by fde_shortcut
