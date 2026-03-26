@@ -79,7 +79,7 @@ func main() {
 		logo.Show()
 		return
 	}
-
+	
 	logger.Logrotate()
 	exec.Command("fde_fs", "-s").Run()
 	if len(msg) != 0 {
@@ -90,6 +90,8 @@ func main() {
 		}
 		os.Exit(0)
 	}
+	var statusNotify StatusNotify
+	statusNotify.Init()
 	currentVersionRequest, debFile, _, err := conf.ReadUpdatePolicy()
 	if err == nil {
 		currentVersion, _ := conf.VersionCurrentRead()
@@ -105,6 +107,7 @@ func main() {
 			if err != nil {
 				logger.Error("execute_update_script_failed", "should start fde directly", err)
 			} else {
+				statusNotify.NotifyFDEStatus("upgrading")
 				conf.UpdateRemove()
 				if err := exec.Command("/usr/bin/fde_ctrl", "-show").Run(); err != nil {
 					logger.Error("showlogo_failed", nil, err)
@@ -128,14 +131,12 @@ func main() {
 		}
 		StartCheckPidMaxWorker()
 	}
-	// 单例检测：通过尝试连接本地 unix socket 判断服务是否已运行
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		logger.Error("get_home_dir_failed", homeDir, err)
 		os.Exit(1)
 	}
-	var statusNotify StatusNotify
-	statusNotify.Init()
+
 	statusNotify.NotifyFDEStatus("start")
 	defer statusNotify.NotifyFDEStatus("stop")
 
