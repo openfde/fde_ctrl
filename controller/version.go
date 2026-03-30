@@ -299,7 +299,7 @@ func ExecuteVersionUpdateScript(debFile string) error {
 		}
 	}
 	logger.Error("deb_file_not_exist", fmt.Sprintf("deb file: %s not exist", debFile), nil)
-	return nil
+	return errors.New("deb file not exist")
 }
 
 func constructVersionUpdateScript(path string) (string, error) {
