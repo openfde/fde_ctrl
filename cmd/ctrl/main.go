@@ -74,13 +74,21 @@ func main() {
 	if mode, app, msg, snavi, return_directly, showlogo = parseArgs(); return_directly {
 		return
 	}
+	logger.Logrotate()
 	if showlogo {
-		logo.SetUpgrading()
-		logo.Show()
+		sessionType := os.Getenv("XDG_SESSION_TYPE")
+		logger.Warn("showlogo", fmt.Sprintf(" XDG_SESSION_TYPE: %s", sessionType), nil)
+		if sessionType == "x11" {
+			logo.SetUpgrading()
+			logo.ShowX11()
+			logger.Warn("showlogo ", "x11")
+		} else {
+		        logo.ShowWayland()
+			logger.Warn("showlogo ", "wayland")
+		}
 		return
 	}
 	
-	logger.Logrotate()
 	exec.Command("fde_fs", "-s").Run()
 	if len(msg) != 0 {
 		err := tools.SendDbusMessage(msg)
@@ -161,11 +169,6 @@ func main() {
 		logger.Warn("gpu_is_not_ready", nil)
 		return
 	}
-	m, _ := conf.ReadModeConf()
-	if !conf.IsFusingMode(m.Mode) {
-		go logo.Show()
-	}
-
 	if snavi {
 		logger.Info("start_navi", nil)
 		navi.StartFdeNavi() // start desktop navi
@@ -197,6 +200,18 @@ func main() {
 		return
 	}
 	logger.Info("start_windows_manager_mode", mode)
+	if(windows_manager.FDEMode(mode) == windows_manager.DESKTOP_MODE_ENVIRONMENT){
+		os.Setenv("XDG_SESSION_TYPE","wayland")
+	}
+	m, _ := conf.ReadModeConf()
+	if !conf.IsFusingMode(m.Mode) {
+		sessionType := os.Getenv("XDG_SESSION_TYPE")
+		if sessionType == "x11" {
+			go logo.ShowX11()
+		} else {
+		    go logo.ShowWayland()
+		}
+	}
 	if cmdWinMan != nil {
 		cmds = append(cmds, cmdWinMan)
 	}

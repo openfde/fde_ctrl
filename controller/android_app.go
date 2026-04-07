@@ -53,7 +53,12 @@ func (impl *AndroidAppCtrl) notify() {
 				logger.Error("set_navigation_mode", "0", err)
 			}
 		}
-		logo.Disappear()
+		sessionType := os.Getenv("XDG_SESSION_TYPE")
+		if sessionType == "x11" {
+			logo.DisappearX11()
+		} else {
+			logo.DisappearWayland()
+		}
 	}
 	impl.PidSurfaceFlinger, _ = impl.getSurfaceFlingerPid()
 	logger.Info("android_system_started", impl.PidSurfaceFlinger)
