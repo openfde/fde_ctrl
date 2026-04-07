@@ -100,7 +100,7 @@ func SetUpgrading() {
 	os.Setenv(ENV_OPENFDE_UPGRADING, "1")
 }
 
-func Show() {
+func ShowX11() {
 	// 检查当前环境是否为 X11
 	sessionType := os.Getenv("XDG_SESSION_TYPE")
 	if sessionType != "x11" {
@@ -605,7 +605,7 @@ var logoShowedx11 = false
 var screenWidthGlobal uint16
 var screenHeightGlobal uint16
 
-func Disappear() {
+func DisappearX11() {
 	if logoShowedx11 == false {
 		return
 	}
