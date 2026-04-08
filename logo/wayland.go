@@ -383,15 +383,66 @@ func (app *appState) HandleToplevelConfigure(e xdg_shell.ToplevelConfigureEvent)
 	width := int32(e.Width)
 	height := int32(e.Height)
 
-	if width == 0 || height == 0 || (width == app.width && height == app.height) {
+	if width == 0 || height == 0 {
 		return
 	}
+
+	// 如果尺寸没变，就不处理
+	if width == app.width && height == app.height {
+		return
+	}
+
 	logger.Info("resize to", fmt.Sprintf("%dx%d", width, height))
-	app.frame = resize.Resize(uint(width), uint(height), app.pImage, resize.Bilinear).(*image.RGBA)
 
 	app.width = width
 	app.height = height
-	
+
+	app.frame = app.createLetterboxedFrame()
+}
+
+// createLetterboxedFrame 创建保持原始宽高比、居中显示的画布（带黑边）
+func (app *appState) createLetterboxedFrame() *image.RGBA {
+	// 原图宽高比
+	srcW := float64(app.pImage.Bounds().Dx())
+	srcH := float64(app.pImage.Bounds().Dy())
+	srcAspect := srcW / srcH
+
+	// 目标屏幕宽高比
+	dstW := float64(app.width)
+	dstH := float64(app.height)
+	dstAspect := dstW / dstH
+
+	var drawW, drawH uint
+	var offsetX, offsetY int
+
+	if srcAspect > dstAspect {
+		// 原图更宽 → 高度撑满，左右黑边
+		drawH = uint(dstH)
+		drawW = uint(dstH * srcAspect)
+		offsetX = int((dstW - float64(drawW)) / 2)
+		offsetY = 0
+	} else {
+		// 原图更高 → 宽度撑满，上下黑边
+		drawW = uint(dstW)
+		drawH = uint(dstW / srcAspect)
+		offsetX = 0
+		offsetY = int((dstH - float64(drawH)) / 2)
+	}
+
+	// 先创建和屏幕一样大的黑色画布
+	canvas := image.NewRGBA(image.Rect(0, 0, int(dstW), int(dstH)))
+
+	// 把原图等比缩放到 drawW × drawH
+	scaled := resize.Resize(drawW, drawH, app.pImage, resize.Bilinear)
+
+	// 把缩放后的图片画到 canvas 的居中位置
+	for y := 0; y < scaled.Bounds().Dy(); y++ {
+		for x := 0; x < scaled.Bounds().Dx(); x++ {
+			canvas.Set(offsetX+x, offsetY+y, scaled.At(x, y))
+		}
+	}
+
+	return canvas
 }
 
 func (app *appState) HandleToplevelClose(_ xdg_shell.ToplevelCloseEvent) {
