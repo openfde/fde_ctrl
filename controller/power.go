@@ -96,6 +96,9 @@ func (impl PowerManager) restartHandler(c *gin.Context) {
 
 func (impl PowerManager) sleepHandler(c *gin.Context) {
 	cmd := exec.Command("fde_fs", "-sleep")
-	returnErr := cmd.Run()
+	go func() {
+		time.Sleep(1 * time.Second)
+		cmd.Run()
+	} ()
 	response.Response(c, nil)
 }
