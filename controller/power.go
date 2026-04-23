@@ -65,10 +65,10 @@ func (impl PowerManager)Init() {
 
 	go func() {
 		for {
-			<-openCh
+			<-closeCh
 			timer := time.NewTimer(4 * time.Second)
 			select {
-			case <-closeCh:
+			case <-openCh:
 				timer.Stop()
 				// Lid closed again, cancel sleep
 			case <-timer.C:
