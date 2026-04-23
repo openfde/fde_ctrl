@@ -20,6 +20,7 @@ func Setup(r *gin.Engine, app string, configure conf.Configure) {
 	AndroidAppCtrl.Init()
 	fsfusing.Init()
 	appNotify.Init()
+	pm.Init()
 	group := r.Group("/api")
 	linuxApps.Scan()
 	userManager := UserManager{}

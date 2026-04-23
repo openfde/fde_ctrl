@@ -19,7 +19,61 @@ func (impl PowerManager) Setup(r *gin.RouterGroup) {
 	v1.POST("/power/lock", impl.lockHandler)
 	v1.POST("/power/sleep", impl.sleepHandler)
 }
+func (impl PowerManager)Init() {
+	closeCh := make(chan struct{}, 2)
+	openCh := make(chan struct{}, 2)
+	_, err := os.Stat("/usr/bin/acpi_listen")
+	if err != nil && os.IsNotExist(err) {
+		logger.Warn("acpi_listen not found, lid events will not be handled")
+		return 
+	}
+	go func() {
+		cmd := exec.Command("acpi_listen")
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			return
+		}
+		if err := cmd.Start(); err != nil {
+			return
+		}
+		defer cmd.Wait()
 
+		buf := make([]byte, 1024)
+		for {
+			n, err := stdout.Read(buf)
+			if err != nil {
+				break
+			}
+			line := string(buf[:n])
+			switch line {
+			case "button/lid LID close\n":
+				select {
+				case closeCh <- struct{}{}:
+				default:
+				}
+			case "button/lid LID open\n":
+				select {
+				case openCh <- struct{}{}:
+				default:
+				}
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			<-openCh
+			timer := time.NewTimer(4 * time.Second)
+			select {
+			case <-closeCh:
+				timer.Stop()
+				// Lid closed again, cancel sleep
+			case <-timer.C:
+				exec.Command("fde_fs", "-sleep").Run()
+			}
+		}
+	}()
+}
 func (impl PowerManager) lockHandler(c *gin.Context) {
 	exec.Command("dm-tool", "lock").Start()
 	response.Response(c, nil)
