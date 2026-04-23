@@ -17,6 +17,7 @@ func (impl PowerManager) Setup(r *gin.RouterGroup) {
 	v1.POST("/power/logout", impl.logoutHandler)
 	v1.POST("/power/restart", impl.restartHandler)
 	v1.POST("/power/lock", impl.lockHandler)
+	v1.POST("/power/sleep", impl.sleepHandler)
 }
 
 func (impl PowerManager) lockHandler(c *gin.Context) {
@@ -36,5 +37,11 @@ func (impl PowerManager) poweroffHandler(c *gin.Context) {
 
 func (impl PowerManager) restartHandler(c *gin.Context) {
 	process_chan.SendRestart()
+	response.Response(c, nil)
+}
+
+func (impl PowerManager) sleepHandler(c *gin.Context) {
+	cmd := exec.Command("fde_fs", "-sleep")
+	returnErr := cmd.Run()
 	response.Response(c, nil)
 }
