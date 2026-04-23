@@ -27,7 +27,7 @@ func (impl PowerManager)Init() {
 	openCh := make(chan struct{}, 2)
 	_, err := os.Stat("/usr/bin/acpi_listen")
 	if err != nil && os.IsNotExist(err) {
-		logger.Warn("acpi_listen not found, lid events will not be handled")
+		logger.Warn("acpi_listen", "acpi_listen not found",err)
 		return 
 	}
 	go func() {
