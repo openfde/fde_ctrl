@@ -4,6 +4,9 @@ import (
 	"fde_ctrl/process_chan"
 	"fde_ctrl/response"
 	"os/exec"
+	"os"
+	"fde_ctrl/logger"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -99,6 +102,6 @@ func (impl PowerManager) sleepHandler(c *gin.Context) {
 	go func() {
 		time.Sleep(1 * time.Second)
 		cmd.Run()
-	} ()
+	}()
 	response.Response(c, nil)
 }
