@@ -66,6 +66,9 @@ func (impl PowerManager)Init() {
 	go func() {
 		for {
 			<-closeCh
+			for len(openCh) > 0 {
+				<-openCh
+			}
 			timer := time.NewTimer(4 * time.Second)
 			select {
 			case <-openCh:
