@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"os"
 	"fde_ctrl/logger"
+	"fde_ctrl/windows_manager"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +23,11 @@ func (impl PowerManager) Setup(r *gin.RouterGroup) {
 	v1.POST("/power/lock", impl.lockHandler)
 	v1.POST("/power/sleep", impl.sleepHandler)
 }
-func (impl PowerManager)Init() {
+func (impl PowerManager)Init(mode windows_manager.FDEMode) {
+	if mode != windows_manager.DESKTOP_MODE_ENVIRONMENT {
+		return 
+	}
+	//only desktop mode need to listen to lid open and close event, in shared mode, the host system will handle it
 	closeCh := make(chan struct{}, 2)
 	openCh := make(chan struct{}, 2)
 	_, err := os.Stat("/usr/bin/acpi_listen")

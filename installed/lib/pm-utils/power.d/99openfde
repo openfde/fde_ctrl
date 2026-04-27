@@ -21,6 +21,7 @@ case "$1" in
 				if [ -n "$openfde14_systemui_pid" ];then
 					kill -15 "$openfde14_systemui_pid"
 					echo "$d resume from sleep to wakeup openfde by killing systemui pid " >> /var/log/fde.log
+				fi
 			else
 				override_density=`waydroid shell wm density |grep "Override density" |awk -F ":" '{print $NF}' |tr -d " "`
 				physical_density=`waydroid shell wm density |grep "Physical density" |awk -F ":" '{print $NF}' |tr -d " "`
