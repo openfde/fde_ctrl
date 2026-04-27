@@ -2,11 +2,12 @@ package controller
 
 import (
 	"fde_ctrl/conf"
+	"fde_ctrl/windows_manager"
 
 	"github.com/gin-gonic/gin"
 )
 
-func Setup(r *gin.Engine, app string, configure conf.Configure) {
+func Setup(r *gin.Engine, app string, configure conf.Configure, mode windows_manager.FDEMode) {
 	var linuxApps LinuxApps
 	var pm PowerManager
 	var xserver XserverAppImpl
@@ -20,7 +21,7 @@ func Setup(r *gin.Engine, app string, configure conf.Configure) {
 	AndroidAppCtrl.Init()
 	fsfusing.Init()
 	appNotify.Init()
-	pm.Init()
+	pm.Init(mode)
 	group := r.Group("/api")
 	linuxApps.Scan()
 	userManager := UserManager{}
