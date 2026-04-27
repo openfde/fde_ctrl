@@ -229,7 +229,7 @@ func main() {
 	engine := gin.New()
 	engine.Use(middleware.LogHandler(), gin.Recovery())
 	engine.Use(middleware.ErrHandler())
-	controller.Setup(engine, app, configure)
+	controller.Setup(engine, app, configure,windows_manager.FDEMode(mode))
 	go engine.Run("localhost:18080")
 
 	if mainCtx.Err() == nil {
