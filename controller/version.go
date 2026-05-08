@@ -48,7 +48,9 @@ func parseDebianPackages(content,repoURL,pkgName string) []map[string]string {
 		// blank line => end of block
 		if strings.TrimSpace(line) == "" {
 			if cur != nil {
-				entries = append(entries, cur)
+				if cur["Package"] == pkgName {
+					entries = append(entries, cur)
+				}
 				cur = nil
 				lastKey = ""
 			}
@@ -75,18 +77,15 @@ func parseDebianPackages(content,repoURL,pkgName string) []map[string]string {
 
 		if cur == nil {
 			cur = make(map[string]string)
+			cur["repo"] = repoURL
 		}
 		cur[key] = val
 		lastKey = key
 	}
 	if cur != nil {
-		logger.Info("parsed_package_name",cur["Package"])
-		if cur["Package"] != pkgName {
-				return nil // skip entries that do not match the package name
+		if cur["Package"] == pkgName {
+			entries = append(entries, cur)
 		}
-		cur["repo"] = repoURL // add repo url to each entry for later use
-		logger.Info("parsed_package_entry", cur)
-		entries = append(entries, cur)
 	}
 	return entries
 }
