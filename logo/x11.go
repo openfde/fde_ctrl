@@ -4,12 +4,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fde_ctrl/logger"
+	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"reflect"
+	"strconv"
 	"unsafe"
-	"fmt"
 
 	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/randr"
@@ -24,6 +24,12 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
+
+	"golang.org/x/image/font"
+	"golang.org/x/image/font/basicfont"
+	"golang.org/x/image/font/gofont/goregular"
+	"golang.org/x/image/font/opentype"
+	"golang.org/x/image/math/fixed"
 )
 
 // #include <sys/ipc.h>
@@ -33,7 +39,7 @@ import "C"
 func F64ToFixed(f float64) render.Fixed { return render.Fixed(f * 65536) }
 func FixedToF64(f render.Fixed) float64 { return float64(f) / 65536 }
 
-func setDensity(density int){
+func setDensity(density int) {
 	cmd := exec.Command("fde_fs", "-density", strconv.Itoa(density))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -42,7 +48,7 @@ func setDensity(density int){
 			"output":  string(output),
 		}, err)
 	} else {
-	    logger.Warn("set density %d success\n", density)
+		logger.Warn("set density %d success\n", density)
 	}
 }
 
@@ -87,7 +93,14 @@ var formats = map[byte]struct {
 	},
 }
 
-func Show() {
+const ENV_OPENFDE_UPGRADING = "OPENFDE_UPGRADING"
+
+
+func SetUpgrading() {
+	os.Setenv(ENV_OPENFDE_UPGRADING, "1")
+}
+
+func ShowX11() {
 	// 检查当前环境是否为 X11
 	sessionType := os.Getenv("XDG_SESSION_TYPE")
 	if sessionType != "x11" {
@@ -175,9 +188,6 @@ func Show() {
 						screenY = int16(cinfo.Y)
 						screenWidth = uint16(cinfo.Width)
 						screenHeight = uint16(cinfo.Height)
-						logger.Info("using_primary_screen_from_randr", map[string]interface{}{
-							"x": screenX, "y": screenY, "w": screenWidth, "h": screenHeight,
-						})
 						break
 					}
 				}
@@ -208,6 +218,13 @@ func Show() {
 
 	var sRGBBackgroundOfLogo color.RGBA = color.RGBA{61, 60, 54, 255}
 	img = CenterTileImage(img, int(screenWidth), int(screenHeight), sRGBBackgroundOfLogo)
+	if os.Getenv(ENV_OPENFDE_UPGRADING) == "1" {
+		fontSize := float64(screenHeight) * 0.06
+		if fontSize < 56 {
+			fontSize = 56
+		}
+		img = drawInstallingText(img, "Upgrading", fontSize)
+	}
 
 	visual, depth := screen.RootVisual, screen.RootDepth
 
@@ -511,7 +528,6 @@ Depths:
 			depth, xproto.ImageFormatZPixmap,
 			0 /* SendEvent */, segid, 0 /* Offset */)
 	}
-
 	// 用于存储窗口当前尺寸（缓存，在 Expose 中也会实时获取）
 	var winWidth, winHeight uint16 = windowWidth, windowHeight
 
@@ -530,7 +546,6 @@ Depths:
 			X.Close()
 		}
 	}()
-
 	for {
 		ev, xerr := X.WaitForEvent()
 		if xerr != nil {
@@ -587,10 +602,10 @@ Depths:
 
 var done = make(chan struct{})
 var logoShowedx11 = false
-var screenWidthGlobal   uint16
-var screenHeightGlobal  uint16
+var screenWidthGlobal uint16
+var screenHeightGlobal uint16
 
-func Disappear() {
+func DisappearX11() {
 	if logoShowedx11 == false {
 		return
 	}
@@ -635,4 +650,80 @@ func CenterTileImage(img image.Image, screenWidth, screenHeight int, bg color.Co
 	draw.Draw(result, dstRect, img, img.Bounds().Min, draw.Over)
 
 	return result
+}
+
+func drawInstallingText(src image.Image, text string, fontSize float64) image.Image {
+	b := src.Bounds()
+	dst := image.NewRGBA(b)
+	draw.Draw(dst, b, src, b.Min, draw.Src)
+
+	// 尝试中文字体，失败则回退到内置字体。
+	candidates := []string{
+		"/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+		"/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+		"/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf",
+	}
+
+	var face font.Face
+	for _, p := range candidates {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		ft, err := opentype.Parse(data)
+		if err != nil {
+			continue
+		}
+		f, err := opentype.NewFace(ft, &opentype.FaceOptions{
+			Size:    fontSize,
+			DPI:     72,
+			Hinting: font.HintingFull,
+		})
+		if err == nil {
+			face = f
+			break
+		}
+	}
+	if face == nil {
+		if ft, err := opentype.Parse(goregular.TTF); err == nil {
+			if f, err := opentype.NewFace(ft, &opentype.FaceOptions{
+				Size:    fontSize,
+				DPI:     72,
+				Hinting: font.HintingFull,
+			}); err == nil {
+				face = f
+			}
+		}
+	}
+	if face == nil {
+		face = basicfont.Face7x13
+	}
+
+	d := &font.Drawer{
+		Dst:  dst,
+		Src:  image.NewUniform(color.RGBA{255, 255, 255, 255}),
+		Face: face,
+	}
+
+	w := d.MeasureString(text).Round()
+	x := (b.Dx() - w) / 2
+	y := b.Dy() - int(fontSize*1.4)
+	if y < int(fontSize) {
+		y = b.Dy() / 2
+	}
+
+	// 阴影
+	shadow := &font.Drawer{
+		Dst:  dst,
+		Src:  image.NewUniform(color.RGBA{0, 0, 0, 180}),
+		Face: face,
+		Dot:  fixed.P(x+2, y+2),
+	}
+	shadow.DrawString(text)
+
+	// 正文
+	d.Dot = fixed.P(x, y)
+	d.DrawString(text)
+
+	return dst
 }

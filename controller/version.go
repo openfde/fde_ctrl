@@ -3,15 +3,19 @@ package controller
 import (
 	"bufio"
 	"errors"
+	"fde_ctrl/conf"
 	"fde_ctrl/logger"
+	"fde_ctrl/process_chan"
 	"fde_ctrl/response"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -203,6 +207,119 @@ const FDE_APT_FILE = "/etc/apt/sources.list.d/openfde.list"
 type versionUpdateRequest struct {
 	CurrentVersion string
 	Path           string
+	Policy         string
+}
+
+const PolicyImmediate = "Immediately"
+const PolicyPreStart = "PreStart"
+
+const NetworkError = 5003
+const InstallError = 5001
+const RepoNotFoundError = 5002
+
+func IsFdeInstallRunning() (bool, error) {
+	// 匹配命令行里包含 "fde_fs -install" 的进程
+	cmd := exec.Command("pgrep", "-f", "fde_fs -install")
+	out, err := cmd.Output()
+	if err == nil {
+		return strings.TrimSpace(string(out)) != "", nil
+	}
+
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
+		// pgrep 退出码 1 表示未找到进程
+		return false, nil
+	}
+
+	return false, err
+}
+
+func ExecuteVersionUpdateScript(debFile string) error {
+	if _, err := os.Stat(debFile); err == nil {
+		logger.Info("deb_file_exist", fmt.Sprintf("deb file: %s exist, start to update", debFile))
+		bashfile, err := constructVersionUpdateScript(debFile)
+		if err != nil {
+			logger.Error("construct_version_update_script_failed", nil, err)
+			return err
+		} else {
+			cmd := exec.Command(bashfile)
+			cmd.SysProcAttr = &syscall.SysProcAttr{
+				Setsid: true,
+			}
+			debugMode := os.Getenv("fde_debug")
+			var stdout, stderr io.ReadCloser
+			if debugMode == "debug" {
+				stdout, err = cmd.StdoutPipe()
+				if err != nil {
+					logger.Error("stdout pipe for xserver", nil, err)
+					return err
+				}
+				stderr, err = cmd.StderrPipe()
+				if err != nil {
+					logger.Error("stderr pipe for xserver", nil, err)
+					return err
+				}
+			}
+
+			err = cmd.Start()
+			if err != nil {
+				logger.Error("start updating fde failed", nil, err)
+				err = errors.New("start updating fde  failed")
+				return err
+			}
+			if debugMode == "debug" {
+				output, err := io.ReadAll(io.MultiReader(stdout, stderr))
+				if err != nil {
+					logger.Error("read start updating fde failed", nil, err)
+				}
+				logger.Info("debug_updating_fde", output)
+			}
+			timer := time.NewTimer(500 * time.Millisecond)
+			var chWait = make(chan struct{}, 1)
+			go func() {
+				err := cmd.Wait()
+				if err != nil {
+					logger.Error("wait_updating_fde", nil, err)
+					chWait <- struct{}{}
+				}
+			}()
+			select {
+			case <-chWait:
+				{
+					return errors.New("wait updating fde failed")
+				}
+			case <-timer.C:
+				{
+					//after 500ms waitting
+				}
+			}
+			return nil //return nil means the update script has been started successfully,
+			// so the fde_ctrl should exit to let the update process take effect, and
+			// the update process will do the rest of work, including install and restart.
+		}
+	}
+	logger.Error("deb_file_not_exist", fmt.Sprintf("deb file: %s not exist", debFile), nil)
+	return errors.New("deb file not exist")
+}
+
+func constructVersionUpdateScript(path string) (string, error) {
+	data := []byte("#!/bin/bash\n" +
+		"fde_fs -install -path " + path + " & \n")
+	uid := os.Getuid()
+	bashFile := "/tmp/fde_" + fmt.Sprint(uid) + "install.sh"
+	file, err := os.OpenFile(bashFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+	if err != nil {
+		logger.Error("Error creating file:", bashFile, err)
+		return "", err
+	}
+	defer file.Close()
+
+	_, err = file.Write(data)
+	if err != nil {
+		logger.Error("Error writing to file:", bashFile, err)
+		return "", err
+	}
+	return bashFile, nil
 }
 
 func (impl VersionController) updateRecordHandler(c *gin.Context) {
@@ -213,6 +330,30 @@ func (impl VersionController) updateRecordHandler(c *gin.Context) {
 		response.ResponseParamterError(c, err)
 		return
 	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		logger.Error("query_home_failed", os.Getuid(), err)
+		response.ResponseError(c, http.StatusInternalServerError, err)
+		return
+	}
+	debfilename := filepath.Base(request.Path)
+	linuxPath := filepath.Join(home,"Downloads",debfilename)
+	_,err = os.Stat(linuxPath)
+	if err != nil {
+		logger.Warn("debfile_path_check",linuxPath,err)
+		linuxPath = filepath.Join(home,"下载",debfilename)
+		_, err := os.Stat(linuxPath)
+		if err != nil {
+			logger.Warn("debfile_path_check",linuxPath,err)
+			response.ResponseParamterError(c,err)
+			return 
+		}
+	}
+	conf.WriteUpdatePolicy(request.CurrentVersion, linuxPath, request.Policy)
+	if request.Policy == PolicyImmediate {
+		process_chan.SendRestart()
+	}
+	
 	response.Response(c, request)
 }
 
@@ -252,7 +393,7 @@ func (impl VersionController) versionHandler(c *gin.Context) {
 		}
 	}
 	if repoURL == "" {
-		response.ResponseError(c, http.StatusPreconditionRequired, errors.New("repo files not found"))
+		response.ResponseCodeError(c, http.StatusPreconditionRequired, RepoNotFoundError, errors.New("repo files not found"))
 		return
 	}
 	targetURL := repoURL + "/dists/" + release + "/main/binary-" + arch + "/Packages"
@@ -261,29 +402,37 @@ func (impl VersionController) versionHandler(c *gin.Context) {
 	}
 	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, targetURL, nil)
 	if err != nil {
-		response.ResponseError(c, http.StatusPreconditionRequired, errors.New("create http client failed"))
+		response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("create http client failed"))
 		return
 	} else {
 		resp, err := client.Do(req)
 		if err != nil {
 			logger.Error("request_failed", targetURL, err)
-			response.ResponseError(c, http.StatusPreconditionRequired, errors.New("do http request failed failed"))
+			response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("do http request failed failed"))
 			return
 		} else {
 			defer resp.Body.Close()
 			bodyBytes, err := io.ReadAll(resp.Body)
 			if err != nil {
-				response.ResponseError(c, http.StatusPreconditionRequired, errors.New("read http client failed"))
+				response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("read http client failed"))
 				return
 			}
 			entries := parseDebianPackages(string(bodyBytes))
 			best, err := LatestForPackage(entries, "openfde14")
 			if err != nil {
-				response.ResponseError(c, http.StatusPreconditionRequired, errors.New("failed to find openfde14 package"))
+				response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("failed to find openfde14 package"))
 				return
 			}
 			if v := strings.TrimSpace(request.Version); v != "" {
-				cmp := compareVersions(v, best["Version"])
+				repoVersion := best["Version"]
+				repoVersion = regexp.MustCompile(`[a-zA-Z]+[0-9]*$`).ReplaceAllString(repoVersion, "")
+				cmp := compareVersions(v, repoVersion)
+				//cmp = 0 means the client version is the same as repo version, which means no update
+				if cmp == 1 {
+					cmp = 2 // 2 means the client version is newer than repo version, which is unexpected but we should handle it anyway
+				}else if cmp == -1 {
+					cmp = 1 // 1 means the repo version is newer than client version, which means there is an update
+				}
 				response.Response(c, versionResponse{
 					Version:     best["Version"],
 					IsNewer:     cmp,

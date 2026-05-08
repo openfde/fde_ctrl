@@ -290,7 +290,7 @@ func (impl XserverAppImpl) startApp(app, path, display, workingDir string, witho
 		logger.Info("debug_xserver", output)
 	}
 	timer := time.NewTimer(500 * time.Millisecond)
-	var chWait chan struct{}
+	var chWait = make(chan struct{}, 1)
 	go func() {
 		err := cmdApp.Wait()
 		if err != nil {

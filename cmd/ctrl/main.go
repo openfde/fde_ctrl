@@ -20,10 +20,7 @@ import (
 	"fde_ctrl/windows_manager"
 	"flag"
 	"fmt"
-	"net"
 	"os"
-	"os/signal"
-	"path/filepath"
 	"syscall"
 
 	"os/exec"
@@ -35,25 +32,15 @@ var _version_ = "v0.1"
 var _tag_ = "v0.1"
 var _date_ = "20230101"
 
-func parseArgs() (mode, app, msg string, snavi, return_directly bool) {
-	var version, help bool
-	flag.BoolVar(&version, "v", false, "-v")
-	flag.BoolVar(&help, "h", false, "-h")
-	flag.BoolVar(&snavi, "n", false, "-n")
+func parseArgs() (mode, app, msg string, snavi, return_directly, showlogo bool) {
+	var version bool
+	flag.BoolVar(&version, "v", false, "version")
+	flag.BoolVar(&showlogo, "show", false, "show logo")
+	flag.BoolVar(&snavi, "n", false, "start navigation service")
 	flag.StringVar(&mode, "m", string(windows_manager.DESKTOP_MODE_ENVIRONMENT), "-m")
-	flag.StringVar(&app, "a", string("openfde"), "-a")
+	flag.StringVar(&app, "a", string("openfde"), "app name")
 	flag.StringVar(&msg, "msg", "", "-msg {json string}")
 	flag.Parse()
-	if help {
-		fmt.Println("fde_ctrl:")
-		fmt.Println("\t-v: print versions and tags")
-		fmt.Println("\t-h: print help")
-		fmt.Println("\t-n: start navi")
-		fmt.Println("\t-m: input the running mode[shell|environment|shared]")
-		fmt.Println("\t -msg: input a json string to notify by use dbus ")
-		return_directly = true
-		return
-	}
 	if version {
 		fmt.Printf("Version: %s, tag: %s , date: %s \n", _version_, _tag_, _date_)
 		return_directly = true
@@ -83,13 +70,25 @@ func (impl StatusNotify) NotifyFDEStatus(status string) {
 
 func main() {
 	var mode, app, msg string
-	var snavi bool
-	var return_directly bool
-	if mode, app, msg, snavi, return_directly = parseArgs(); return_directly {
+	var snavi ,return_directly, showlogo bool
+	if mode, app, msg, snavi, return_directly, showlogo = parseArgs(); return_directly {
 		return
 	}
-
 	logger.Logrotate()
+	if showlogo {
+		sessionType := os.Getenv("XDG_SESSION_TYPE")
+		logger.Warn("showlogo", fmt.Sprintf(" XDG_SESSION_TYPE: %s", sessionType), nil)
+		if sessionType == "x11" {
+			logo.SetUpgrading()
+			logo.ShowX11()
+			logger.Warn("showlogo ", "x11")
+		} else {
+		        logo.ShowWayland()
+			logger.Warn("showlogo ", "wayland")
+		}
+		return
+	}
+	
 	exec.Command("fde_fs", "-s").Run()
 	if len(msg) != 0 {
 		err := tools.SendDbusMessage(msg)
@@ -98,6 +97,36 @@ func main() {
 			fmt.Println(err)
 		}
 		os.Exit(0)
+	}
+	var statusNotify StatusNotify
+	statusNotify.Init()
+	currentVersionRequest, debFile, _, err := conf.ReadUpdatePolicy()
+	if err == nil {
+		currentVersion, _ := conf.VersionCurrentRead()
+		if currentVersion == currentVersionRequest || currentVersion == conf.FDE_VERSION_UNINSTALLED {
+			logger.Info("version_check_passed", fmt.Sprintf("current version: %s, policy version: %s", currentVersion, currentVersionRequest))
+			if status, err := controller.IsFdeInstallRunning(); err == nil {
+				if status {
+					logger.Info("update_process_already_running", nil)
+					os.Exit(21) //21 means the update process is already running.
+				}
+			}
+			err := controller.ExecuteVersionUpdateScript(debFile)
+			if err != nil {
+				logger.Error("execute_update_script_failed", "should start fde directly", err)
+			} else {
+				statusNotify.NotifyFDEStatus("upgrading")
+				conf.UpdateRemove()
+				if err := exec.Command("/usr/bin/fde_ctrl", "-show").Run(); err != nil {
+					logger.Error("showlogo_failed", nil, err)
+				}
+				os.Exit(20) //20 means updating process has been started
+			}
+		} else {
+			logger.Warn("current_version_mismatch", fmt.Sprintf("current version: %s, request version: %s", currentVersion, currentVersionRequest))
+		}
+	} else {
+		logger.Error("read_update_policy_failed", nil, err)
 	}
 
 	if DoCheckPidMax() {
@@ -110,7 +139,6 @@ func main() {
 		}
 		StartCheckPidMaxWorker()
 	}
-	// 单例检测：通过尝试连接本地 unix socket 判断服务是否已运行
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		logger.Error("get_home_dir_failed", homeDir, err)
@@ -142,11 +170,6 @@ func main() {
 		logger.Warn("gpu_is_not_ready", nil)
 		return
 	}
-	m, _ := conf.ReadModeConf()
-	if !conf.IsFusingMode(m.Mode) {
-		go logo.Show()
-	}
-
 	if snavi {
 		logger.Info("start_navi", nil)
 		navi.StartFdeNavi() // start desktop navi
@@ -178,6 +201,18 @@ func main() {
 		return
 	}
 	logger.Info("start_windows_manager_mode", mode)
+	if(windows_manager.FDEMode(mode) == windows_manager.DESKTOP_MODE_ENVIRONMENT){
+		os.Setenv("XDG_SESSION_TYPE","wayland")
+	}
+	m, _ := conf.ReadModeConf()
+	if !conf.IsFusingMode(m.Mode) {
+		sessionType := os.Getenv("XDG_SESSION_TYPE")
+		if sessionType == "x11" {
+			go logo.ShowX11()
+		} else {
+		    go logo.ShowWayland()
+		}
+	}
 	if cmdWinMan != nil {
 		cmds = append(cmds, cmdWinMan)
 	}
@@ -195,7 +230,7 @@ func main() {
 	engine := gin.New()
 	engine.Use(middleware.LogHandler(), gin.Recovery())
 	engine.Use(middleware.ErrHandler())
-	controller.Setup(engine, app, configure)
+	controller.Setup(engine, app, configure,windows_manager.FDEMode(mode))
 	go engine.Run("localhost:18080")
 
 	if mainCtx.Err() == nil {
