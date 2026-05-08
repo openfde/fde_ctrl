@@ -330,10 +330,30 @@ func (impl VersionController) updateRecordHandler(c *gin.Context) {
 		response.ResponseParamterError(c, err)
 		return
 	}
-	conf.WriteUpdatePolicy(request.CurrentVersion, request.Path, request.Policy)
+	home, err := os.UserHomeDir()
+	if err != nil {
+		logger.Error("query_home_failed", os.Getuid(), err)
+		response.ResponseError(c, http.StatusInternalServerError, err)
+		return
+	}
+	debfilename := filepath.Base(request.Path)
+	linuxPath := filepath.Join(home,"Downloads",debfilename)
+	_,err = os.Stat(linuxPath)
+	if err != nil {
+		logger.Warn("debfile_path_check",linuxPath,err)
+		linuxPath = filepath.Join(home,"下载",debfilename)
+		_, err := os.Stat(linuxPath)
+		if err != nil {
+			logger.Warn("debfile_path_check",linuxPath,err)
+			response.ResponseParamterError(c,err)
+			return 
+		}
+	}
+	conf.WriteUpdatePolicy(request.CurrentVersion, linuxPath, request.Policy)
 	if request.Policy == PolicyImmediate {
 		process_chan.SendRestart()
 	}
+	
 	response.Response(c, request)
 }
 
