@@ -39,7 +39,6 @@ func (impl VersionController) Setup(rg *gin.RouterGroup) {
 func parseDebianPackages(content,repoURL,pkgName string) []map[string]string {
 	var entries []map[string]string
 	var cur map[string]string
-	cur["repo"] = repoURL // add repo url to each entry for later use	
 	var lastKey string
 
 	sc := bufio.NewScanner(strings.NewReader(content))
@@ -81,6 +80,7 @@ func parseDebianPackages(content,repoURL,pkgName string) []map[string]string {
 		lastKey = key
 	}
 	if cur != nil {
+		logger.Info("parsed_package_name",cur["Package"])
 		if cur["Package"] != pkgName {
 				return nil // skip entries that do not match the package name
 		}
