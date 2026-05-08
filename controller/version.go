@@ -6,6 +6,7 @@ import (
 	"fde_ctrl/conf"
 	"fde_ctrl/logger"
 	"fde_ctrl/process_chan"
+	"path/filepath"
 	"fde_ctrl/response"
 	"fmt"
 	"io"
@@ -30,7 +31,7 @@ type VersionRequest struct {
 
 func (impl VersionController) Setup(rg *gin.RouterGroup) {
 	v1 := rg.Group("/v1")
-	v1.POST("/version/check", impl.versionHandler)
+	v1.POST("/version/check", impl.versionQueryHandler)
 	v1.POST("/version/update", impl.updateRecordHandler)
 }
 
@@ -193,6 +194,31 @@ func LatestForPackage(entries []map[string]string, pkg string) (map[string]strin
 	}
 	return best, nil
 }
+
+func detectInstalledOpenfdePackage(packageName string) bool {
+	cmd := exec.Command("sh", "-c", "dpkg -l | grep -w " + packageName)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return false
+	}
+
+	sc := bufio.NewScanner(strings.NewReader(string(out)))
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" || strings.HasPrefix(line, "||/") || strings.HasPrefix(line, "+++") || strings.HasPrefix(line, "Desired=") {
+						continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 || fields[0] != "ii" {
+						continue
+		}
+		if fields[1] == packageName {
+						return true
+		}
+	}
+	return false
+}
+
 
 type versionResponse struct {
 	Version     string
@@ -357,16 +383,15 @@ func (impl VersionController) updateRecordHandler(c *gin.Context) {
 	response.Response(c, request)
 }
 
-func (impl VersionController) versionHandler(c *gin.Context) {
-	arch, repoURL, release := "", "", ""
-	var request VersionRequest
-	err := c.ShouldBind(&request)
-	if err != nil {
-		logger.Error("version_request_parse", err, nil)
-		response.ResponseParamterError(c, err)
-		return
-	}
-	logger.Info("parse_version_request", request)
+type repoInfo struct {
+	Arch string
+	RepoURL string
+	Release string
+}
+
+func getAllRepos() ([]repoInfo, error) {
+	var repoInfoList []repoInfo
+	var rf repoInfo
 	f, err := os.Open(FDE_APT_FILE)
 	if err == nil {
 		defer f.Close()
@@ -384,64 +409,103 @@ func (impl VersionController) versionHandler(c *gin.Context) {
 			if len(m) == 4 {
 				opts := m[1]
 				if a := archRe.FindStringSubmatch(opts); len(a) > 1 {
-					arch = a[1]
+					rf.Arch = a[1]
 				}
-				repoURL = m[2]
-				release = m[3]
-				break
+				rf.RepoURL = m[2]
+				rf.Release = m[3]
+				repoInfoList = append(repoInfoList, rf)
 			}
 		}
 	}
-	if repoURL == "" {
-		response.ResponseCodeError(c, http.StatusPreconditionRequired, RepoNotFoundError, errors.New("repo files not found"))
-		return
-	}
-	targetURL := repoURL + "/dists/" + release + "/main/binary-" + arch + "/Packages"
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-	}
-	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, targetURL, nil)
+	return repoInfoList, nil
+}
+
+func (impl VersionController) versionQueryHandler(c *gin.Context) {
+	var request VersionRequest
+	err := c.ShouldBind(&request)
 	if err != nil {
-		response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("create http client failed"))
+		logger.Error("version_request_parse", err, nil)
+		response.ResponseParamterError(c, err)
 		return
-	} else {
-		resp, err := client.Do(req)
+	}
+	logger.Info("parse_version_request", request)
+	allRepos, err := getAllRepos()
+	if err != nil {
+		logger.Error("get_all_repos_failed", nil, err)
+		response.ResponseError(c, http.StatusInternalServerError, err)
+		return
+	}
+	pkgName := "openfde14"
+	result14 := detectInstalledOpenfdePackage("openfde14")
+	if !result14 {
+		resultarm64 := detectInstalledOpenfdePackage("openfde14-arm64")
+		if !resultarm64 {
+			response.ResponseParamterError(c, errors.New("no openfde14 package installed"))
+			return 
+		}
+		pkgName = "openfde14-arm64"
+	}
+	var bestList []map[string]string
+	for _, repo := range allRepos {
+		if repo.RepoURL == "" || repo.Release == "" || repo.Arch == "" {
+			logger.Warn("invalid_repo_info", fmt.Sprintf("repo url: %s, release: %s, arch: %s", repo.RepoURL, repo.Release, repo.Arch))
+			continue
+		}
+		targetURL := repo.RepoURL + "/dists/" + repo.Release + "/main/binary-" + repo.Arch + "/Packages"
+		client := &http.Client{
+			Timeout: 5 * time.Second,
+		}
+		req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, targetURL, nil)
 		if err != nil {
-			logger.Error("request_failed", targetURL, err)
-			response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("do http request failed failed"))
+			response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("create http client failed"))
 			return
 		} else {
-			defer resp.Body.Close()
-			bodyBytes, err := io.ReadAll(resp.Body)
+			resp, err := client.Do(req)
 			if err != nil {
-				response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("read http client failed"))
+				logger.Error("request_failed", targetURL, err)
+				response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("do http request failed failed"))
 				return
-			}
-			entries := parseDebianPackages(string(bodyBytes))
-			best, err := LatestForPackage(entries, "openfde14")
-			if err != nil {
-				response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("failed to find openfde14 package"))
-				return
-			}
-			if v := strings.TrimSpace(request.Version); v != "" {
-				repoVersion := best["Version"]
-				repoVersion = regexp.MustCompile(`[a-zA-Z]+[0-9]*$`).ReplaceAllString(repoVersion, "")
-				cmp := compareVersions(v, repoVersion)
-				//cmp = 0 means the client version is the same as repo version, which means no update
-				if cmp == 1 {
-					cmp = 2 // 2 means the client version is newer than repo version, which is unexpected but we should handle it anyway
-				}else if cmp == -1 {
-					cmp = 1 // 1 means the repo version is newer than client version, which means there is an update
+			} else {
+				defer resp.Body.Close()
+				bodyBytes, err := io.ReadAll(resp.Body)
+				if err != nil {
+					response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("read http client failed"))
+					return
 				}
-				response.Response(c, versionResponse{
-					Version:     best["Version"],
-					IsNewer:     cmp,
-					DownloadURL: repoURL + best["Filename"],
-					MD5:         best["MD5sum"],
-					Size:        best["Size"],
-				})
-				return
+				entries := parseDebianPackages(string(bodyBytes))
+				entries = append(entries, map[string]string{"repo": repo.RepoURL}) // add repo url to each entry for later use	
+				best, err := LatestForPackage(entries, pkgName)
+				if err != nil {
+					response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("failed to find "+pkgName+" package"))
+					return
+				}
+				bestList = append(bestList, best)
 			}
 		}
+	}
+	if len(bestList) == 0 {
+		response.ResponseCodeError(c, http.StatusPreconditionRequired, RepoNotFoundError, errors.New("no valid repo found"))
+		return
+	}
+	//find the best version among all repos, and compare with the client version
+	best, err := LatestForPackage(bestList, pkgName)
+	if v := strings.TrimSpace(request.Version); v != "" {
+		repoVersion := best["Version"]
+		repoVersion = regexp.MustCompile(`[a-zA-Z]+[0-9]*$`).ReplaceAllString(repoVersion, "")
+		cmp := compareVersions(v, repoVersion)
+		//cmp = 0 means the client version is the same as repo version, which means no update
+		if cmp == 1 {
+			cmp = 2 // 2 means the client version is newer than repo version, which is unexpected but we should handle it anyway
+		}else if cmp == -1 {
+			cmp = 1 // 1 means the repo version is newer than client version, which means there is an update
+		}
+		response.Response(c, versionResponse{
+			Version:     best["Version"],
+			IsNewer:     cmp,
+			DownloadURL: best["repo"] + best["Filename"],
+			MD5:         best["MD5sum"],
+			Size:        best["Size"],
+		})
+		return
 	}
 }
