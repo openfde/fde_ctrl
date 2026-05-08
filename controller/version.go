@@ -36,9 +36,10 @@ func (impl VersionController) Setup(rg *gin.RouterGroup) {
 }
 
 // parseDebianPackages parses RFC822-like "Packages" blocks into a slice of field maps.
-func parseDebianPackages(content string) []map[string]string {
+func parseDebianPackages(content,repoURL,pkgName string) []map[string]string {
 	var entries []map[string]string
 	var cur map[string]string
+	cur["repo"] = repoURL // add repo url to each entry for later use	
 	var lastKey string
 
 	sc := bufio.NewScanner(strings.NewReader(content))
@@ -80,6 +81,11 @@ func parseDebianPackages(content string) []map[string]string {
 		lastKey = key
 	}
 	if cur != nil {
+		if cur["Package"] != pkgName {
+				return nil // skip entries that do not match the package name
+		}
+		cur["repo"] = repoURL // add repo url to each entry for later use
+		logger.Info("parsed_package_entry", cur)
 		entries = append(entries, cur)
 	}
 	return entries
@@ -173,13 +179,10 @@ func compareVersions(a, b string) int {
 }
 
 // LatestForPackage returns the latest entry for a given package name.
-func LatestForPackage(entries []map[string]string, pkg string) (map[string]string, error) {
+func LatestForPackage(entries []map[string]string) (map[string]string, error) {
 	var best map[string]string
 	var bestVer string
 	for _, e := range entries {
-		if e["Package"] != pkg {
-			continue
-		}
 		v := e["Version"]
 		if v == "" {
 			continue
@@ -472,9 +475,8 @@ func (impl VersionController) versionQueryHandler(c *gin.Context) {
 					response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("read http client failed"))
 					return
 				}
-				entries := parseDebianPackages(string(bodyBytes))
-				entries = append(entries, map[string]string{"repo": repo.RepoURL}) // add repo url to each entry for later use	
-				best, err := LatestForPackage(entries, pkgName)
+				entries := parseDebianPackages(string(bodyBytes),repo.RepoURL,pkgName)
+				best, err := LatestForPackage(entries)
 				if err != nil {
 					response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("failed to find "+pkgName+" package"))
 					return
@@ -488,7 +490,7 @@ func (impl VersionController) versionQueryHandler(c *gin.Context) {
 		return
 	}
 	//find the best version among all repos, and compare with the client version
-	best, err := LatestForPackage(bestList, pkgName)
+	best, err := LatestForPackage(bestList)
 	if v := strings.TrimSpace(request.Version); v != "" {
 		repoVersion := best["Version"]
 		repoVersion = regexp.MustCompile(`[a-zA-Z]+[0-9]*$`).ReplaceAllString(repoVersion, "")
