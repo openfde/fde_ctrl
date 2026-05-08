@@ -193,7 +193,7 @@ func LatestForPackage(entries []map[string]string) (map[string]string, error) {
 		}
 	}
 	if best == nil {
-		return nil, fmt.Errorf("package %s not found", pkg)
+		return nil, fmt.Errorf("package not found")
 	}
 	return best, nil
 }
