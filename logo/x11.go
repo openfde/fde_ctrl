@@ -20,16 +20,9 @@ import (
 
 	"image"
 	"image/color"
-	"image/draw"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
-
-	"golang.org/x/image/font"
-	"golang.org/x/image/font/basicfont"
-	"golang.org/x/image/font/gofont/goregular"
-	"golang.org/x/image/font/opentype"
-	"golang.org/x/image/math/fixed"
 )
 
 // #include <sys/ipc.h>
@@ -39,18 +32,7 @@ import "C"
 func F64ToFixed(f float64) render.Fixed { return render.Fixed(f * 65536) }
 func FixedToF64(f render.Fixed) float64 { return float64(f) / 65536 }
 
-func setDensity(density int) {
-	cmd := exec.Command("fde_fs", "-density", strconv.Itoa(density))
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		logger.Error("set density failed", map[string]interface{}{
-			"density": density,
-			"output":  string(output),
-		}, err)
-	} else {
-		logger.Warn("set density %d success\n", density)
-	}
-}
+
 
 var formats = map[byte]struct {
 	format    render.Directformat
@@ -93,14 +75,13 @@ var formats = map[byte]struct {
 	},
 }
 
-const ENV_OPENFDE_UPGRADING = "OPENFDE_UPGRADING"
 
 
-func SetUpgrading() {
-	os.Setenv(ENV_OPENFDE_UPGRADING, "1")
+
+type X11Logo struct {
 }
 
-func ShowX11() {
+func (logo *X11Logo) Show() {
 	// 检查当前环境是否为 X11
 	sessionType := os.Getenv("XDG_SESSION_TYPE")
 	if sessionType != "x11" {
@@ -110,20 +91,6 @@ func ShowX11() {
 	// 检查是否存在 DISPLAY 变量
 	display := os.Getenv("DISPLAY")
 	if display == "" {
-		return
-	}
-
-	// Load a picture from the command line.
-	f, err := os.Open("/usr/share/backgrounds/openfde.png")
-	if err != nil {
-		logger.Error("open_image", nil, err)
-		return
-	}
-	defer f.Close()
-
-	img, _, err := image.Decode(f)
-	if err != nil {
-		logger.Error("decode_image", nil, err)
 		return
 	}
 
@@ -217,14 +184,7 @@ func ShowX11() {
 	screenWidthGlobal, screenHeightGlobal = screenWidth, screenHeight
 
 	var sRGBBackgroundOfLogo color.RGBA = color.RGBA{61, 60, 54, 255}
-	img = CenterTileImage(img, int(screenWidth), int(screenHeight), sRGBBackgroundOfLogo)
-	if os.Getenv(ENV_OPENFDE_UPGRADING) == "1" {
-		fontSize := float64(screenHeight) * 0.06
-		if fontSize < 56 {
-			fontSize = 56
-		}
-		img = drawInstallingText(img, "Upgrading", fontSize)
-	}
+	img := CenterTileOpenFDE(int(screenWidth), int(screenHeight), sRGBBackgroundOfLogo)
 
 	visual, depth := screen.RootVisual, screen.RootDepth
 
@@ -605,7 +565,7 @@ var logoShowedx11 = false
 var screenWidthGlobal uint16
 var screenHeightGlobal uint16
 
-func DisappearX11() {
+func (logo *X11Logo) Dismiss() {
 	if logoShowedx11 == false {
 		return
 	}
@@ -630,100 +590,3 @@ func DisappearX11() {
 	done <- struct{}{}
 }
 
-// 改为接受背景色并使用 alpha 混合（draw.Over）
-func CenterTileImage(img image.Image, screenWidth, screenHeight int, bg color.Color) image.Image {
-	imgWidth := img.Bounds().Dx()
-	imgHeight := img.Bounds().Dy()
-
-	// Create a new RGBA image with the size of the screen
-	result := image.NewRGBA(image.Rect(0, 0, screenWidth, screenHeight))
-
-	// Fill the background with bg color (opaque or with its own alpha)
-	draw.Draw(result, result.Bounds(), &image.Uniform{bg}, image.Point{}, draw.Src)
-
-	// Calculate the top-left position to center the image
-	offsetX := (screenWidth - imgWidth) / 2
-	offsetY := (screenHeight - imgHeight) / 2
-
-	// Draw the image at the center using Over to respect the source alpha
-	dstRect := image.Rect(offsetX, offsetY, offsetX+imgWidth, offsetY+imgHeight)
-	draw.Draw(result, dstRect, img, img.Bounds().Min, draw.Over)
-
-	return result
-}
-
-func drawInstallingText(src image.Image, text string, fontSize float64) image.Image {
-	b := src.Bounds()
-	dst := image.NewRGBA(b)
-	draw.Draw(dst, b, src, b.Min, draw.Src)
-
-	// 尝试中文字体，失败则回退到内置字体。
-	candidates := []string{
-		"/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-		"/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-		"/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf",
-	}
-
-	var face font.Face
-	for _, p := range candidates {
-		data, err := os.ReadFile(p)
-		if err != nil {
-			continue
-		}
-		ft, err := opentype.Parse(data)
-		if err != nil {
-			continue
-		}
-		f, err := opentype.NewFace(ft, &opentype.FaceOptions{
-			Size:    fontSize,
-			DPI:     72,
-			Hinting: font.HintingFull,
-		})
-		if err == nil {
-			face = f
-			break
-		}
-	}
-	if face == nil {
-		if ft, err := opentype.Parse(goregular.TTF); err == nil {
-			if f, err := opentype.NewFace(ft, &opentype.FaceOptions{
-				Size:    fontSize,
-				DPI:     72,
-				Hinting: font.HintingFull,
-			}); err == nil {
-				face = f
-			}
-		}
-	}
-	if face == nil {
-		face = basicfont.Face7x13
-	}
-
-	d := &font.Drawer{
-		Dst:  dst,
-		Src:  image.NewUniform(color.RGBA{255, 255, 255, 255}),
-		Face: face,
-	}
-
-	w := d.MeasureString(text).Round()
-	x := (b.Dx() - w) / 2
-	y := b.Dy() - int(fontSize*1.4)
-	if y < int(fontSize) {
-		y = b.Dy() / 2
-	}
-
-	// 阴影
-	shadow := &font.Drawer{
-		Dst:  dst,
-		Src:  image.NewUniform(color.RGBA{0, 0, 0, 180}),
-		Face: face,
-		Dot:  fixed.P(x+2, y+2),
-	}
-	shadow.DrawString(text)
-
-	// 正文
-	d.Dot = fixed.P(x, y)
-	d.DrawString(text)
-
-	return dst
-}

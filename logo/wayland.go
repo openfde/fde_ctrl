@@ -65,20 +65,11 @@ type pointerEvent struct {
 	serial             uint32
 }
 
-func setDensityForWayland(density int){
-	cmd := exec.Command("fde_fs", "-density", strconv.Itoa(density))
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		logger.Error("set density failed", map[string]interface{}{
-			"density": density,
-			"output":  string(output),
-		}, err)
-	} else {
-	    logger.Warn("set density %d success\n", density)
-	}
+type WaylandLogo struct {	
 }
 
-func ShowWayland() {
+
+func (logo *WaylandLogo) Show() {
 	// 检查当前环境是否为 Wayland
 	sessionType := os.Getenv("XDG_SESSION_TYPE")
 	if sessionType != "wayland" {
@@ -94,17 +85,13 @@ func ShowWayland() {
 		//display = os.Getenv("WAYLAND_DISPLAY")
 		//return
 	}
-	fileName := "/usr/share/backgrounds/openfde.png"
 
-	pImage, err := rgbaImageFromFile(fileName)
-	if err != nil {
-		log.Fatal(err)
-	}
+	pImage := CenterTileOpenFDE(int(screenWidth), int(screenHeight), sRGBBackgroundOfLogo)
 
 	frameRect := pImage.Bounds()
 
 	app := &appState{
-		title:  fileName + " - imageviewer",
+		title:  "OpenFDE",
 		appID:  "imageviewer",
 		pImage: pImage,
 		width:  int32(frameRect.Dx()),
@@ -136,30 +123,6 @@ func ShowWayland() {
 	}
 }
 
-func rgbaImageFromFile(fileName string) (*image.RGBA, error) {
-	f, err := os.Open(fileName)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	img, _, err := image.Decode(f)
-	if err != nil {
-		return nil, err
-	}
-
-	rgba, ok := img.(*image.RGBA)
-	if !ok {
-		bounds := img.Bounds()
-		rgba = image.NewRGBA(bounds)
-		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-			for x := bounds.Min.X; x < bounds.Max.X; x++ {
-				rgba.Set(x, y, img.At(x, y))
-			}
-		}
-	}
-	return rgba, nil
-}
 
 func (app *appState) initWindow() error {
 	display, err := client.Connect("")
@@ -185,16 +148,12 @@ func (app *appState) initWindow() error {
 	app.displayRoundTrip()
 	app.displayRoundTrip()
 
-	log.Println("all interfaces registered")
-
 	surface, err := app.compositor.CreateSurface()
 	if err != nil {
 		logger.Error("unable to create compositor surface", nil, err)
 		return err
 	}
 	app.surface = surface
-	log.Println("created new wl_surface")
-
 	// 设置 surface 的 enter/leave 事件，用于跟踪所在的输出
 	surface.SetEnterHandler(app.HandleSurfaceEnter)
 	surface.SetLeaveHandler(app.HandleSurfaceLeave)
@@ -206,7 +165,6 @@ func (app *appState) initWindow() error {
 			logger.Error("failed to get org_kde_plasma_surface", nil, err)
 		} else {
 			app.plasmaSurface = plasmaSurface
-			log.Println("obtained org_kde_plasma_surface")
 
 			// Manually send set_skip_taskbar (opcode 5, skip=1)
 			const opcodeSetSkipTaskbar = 5
@@ -440,6 +398,14 @@ func (app *appState) createLetterboxedFrame() *image.RGBA {
 		for x := 0; x < scaled.Bounds().Dx(); x++ {
 			canvas.Set(offsetX+x, offsetY+y, scaled.At(x, y))
 		}
+	}
+
+	if os.Getenv(ENV_OPENFDE_UPGRADING) == "1" {
+		fontSize := float64(app.height) * 0.06
+		if fontSize < 56 {
+			fontSize = 56
+		}
+		canvas = DrawInstallingText(canvas, "Upgrading", fontSize)
 	}
 
 	return canvas
@@ -773,16 +739,16 @@ var logoShowedWayland = false
 var screenWidthWayland   uint16
 var screenHeightWayland  uint16
 
-func DisappearWayland() {
+func (logo *WaylandLogo) Dismiss() {
 	if logoShowedWayland == false {
 		return
 	}
-	logger.Warn(fmt.Sprintf("DisappearWayland screen size: %dx%d", screenWidthWayland, screenHeightWayland), nil)
+	logger.Warn(fmt.Sprintf("Dismiss Wayland screen size: %dx%d", screenWidthWayland, screenHeightWayland), nil)
 	
 	if screenWidthWayland <= 1920 {
-		setDensityForWayland(160)
+		setDensity(160)
 	} else {
-		setDensityForWayland(256)
+		setDensity(256)
 	}
 	// 检查当前环境是否为 Wayland
 	sessionType := os.Getenv("XDG_SESSION_TYPE")

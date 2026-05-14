@@ -40,11 +40,6 @@ func StartFDERender() error {
 			return err
 		}
 	}
-	// Run fde_fs -s command to set softmode of the secure mode on kylin os
-	if err := exec.Command("fde_fs", "-s").Run(); err != nil {
-		logger.Error("set_secure_softmode", nil, err)
-		return err
-	}
 
 	// Start fde-renderer process
 	if err := exec.Command("fde-renderer").Start(); err != nil {

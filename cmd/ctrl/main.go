@@ -78,14 +78,8 @@ func main() {
 	if showlogo {
 		sessionType := os.Getenv("XDG_SESSION_TYPE")
 		logger.Warn("showlogo", fmt.Sprintf(" XDG_SESSION_TYPE: %s", sessionType), nil)
-		if sessionType == "x11" {
-			logo.SetUpgrading()
-			logo.ShowX11()
-			logger.Warn("showlogo ", "x11")
-		} else {
-		        logo.ShowWayland()
-			logger.Warn("showlogo ", "wayland")
-		}
+		logo.SetUpgrading()
+		logo.ShowLogo(sessionType)
 		return
 	}
 	
@@ -206,11 +200,7 @@ func main() {
 	m, _ := conf.ReadModeConf()
 	if !conf.IsFusingMode(m.Mode) {
 		sessionType := os.Getenv("XDG_SESSION_TYPE")
-		if sessionType == "x11" {
-			go logo.ShowX11()
-		} else {
-		    go logo.ShowWayland()
-		}
+		logo.ShowLogo(sessionType)
 	}
 	if cmdWinMan != nil {
 		cmds = append(cmds, cmdWinMan)
