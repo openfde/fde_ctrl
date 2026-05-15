@@ -89,97 +89,40 @@ func (logo *WaylandLogo) Show() {
 		logger.Error("unable to connect to wayland server", nil, err)
 		return
 	}
-	defer display.Destroy()
-
-	registry, err := display.GetRegistry()
-	if err != nil {
-	    logger.Error("unable to get global registry object", nil, err)
-		return
-	}
-	defer registry.Destroy()
-
-	outputsByID := make(map[uint32]*client.Output)
-	outputModes := make(map[uint32]struct{ w, h uint16 })
-	var screenWidth, screenHeight uint16
-
-	registry.SetGlobalHandler(func(e client.RegistryGlobalEvent) {
-		if e.Interface != "wl_output" {
-			return
-		}
-
-		output := client.NewOutput(display.Context())
-		if err := registry.Bind(e.Name, e.Interface, e.Version, output); err != nil {
-			logger.Error("bind wl_output failed", nil, err)
-			return
-		}
-
-		out := output
-		outputsByID[out.ID()] = out
-		out.SetModeHandler(func(e client.OutputModeEvent) {
-			if e.Flags&uint32(client.OutputModeCurrent) != 0 {
-				outputModes[out.ID()] = struct{ w, h uint16 }{uint16(e.Width), uint16(e.Height)}
-				if screenWidth == 0 || screenHeight == 0 {
-					screenWidth = uint16(e.Width)
-					screenHeight = uint16(e.Height)
-				}
-			}
-		})
-	})
-
-	for i := 0; i < 3; i++ {
-		cb, err := display.Sync()
-		if err != nil {
-			logger.Error("sync failed", nil, err)
-			return
-		}
-
-		done := false
-		cb.SetDoneHandler(func(_ client.CallbackDoneEvent) {
-			done = true
-		})
-
-		for !done {
-			display.Context().Dispatch()
-		}
-		cb.Destroy()
-	}
-
-	for _, output := range outputsByID {
-		if mode, ok := outputModes[output.ID()]; ok {
-			screenWidth = mode.w
-			screenHeight = mode.h
-			break
-		}
-	}
-
-	for _, output := range outputsByID {
-		output.Release()
-	}
-
-	if screenWidth == 0 || screenHeight == 0 {
-		logger.Error("failed to get wayland output size", nil, errors.New("wayland output size unavailable"))
-		return
-	}
-
-	pImage := CenterTileOpenFDE(int(screenWidth), int(screenHeight), sRGBBackgroundOfLogo)
-
-	frameRect := pImage.Bounds()
 
 	app := &appState{
 		title:  "OpenFDE",
 		appID:  "imageviewer",
-		pImage: pImage,
-		width:  int32(frameRect.Dx()),
-		height: int32(frameRect.Dy()),
-		frame:  pImage,
 		display: display,
 		outputsByID:    make(map[uint32]*client.Output),
 		outputModes:    make(map[uint32]struct{ w, h uint16 }),
 		enteredOutputs: make(map[uint32]*client.Output),
 	}
 
+	if err := app.bindRegistryGlobals(); err != nil {
+		logger.Error("bindRegistryGlobals failed", nil, err)
+		app.cleanup()
+		return
+	}
+
+	screenWidth, screenHeight := app.currentOutputSize()
+	if screenWidth == 0 || screenHeight == 0 {
+		logger.Error("failed to get wayland output size", nil, errors.New("wayland output size unavailable"))
+		app.cleanup()
+		return
+	}
+
+	pImage := CenterTileOpenFDE(int(screenWidth), int(screenHeight), sRGBBackgroundOfLogo)
+	frameRect := pImage.Bounds()
+
+	app.pImage = pImage
+	app.width = int32(frameRect.Dx())
+	app.height = int32(frameRect.Dy())
+	app.frame = pImage
+
 	if err := app.initWindow(); err != nil {
         logger.Error("initWindow failed", nil, err)
+        app.cleanup()
         return
     }
 	
@@ -199,8 +142,7 @@ func (logo *WaylandLogo) Show() {
 	}
 }
 
-
-func (app *appState) initWindow() error {
+func (app *appState) bindRegistryGlobals() error {
 	if app.display == nil {
 		return errors.New("wayland display is nil")
 	}
@@ -209,17 +151,45 @@ func (app *appState) initWindow() error {
 
 	registry, err := app.display.GetRegistry()
 	if err != nil {
-	    logger.Error("unable to get global registry object", nil, err)
+		logger.Error("unable to get global registry object", nil, err)
 		return err
 	}
 	app.registry = registry
-
 	registry.SetGlobalHandler(app.HandleRegistryGlobal)
 
-	// Multiple roundtrips to ensure all globals (including plasma_shell) are discovered
+	// Multiple roundtrips to ensure all globals (including plasma_shell/output modes) are discovered
 	app.displayRoundTrip()
 	app.displayRoundTrip()
 	app.displayRoundTrip()
+
+	return nil
+}
+
+func (app *appState) currentOutputSize() (uint16, uint16) {
+	for _, output := range app.outputsByID {
+		if mode, ok := app.outputModes[output.ID()]; ok {
+			return mode.w, mode.h
+		}
+	}
+	return 0, 0
+}
+
+func (app *appState) initWindow() error {
+	if app.display == nil {
+		return errors.New("wayland display is nil")
+	}
+	if app.registry == nil {
+		return errors.New("wayland registry is nil")
+	}
+	if app.compositor == nil {
+		return errors.New("wayland compositor is nil")
+	}
+	if app.xdgWmBase == nil {
+		return errors.New("wayland xdg_wm_base is nil")
+	}
+	if app.shm == nil {
+		return errors.New("wayland shm is nil")
+	}
 
 	surface, err := app.compositor.CreateSurface()
 	if err != nil {
@@ -376,6 +346,12 @@ func (app *appState) HandleRegistryGlobal(e client.RegistryGlobalEvent) {
 				outputID := out.ID()
 				app.outputModes[outputID] = struct{ w, h uint16 }{uint16(e.Width), uint16(e.Height)}
 				logger.Info("output", fmt.Sprintf("%d mode (current): %dx%d", outputID, e.Width, e.Height))
+
+				// 初始化阶段优先记录一个可用输出尺寸
+				if screenWidthWayland == 0 || screenHeightWayland == 0 {
+					screenWidthWayland = uint16(e.Width)
+					screenHeightWayland = uint16(e.Height)
+				}
 
 				// 如果该输出当前已被 surface 进入，则立即更新全局屏幕尺寸
 				if _, entered := app.enteredOutputs[outputID]; entered {
