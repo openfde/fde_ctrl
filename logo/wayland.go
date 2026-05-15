@@ -7,8 +7,6 @@ import (
 	"log"
 	"os"
 	"fmt"
-	"os/exec"
-	"strconv"
 	"errors"
 
 	"github.com/nfnt/resize"
@@ -112,10 +110,11 @@ func (logo *WaylandLogo) Show() {
 		return
 	}
 
-	pImage := CenterTileOpenFDE(int(screenWidth), int(screenHeight), sRGBBackgroundOfLogo)
+	pImage := CenterTileOpenFDE(int(screenWidth), int(screenHeight))
 	frameRect := pImage.Bounds()
+	pRGBAImage := image.NewRGBA(frameRect)
 
-	app.pImage = pImage
+	app.pImage = pRGBAImage
 	app.width = int32(frameRect.Dx())
 	app.height = int32(frameRect.Dy())
 	app.frame = pImage
