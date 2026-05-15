@@ -6,7 +6,7 @@ import (
 	"fde_ctrl/logger"
 	"fmt"
 	"reflect"
-	"strconv"
+	"os"
 	"unsafe"
 
 	"github.com/BurntSushi/xgb"
