@@ -77,13 +77,88 @@ func (logo *WaylandLogo) Show() {
 		return
 	}
 	// 检查是否存在 DISPLAY 变量
-	display := os.Getenv("WAYLAND_DISPLAY")
-	logger.Warn("display is %s \n", display)
-	if display == "" {
+	displayName := os.Getenv("WAYLAND_DISPLAY")
+	logger.Warn("display is %s \n", displayName)
+	if displayName == "" {
 		logger.Error("error display", nil, errors.New("display not set"))
 		os.Setenv("WAYLAND_DISPLAY", "wayland-0")
-		//display = os.Getenv("WAYLAND_DISPLAY")
-		//return
+	}
+
+	display, err := client.Connect("")
+	if err != nil {
+		logger.Error("unable to connect to wayland server", nil, err)
+		return
+	}
+	defer display.Destroy()
+
+	registry, err := display.GetRegistry()
+	if err != nil {
+	    logger.Error("unable to get global registry object", nil, err)
+		return
+	}
+	defer registry.Destroy()
+
+	outputsByID := make(map[uint32]*client.Output)
+	outputModes := make(map[uint32]struct{ w, h uint16 })
+	var screenWidth, screenHeight uint16
+
+	registry.SetGlobalHandler(func(e client.RegistryGlobalEvent) {
+		if e.Interface != "wl_output" {
+			return
+		}
+
+		output := client.NewOutput(display.Context())
+		if err := registry.Bind(e.Name, e.Interface, e.Version, output); err != nil {
+			logger.Error("bind wl_output failed", nil, err)
+			return
+		}
+
+		out := output
+		outputsByID[out.ID()] = out
+		out.SetModeHandler(func(e client.OutputModeEvent) {
+			if e.Flags&uint32(client.OutputModeCurrent) != 0 {
+				outputModes[out.ID()] = struct{ w, h uint16 }{uint16(e.Width), uint16(e.Height)}
+				if screenWidth == 0 || screenHeight == 0 {
+					screenWidth = uint16(e.Width)
+					screenHeight = uint16(e.Height)
+				}
+			}
+		})
+	})
+
+	for i := 0; i < 3; i++ {
+		cb, err := display.Sync()
+		if err != nil {
+			logger.Error("sync failed", nil, err)
+			return
+		}
+
+		done := false
+		cb.SetDoneHandler(func(_ client.CallbackDoneEvent) {
+			done = true
+		})
+
+		for !done {
+			display.Context().Dispatch()
+		}
+		cb.Destroy()
+	}
+
+	for _, output := range outputsByID {
+		if mode, ok := outputModes[output.ID()]; ok {
+			screenWidth = mode.w
+			screenHeight = mode.h
+			break
+		}
+	}
+
+	for _, output := range outputsByID {
+		output.Release()
+	}
+
+	if screenWidth == 0 || screenHeight == 0 {
+		logger.Error("failed to get wayland output size", nil, errors.New("wayland output size unavailable"))
+		return
 	}
 
 	pImage := CenterTileOpenFDE(int(screenWidth), int(screenHeight), sRGBBackgroundOfLogo)
@@ -97,6 +172,7 @@ func (logo *WaylandLogo) Show() {
 		width:  int32(frameRect.Dx()),
 		height: int32(frameRect.Dy()),
 		frame:  pImage,
+		display: display,
 		outputsByID:    make(map[uint32]*client.Output),
 		outputModes:    make(map[uint32]struct{ w, h uint16 }),
 		enteredOutputs: make(map[uint32]*client.Output),
@@ -125,14 +201,11 @@ func (logo *WaylandLogo) Show() {
 
 
 func (app *appState) initWindow() error {
-	display, err := client.Connect("")
-	if err != nil {
-		logger.Error("unable to connect to wayland server", nil, err)
-		return err
+	if app.display == nil {
+		return errors.New("wayland display is nil")
 	}
-	app.display = display
 
-	display.SetErrorHandler(app.HandleDisplayError)
+	app.display.SetErrorHandler(app.HandleDisplayError)
 
 	registry, err := app.display.GetRegistry()
 	if err != nil {
