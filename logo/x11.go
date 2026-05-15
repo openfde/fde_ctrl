@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fde_ctrl/logger"
 	"fmt"
-	"os"
-	"os/exec"
 	"reflect"
 	"strconv"
 	"unsafe"
@@ -183,8 +181,7 @@ func (logo *X11Logo) Show() {
 	// 此时 screenX, screenY 均为 0
 	screenWidthGlobal, screenHeightGlobal = screenWidth, screenHeight
 
-	var sRGBBackgroundOfLogo color.RGBA = color.RGBA{61, 60, 54, 255}
-	img := CenterTileOpenFDE(int(screenWidth), int(screenHeight), sRGBBackgroundOfLogo)
+	img := CenterTileOpenFDE(int(screenWidth), int(screenHeight))
 
 	visual, depth := screen.RootVisual, screen.RootDepth
 

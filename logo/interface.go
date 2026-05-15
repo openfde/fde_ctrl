@@ -24,6 +24,9 @@ type Logo interface {
 }
 
 
+
+
+
 func ShowLogo(xdgSessionType string) {
 	var logo Logo
 	if xdgSessionType == "wayland" {
@@ -65,7 +68,7 @@ func SetUpgrading() {
 
 
 // CenterTileOpenFDE draws the OpenFDE logo centered on a screen-sized background.
-func CenterTileOpenFDE(screenWidth, screenHeight int, bg color.Color) *image.RGBA {
+func CenterTileOpenFDE(screenWidth, screenHeight int) (image.Image) {
 		// Load a picture from the command line.
 	f, err := os.Open("/usr/share/backgrounds/openfde.png")
 	if err != nil {
@@ -79,17 +82,18 @@ func CenterTileOpenFDE(screenWidth, screenHeight int, bg color.Color) *image.RGB
 		logger.Error("decode_image", nil, err)
 		return nil
 	}
-
 	imgWidth := img.Bounds().Dx()
 	imgHeight := img.Bounds().Dy()
 
 	result := image.NewRGBA(image.Rect(0, 0, screenWidth, screenHeight))
-	draw.Draw(result, result.Bounds(), &image.Uniform{bg}, image.Point{}, draw.Src)
+	var sRGBBackgroundOfLogo color.RGBA = color.RGBA{61, 60, 54, 255}
+	draw.Draw(result, result.Bounds(), &image.Uniform{sRGBBackgroundOfLogo}, image.Point{}, draw.Src)
 
 	offsetX := (screenWidth - imgWidth) / 2
 	offsetY := (screenHeight - imgHeight) / 2
 
 	dstRect := image.Rect(offsetX, offsetY, offsetX+imgWidth, offsetY+imgHeight)
+	//裁剪img到dstRect大小，并绘制到result上
 	draw.Draw(result, dstRect, img, img.Bounds().Min, draw.Over)
 
 	if os.Getenv(ENV_OPENFDE_UPGRADING) == "1" {
@@ -97,7 +101,7 @@ func CenterTileOpenFDE(screenWidth, screenHeight int, bg color.Color) *image.RGB
 		if fontSize < 56 {
 			fontSize = 56
 		}
-		img = DrawInstallingText(img, "Upgrading", fontSize)
+		result = DrawInstallingText(result, "Upgrading", fontSize)
 	}
 
 	return result
