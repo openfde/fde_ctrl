@@ -5,6 +5,10 @@ import (
 	"image/color"
 	"image/draw"
 	"os"
+	"strconv"
+	"fde_ctrl/logger"
+	"os/exec"
+
 
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/basicfont"
@@ -66,14 +70,14 @@ func CenterTileOpenFDE(screenWidth, screenHeight int, bg color.Color) *image.RGB
 	f, err := os.Open("/usr/share/backgrounds/openfde.png")
 	if err != nil {
 		logger.Error("open_image", nil, err)
-		return
+		return nil
 	}
 	defer f.Close()
 
 	img, _, err := image.Decode(f)
 	if err != nil {
 		logger.Error("decode_image", nil, err)
-		return
+		return nil
 	}
 
 	imgWidth := img.Bounds().Dx()
