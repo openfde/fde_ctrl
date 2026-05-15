@@ -110,14 +110,21 @@ func (logo *WaylandLogo) Show() {
 		return
 	}
 
-	pImage := CenterTileOpenFDE(int(screenWidth), int(screenHeight))
-	frameRect := pImage.Bounds()
-	pRGBAImage := image.NewRGBA(frameRect)
-
-	app.pImage = pRGBAImage
-	app.width = int32(frameRect.Dx())
-	app.height = int32(frameRect.Dy())
-	app.frame = pImage
+	img := CenterTileOpenFDE(int(screenWidth), int(screenHeight))
+	bounds := img.Bounds()
+	rgba, ok := img.(*image.RGBA)
+	if !ok {
+		rgba = image.NewRGBA(bounds)
+		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+			for x := bounds.Min.X; x < bounds.Max.X; x++ {
+				rgba.Set(x, y, img.At(x, y))
+			}
+		}
+	}
+	app.pImage = rgba
+	app.width = int32(bounds.Dx())
+	app.height = int32(bounds.Dy())
+	app.frame = rgba
 
 	if err := app.initWindow(); err != nil {
         logger.Error("initWindow failed", nil, err)
