@@ -79,7 +79,7 @@ func main() {
 		sessionType := os.Getenv("XDG_SESSION_TYPE")
 		logger.Warn("showlogo", fmt.Sprintf(" XDG_SESSION_TYPE: %s", sessionType), nil)
 		logo.SetUpgrading()
-		logo.ShowLogo(sessionType)
+		go logo.ShowLogo(sessionType)
 		return
 	}
 	
@@ -200,7 +200,7 @@ func main() {
 	m, _ := conf.ReadModeConf()
 	if !conf.IsFusingMode(m.Mode) {
 		sessionType := os.Getenv("XDG_SESSION_TYPE")
-		logo.ShowLogo(sessionType)
+		go logo.ShowLogo(sessionType)
 	}
 	if cmdWinMan != nil {
 		cmds = append(cmds, cmdWinMan)
