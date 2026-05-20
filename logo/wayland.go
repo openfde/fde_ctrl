@@ -2,14 +2,14 @@ package logo
 
 import (
 	"image"
+	"image/color"
+	"image/draw"
 	_ "image/png" // Register PNG decoder
 	"fde_ctrl/logger"
 	"log"
 	"os"
 	"fmt"
 	"errors"
-
-	"github.com/nfnt/resize"
 	"golang.org/x/sys/unix"
 
 	"github.com/rajveermalviya/go-wayland/wayland/client"
@@ -103,14 +103,19 @@ func (logo *WaylandLogo) Show() {
 		return
 	}
 
-	screenWidth, screenHeight := app.currentOutputSize()
-	if screenWidth == 0 || screenHeight == 0 {
-		logger.Error("failed to get wayland output size", nil, errors.New("wayland output size unavailable"))
-		app.cleanup()
-		return
+		// Load a picture from the command line.
+	f, err := os.Open("/usr/share/backgrounds/openfde.png")
+	if err != nil {
+		logger.Error("open_image", nil, err)
+		return nil
 	}
+	defer f.Close()
 
-	img := CenterTileOpenFDE(int(screenWidth), int(screenHeight))
+	img, _, err := image.Decode(f)
+	if err != nil {
+		logger.Error("decode_image", nil, err)
+		return nil
+	}
 	bounds := img.Bounds()
 	rgba, ok := img.(*image.RGBA)
 	if !ok {
@@ -122,12 +127,9 @@ func (logo *WaylandLogo) Show() {
 		}
 	}
 	app.pImage = rgba
-	app.width = int32(bounds.Dx())
-	app.height = int32(bounds.Dy())
-	app.frame = rgba
 
 	if err := app.initWindow(); err != nil {
-        logger.Error("initWindow failed", nil, err)
+        logger.Error("initWindow_failed", nil, err)
         app.cleanup()
         return
     }
@@ -138,7 +140,6 @@ func (logo *WaylandLogo) Show() {
 		select {
 		case <-doneWayland:
 			// Clean up Wayland resources
-			log.Println("closing")
 			app.cleanup()
 		}
 	}()
@@ -199,7 +200,7 @@ func (app *appState) initWindow() error {
 
 	surface, err := app.compositor.CreateSurface()
 	if err != nil {
-		logger.Error("unable to create compositor surface", nil, err)
+		logger.Error("unable_to_create_compositor_surface", nil, err)
 		return err
 	}
 	app.surface = surface
@@ -244,7 +245,7 @@ func (app *appState) initWindow() error {
 		return err
 	}
 	app.xdgSurface = xdgSurface
-	log.Println("got xdg_surface")
+	logger.Info("got xdg_surface", nil)
 
 	xdgSurface.SetConfigureHandler(app.HandleSurfaceConfigure)
 
@@ -328,7 +329,7 @@ func (app *appState) HandleRegistryGlobal(e client.RegistryGlobalEvent) {
 			return
 		}
 		app.plasmaShell = plasma
-		log.Println("bound org_kde_plasma_shell")
+		logger.Info("bound org_kde_plasma_shell", nil)
 
 	case "wl_output":
 		output := client.NewOutput(app.context())
@@ -363,20 +364,19 @@ func (app *appState) HandleRegistryGlobal(e client.RegistryGlobalEvent) {
 				if _, entered := app.enteredOutputs[outputID]; entered {
 					screenWidthWayland = uint16(e.Width)
 					screenHeightWayland = uint16(e.Height)
-					logger.Info("surface is on this output", fmt.Sprintf("update global size to %dx%d", e.Width, e.Height))
+					logger.Info("surface_on_output", fmt.Sprintf("update global size to %dx%d", e.Width, e.Height))
 				}
 			}
 		})
 
 		out.SetDoneHandler(func(e client.OutputDoneEvent) {
-			log.Println("output done")
+			logger.Info("output done", nil)
 		})
 
 		out.SetScaleHandler(func(e client.OutputScaleEvent) {
 			// 可选：处理缩放因子
 		})
 
-		log.Println("bound wl_output")
 	}
 }
 
@@ -404,9 +404,6 @@ func (app *appState) HandleToplevelConfigure(e xdg_shell.ToplevelConfigureEvent)
 	if width == app.width && height == app.height {
 		return
 	}
-
-	logger.Info("resize to", fmt.Sprintf("%dx%d", width, height))
-
 	app.width = width
 	app.height = height
 
@@ -415,45 +412,21 @@ func (app *appState) HandleToplevelConfigure(e xdg_shell.ToplevelConfigureEvent)
 
 // createLetterboxedFrame 创建保持原始宽高比、居中显示的画布（带黑边）
 func (app *appState) createLetterboxedFrame() *image.RGBA {
-	// 原图宽高比
-	srcW := float64(app.pImage.Bounds().Dx())
-	srcH := float64(app.pImage.Bounds().Dy())
-	srcAspect := srcW / srcH
+	screenWidth := int(app.width)
+	screenHeight := int(app.height)
+	imgWidth := app.pImage.Bounds().Dx()
+	imgHeight := app.pImage.Bounds().Dy()
 
-	// 目标屏幕宽高比
-	dstW := float64(app.width)
-	dstH := float64(app.height)
-	dstAspect := dstW / dstH
+	canvas := image.NewRGBA(image.Rect(0, 0, screenWidth, screenHeight))
+	var sRGBBackgroundOfLogo color.RGBA = color.RGBA{61, 60, 54, 255}
+	draw.Draw(canvas, canvas.Bounds(), &image.Uniform{sRGBBackgroundOfLogo}, image.Point{}, draw.Src)
 
-	var drawW, drawH uint
-	var offsetX, offsetY int
+	offsetX := (screenWidth - imgWidth) / 2
+	offsetY := (screenHeight - imgHeight) / 2
 
-	if srcAspect > dstAspect {
-		// 原图更宽 → 高度撑满，左右黑边
-		drawH = uint(dstH)
-		drawW = uint(dstH * srcAspect)
-		offsetX = int((dstW - float64(drawW)) / 2)
-		offsetY = 0
-	} else {
-		// 原图更高 → 宽度撑满，上下黑边
-		drawW = uint(dstW)
-		drawH = uint(dstW / srcAspect)
-		offsetX = 0
-		offsetY = int((dstH - float64(drawH)) / 2)
-	}
-
-	// 先创建和屏幕一样大的黑色画布
-	canvas := image.NewRGBA(image.Rect(0, 0, int(dstW), int(dstH)))
-
-	// 把原图等比缩放到 drawW × drawH
-	scaled := resize.Resize(drawW, drawH, app.pImage, resize.Bilinear)
-
-	// 把缩放后的图片画到 canvas 的居中位置
-	for y := 0; y < scaled.Bounds().Dy(); y++ {
-		for x := 0; x < scaled.Bounds().Dx(); x++ {
-			canvas.Set(offsetX+x, offsetY+y, scaled.At(x, y))
-		}
-	}
+	dstRect := image.Rect(offsetX, offsetY, offsetX+imgWidth, offsetY+imgHeight)
+	// 居中绘制，不做缩放；超出画布部分会自动裁剪
+	draw.Draw(canvas, dstRect, app.pImage, app.pImage.Bounds().Min, draw.Over)
 
 	if os.Getenv(ENV_OPENFDE_UPGRADING) == "1" {
 		fontSize := float64(app.height) * 0.06
@@ -618,8 +591,6 @@ func (app *appState) loadCursor() {
 		return
 	}
 	app.cursorSurface = surface
-
-	log.Println("Custom cursor loaded successfully")
 }
 
 func (app *appState) releasePointer() {
