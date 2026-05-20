@@ -695,7 +695,6 @@ func (app *appState) HandleSurfaceLeave(e client.SurfaceLeaveEvent) {
 		}
 	} else {
 		// 没有进入任何输出，可以保留旧尺寸或置零，这里保持原样
-		log.Println("surface left all outputs")
 	}
 }
 
