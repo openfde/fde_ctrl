@@ -107,14 +107,14 @@ func (logo *WaylandLogo) Show() {
 	f, err := os.Open("/usr/share/backgrounds/openfde.png")
 	if err != nil {
 		logger.Error("open_image", nil, err)
-		return nil
+		return 
 	}
 	defer f.Close()
 
 	img, _, err := image.Decode(f)
 	if err != nil {
 		logger.Error("decode_image", nil, err)
-		return nil
+		return 
 	}
 	bounds := img.Bounds()
 	rgba, ok := img.(*image.RGBA)
