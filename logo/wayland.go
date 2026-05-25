@@ -127,6 +127,9 @@ func (logo *WaylandLogo) Show() {
 		}
 	}
 	app.pImage = rgba
+	app.width = int32(bounds.Dx())
+	app.height = int32(bounds.Dy())
+	app.frame = rgba
 
 	if err := app.initWindow(); err != nil {
         logger.Error("initWindow_failed", nil, err)
