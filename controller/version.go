@@ -466,7 +466,7 @@ func (impl VersionController) versionQueryHandler(c *gin.Context) {
 		pkgName = pkgNameArm64
 	}
 	var bestList []map[string]string
-	for _, repo := range allRepos {
+	for index, repo := range allRepos {
 		if repo.RepoURL == "" || repo.Release == "" || repo.Arch == "" {
 			logger.Warn("invalid_repo_info", fmt.Sprintf("repo url: %s, release: %s, arch: %s", repo.RepoURL, repo.Release, repo.Arch))
 			continue
@@ -495,8 +495,10 @@ func (impl VersionController) versionQueryHandler(c *gin.Context) {
 				entries := parseDebianPackages(string(bodyBytes),repo.RepoURL,pkgName)
 				best, err := LatestForPackage(entries)
 				if err != nil {
-					response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("failed to find "+pkgName+" package"))
-					return
+					if index == len(allRepos)-1 {
+						response.ResponseCodeError(c, http.StatusPreconditionRequired, NetworkError, errors.New("failed to find "+pkgName+" package"))
+						return
+					}
 				}
 				bestList = append(bestList, best)
 			}
