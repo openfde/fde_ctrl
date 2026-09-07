@@ -221,6 +221,19 @@ func detectInstalledOpenfdePackage(packageName string) bool {
 	return false
 }
 
+func getAospVersionSuffix() (string, error) {
+	cmd := exec.Command("sh", "-c", "fde_fs -aospver")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	v := strings.TrimSpace(string(out))
+	if v != "14" && v != "17" {
+		return "", errors.New("invalid aosp version")
+	}
+	return v, nil
+}
+
 
 type versionResponse struct {
 	Version     string
@@ -437,15 +450,20 @@ func (impl VersionController) versionQueryHandler(c *gin.Context) {
 		response.ResponseError(c, http.StatusInternalServerError, err)
 		return
 	}
-	pkgName := "openfde14"
-	result14 := detectInstalledOpenfdePackage("openfde14")
-	if !result14 {
-		resultarm64 := detectInstalledOpenfdePackage("openfde14-arm64")
-		if !resultarm64 {
-			response.ResponseParamterError(c, errors.New("no openfde14 package installed"))
-			return 
+	aospSuffix, err := getAospVersionSuffix()
+	if err != nil {
+		response.ResponseParamterError(c, errors.New("failed to get aosp version"))
+		return
+	}
+
+	pkgName := "openfde" + aospSuffix
+	if !detectInstalledOpenfdePackage(pkgName) {
+		pkgNameArm64 := pkgName + "-arm64"
+		if !detectInstalledOpenfdePackage(pkgNameArm64) {
+			response.ResponseParamterError(c, errors.New("no matched openfde package installed"))
+			return
 		}
-		pkgName = "openfde14-arm64"
+		pkgName = pkgNameArm64
 	}
 	var bestList []map[string]string
 	for _, repo := range allRepos {
