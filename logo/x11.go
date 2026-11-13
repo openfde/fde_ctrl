@@ -8,6 +8,9 @@ import (
 	"reflect"
 	"os"
 	"unsafe"
+	"path/filepath"
+	"strings"
+	"bufio"
 
 	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/randr"
@@ -80,6 +83,10 @@ type X11Logo struct {
 }
 
 func (logo *X11Logo) Show() {
+	if isNvidiaGPU() {
+		logo.showWithPutImage()
+		return
+	}
 	// 检查当前环境是否为 X11
 	sessionType := os.Getenv("XDG_SESSION_TYPE")
 	if sessionType != "x11" {
@@ -563,6 +570,10 @@ var screenWidthGlobal uint16
 var screenHeightGlobal uint16
 
 func (logo *X11Logo) Dismiss() {
+	if isNvidiaGPU() {
+		logo.dismissWithPutImage()
+		return
+	}
 	if logoShowedx11 == false {
 		return
 	}
@@ -587,3 +598,35 @@ func (logo *X11Logo) Dismiss() {
 	done <- struct{}{}
 }
 
+
+// isNvidiaGPU 判断当前是不是 NVIDIA 显卡环境。
+func isNvidiaGPU() bool {
+	uevents, _ := filepath.Glob("/sys/class/drm/card*/device/uevent")
+	for _, path := range uevents {
+		if nvidiaFromUevent(path) {
+			return true
+		}
+	}
+	return false
+}
+
+func nvidiaFromUevent(path string) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		switch {
+		case strings.HasPrefix(line, "DRIVER="):
+			drv := strings.ToLower(strings.TrimPrefix(line, "DRIVER="))
+			if drv == "nvidia" {
+				return true
+			}
+		}
+	}
+	return false
+}
