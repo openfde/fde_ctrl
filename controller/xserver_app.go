@@ -197,6 +197,9 @@ func (impl XserverAppImpl) startAppHandle(c *gin.Context) {
 		response.ResponseParamterError(c, err)
 		return
 	}
+	// 耗时打点（临时）：与 Android 侧 FdeBench 的 click/bound 对比，量化 HTTP 往返占比。
+	recvMs := time.Now().UnixMilli()
+	logger.Info("start_app_recv", request.App, request.Display, recvMs)
 	if request.Display == FDE_DISPLAY {
 		// Check if xserver process is already running
 		cmd := exec.Command("pgrep", "-f", FDE_SERVER)
@@ -213,6 +216,8 @@ func (impl XserverAppImpl) startAppHandle(c *gin.Context) {
 		response.ResponseError(c, http.StatusInternalServerError, err)
 		return
 	}
+	doneMs := time.Now().UnixMilli()
+	logger.Info("start_app_done", request.App, doneMs, "cost_ms", doneMs-recvMs)
 	response.Response(c, startAppResponse{
 		Port: request.Display,
 	})
