@@ -8,6 +8,7 @@ import (
 	"fde_ctrl/terminal"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -151,14 +152,18 @@ func (impl XserverAppImpl) startTerminalHandle(c *gin.Context) {
 		return
 	}
 	if request.Display == FDE_DISPLAY {
-		// Check if xserver process is already running
-		cmd := exec.Command("pgrep", "-f", FDE_SERVER)
-		cmd.Run()
-		logger.Info("pgrep_x11_exit_code", cmd.ProcessState.ExitCode())
-		if cmd.ProcessState.ExitCode() == 1 {
+		// Check whether the xserver is really alive by connecting to its unix
+		// socket. pgrep -f scans all of /proc (~170ms on this machine) and stat
+		// is unreliable because a crashed server leaves a stale socket behind.
+		// A successful connect means some process is accepting on it.
+		sockPath := "/tmp/.X11-unix/X" + strings.TrimPrefix(request.Display, ":")
+		conn, dialErr := net.DialTimeout("unix", sockPath, 200*time.Millisecond)
+		if dialErr != nil {
+			logger.Error("xserver_socket_unreachable", request.Display, dialErr)
 			response.ResponseError(c, http.StatusPreconditionRequired, errors.New("xserver service is not running"))
 			return
 		}
+		conn.Close()
 	}
 	app, terminalProgram := terminal.GetTerminalProgram()
 	if terminalProgram == "" {
@@ -197,15 +202,22 @@ func (impl XserverAppImpl) startAppHandle(c *gin.Context) {
 		response.ResponseParamterError(c, err)
 		return
 	}
+	// 耗时打点（临时）：与 Android 侧 FdeBench 的 click/bound 对比，量化 HTTP 往返占比。
+	recvMs := time.Now().UnixMilli()
+	logger.Info("start_app_recv", request.App, request.Display, recvMs)
 	if request.Display == FDE_DISPLAY {
-		// Check if xserver process is already running
-		cmd := exec.Command("pgrep", "-f", FDE_SERVER)
-		cmd.Run()
-		logger.Info("pgrep_x11_exit_code", cmd.ProcessState.ExitCode())
-		if cmd.ProcessState.ExitCode() == 1 {
+		// Check whether the xserver is really alive by connecting to its unix
+		// socket. pgrep -f scans all of /proc (~170ms on this machine) and stat
+		// is unreliable because a crashed server leaves a stale socket behind.
+		// A successful connect means some process is accepting on it.
+		sockPath := "/tmp/.X11-unix/X" + strings.TrimPrefix(request.Display, ":")
+		conn, dialErr := net.DialTimeout("unix", sockPath, 200*time.Millisecond)
+		if dialErr != nil {
+			logger.Error("xserver_socket_unreachable", request.Display, dialErr)
 			response.ResponseError(c, http.StatusPreconditionRequired, errors.New("xserver service is not running"))
 			return
 		}
+		conn.Close()
 	}
 
 	err = impl.startApp(request.App, request.Path, request.Display, "", request.WithOutTheme)
@@ -213,6 +225,8 @@ func (impl XserverAppImpl) startAppHandle(c *gin.Context) {
 		response.ResponseError(c, http.StatusInternalServerError, err)
 		return
 	}
+	doneMs := time.Now().UnixMilli()
+	logger.Info("start_app_done", request.App, doneMs, "cost_ms", doneMs-recvMs)
 	response.Response(c, startAppResponse{
 		Port: request.Display,
 	})
@@ -289,7 +303,7 @@ func (impl XserverAppImpl) startApp(app, path, display, workingDir string, witho
 		}
 		logger.Info("debug_xserver", output)
 	}
-	timer := time.NewTimer(500 * time.Millisecond)
+	timer := time.NewTimer(10 * time.Millisecond)
 	var chWait = make(chan struct{}, 1)
 	go func() {
 		err := cmdApp.Wait()
