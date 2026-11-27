@@ -524,10 +524,10 @@ func (logo *X11Logo) dismissWithPutImage() {
 	nvMu.Unlock()
 
 	logger.Warn(fmt.Sprintf("screen size: %dx%d", nvScreenW, nvScreenH), nil)
-	if nvScreenW <= 1920 {
-		setDensity(160)
-	} else {
-		setDensity(256)
-	}
+	//if nvScreenW <= 1920 {
+	//	setDensity(160)
+	//} else {
+	//	setDensity(256)
+	//}
 }
 

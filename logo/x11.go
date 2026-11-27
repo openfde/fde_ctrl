@@ -578,11 +578,13 @@ func (logo *X11Logo) Dismiss() {
 		return
 	}
 	logger.Warn(fmt.Sprintf("screen size: %dx%d", screenWidthGlobal, screenHeightGlobal), nil)
-	if screenWidthGlobal <= 1920 {
-		setDensity(160)
-	} else {
-		setDensity(256)
-	}
+	//if screenWidthGlobal <= 1920 {
+	//	setDensity(160)
+	//} else if screenWidthGlobal <= 2560 {
+	//	setDensity(256)
+	//} else {
+        //        setDensity(340)
+	//}
 	// 检查当前环境是否为 X11
 	sessionType := os.Getenv("XDG_SESSION_TYPE")
 	if sessionType != "x11" {
