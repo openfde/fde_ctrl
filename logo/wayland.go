@@ -773,11 +773,11 @@ func (logo *WaylandLogo) Dismiss() {
 	}
 	logger.Warn(fmt.Sprintf("Dismiss Wayland screen size: %dx%d", screenWidthWayland, screenHeightWayland), nil)
 	
-	if screenWidthWayland <= 1920 {
-		setDensity(160)
-	} else {
-		setDensity(256)
-	}
+	//if screenWidthWayland <= 1920 {
+	//	setDensity(160)
+	//} else {
+	//	setDensity(256)
+	//}
 	// 检查当前环境是否为 Wayland
 	sessionType := os.Getenv("XDG_SESSION_TYPE")
 	if sessionType != "wayland" {
